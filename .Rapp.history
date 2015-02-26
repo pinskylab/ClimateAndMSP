@@ -1,0 +1,529 @@
+matches<-datspp %in% spptax[,1] + datspp %in% spptax[,11] + datspp %in% spptax[,12] + datspp %in% spptax[,13]  #873 matches/4937
+table(matches)
+508+126+192
+dat[dat$sppl=="cirrata",]
+newnames=NULL#
+for (i in 1:length(datspp)){#
+	if (matches[i]==0) newnames[i]<-datspp[i]#
+	else if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-spptax[ind,"gensp"]#
+	} #
+	else if(datspp[i] %in% spptax[,11]) #
+	{#
+	ind<-match(datspp[i],spptax[,11])#
+	newnames[i]<-spptax[ind,"gensp"]#
+	}#
+	else if(datspp[i] %in% spptax[,13]) #
+	{#
+	ind<-match(datspp[i],spptax[,13])#
+	newnames[i]<-spptax[ind,"gensp"]#
+	}#
+	else if(datspp[i] %in% spptax[,12]) #
+	{#
+	ind<-match(datspp[i],spptax[,12])#
+	newnames[i]<-spptax[ind,"gensp"]#
+	}#
+}
+cbind(datspp,newnames)[datspp!=newnames,]
+newnames=NULL#
+for (i in 1:length(datspp)){#
+	if (matches[i]==0) newnames[i]<-datspp[i]#
+	else if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-spptax[ind,"name"]#
+	} #
+	else if(datspp[i] %in% spptax[,11]) #
+	{#
+	ind<-match(datspp[i],spptax[,11])#
+	newnames[i]<-spptax[ind,"name"]#
+	}#
+	else if(datspp[i] %in% spptax[,13]) #
+	{#
+	ind<-match(datspp[i],spptax[,13])#
+	newnames[i]<-spptax[ind,"name"]#
+	}#
+	else if(datspp[i] %in% spptax[,12]) #
+	{#
+	ind<-match(datspp[i],spptax[,12])#
+	newnames[i]<-spptax[ind,"name"]#
+	}#
+}
+cbind(datspp,newnames)[datspp!=newnames,]
+head(spptax)
+dim(spptax)
+newnames=NULL#
+for (i in 1:length(datspp)){#
+	if (matches[i]==0) newnames[i]<-datspp[i]#
+	else if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-spptax[ind,11]#
+	} #
+	else if(datspp[i] %in% spptax[,11]) #
+	{#
+	ind<-match(datspp[i],spptax[,11])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+	else if(datspp[i] %in% spptax[,13]) #
+	{#
+	ind<-match(datspp[i],spptax[,13])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+	else if(datspp[i] %in% spptax[,12]) #
+	{#
+	ind<-match(datspp[i],spptax[,12])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+}
+cbind(datspp,newnames)[datspp!=newnames,]
+newnames
+i
+spptax[i,]
+ind<-match(datspp[i],spptax[,12])
+ind
+ind<-match(datspp[i],spptax[,1])
+ind
+spptax[ind,11]
+newnames[i]
+ind<-match(datspp[i],spptax[,11])
+ind
+ind<-match(datspp[i],spptax[,13])
+ind
+ind<-match(datspp[i],spptax[,12])
+ind
+spptax[ind,11]
+matches[i]
+if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-spptax[ind,11]
+}
+newnames[4937]
+i
+spptax[ind,11]
+abc'<-spptax[ind,11]
+abc<-spptax[ind,11]
+abc
+newnames[4937]<-spptax[ind,11]
+newnames[4937]
+attributes(spptax)
+summary(spptax)
+is.factor(spptax$taxon)
+ind
+spptax[ind,]
+spptax[ind,1]
+abc<-spptax[ind,1]
+abc
+attributes(newnames)
+newnames=data.frame(NULL)
+for (i in 1:length(datspp)){#
+	if (matches[i]==0) newnames[i]<-datspp[i]#
+	else if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-spptax[ind,11]#
+	} #
+	else if(datspp[i] %in% spptax[,11]) #
+	{#
+	ind<-match(datspp[i],spptax[,11])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+	else if(datspp[i] %in% spptax[,13]) #
+	{#
+	ind<-match(datspp[i],spptax[,13])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+	else if(datspp[i] %in% spptax[,12]) #
+	{#
+	ind<-match(datspp[i],spptax[,12])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+}
+newnames=matrix(NULL)
+newnames=NULL
+newnames
+for (i in 1:length(datspp)){#
+	if (matches[i]==0) newnames[i]<-datspp[i]#
+	else if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-spptax[ind,11]#
+	} #
+	else if(datspp[i] %in% spptax[,11]) #
+	{#
+	ind<-match(datspp[i],spptax[,11])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+	else if(datspp[i] %in% spptax[,13]) #
+	{#
+	ind<-match(datspp[i],spptax[,13])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+	else if(datspp[i] %in% spptax[,12]) #
+	{#
+	ind<-match(datspp[i],spptax[,12])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+}
+newnames
+i
+newnames=NULL#
+for (i in 1:length(datspp)){#
+	if (matches[i]==0) newnames[i]<-datspp[i]#
+	else if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-as.character(spptax[ind,11])#
+	} #
+	else if(datspp[i] %in% spptax[,11]) #
+	{#
+	ind<-match(datspp[i],spptax[,11])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+	else if(datspp[i] %in% spptax[,13]) #
+	{#
+	ind<-match(datspp[i],spptax[,13])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+	else if(datspp[i] %in% spptax[,12]) #
+	{#
+	ind<-match(datspp[i],spptax[,12])#
+	newnames[i]<-spptax[ind,11]#
+	}#
+}
+newnames[i]
+cbind(datspp,newnames)[datspp!=newnames,]
+newnames=NULL#
+for (i in 1:length(datspp)){#
+	if (matches[i]==0) newnames[i]<-datspp[i]#
+	else if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-as.character(spptax[ind,11])#
+	} #
+	else if(datspp[i] %in% spptax[,11]) #
+	{#
+	ind<-match(datspp[i],spptax[,11])#
+	newnames[i]<-as.character(spptax[ind,11])#
+	}#
+	else if(datspp[i] %in% spptax[,13]) #
+	{#
+	ind<-match(datspp[i],spptax[,13])#
+	newnames[i]<-as.character(spptax[ind,11])#
+	}#
+	else if(datspp[i] %in% spptax[,12]) #
+	{#
+	ind<-match(datspp[i],spptax[,12])#
+	newnames[i]<-as.character(spptax[ind,11])#
+	}#
+}
+cbind(datspp,newnames)[datspp!=newnames,]
+Spptax<-read.csv("data/spptaxonomy_2015-02-09_plusManual.csv")
+spptax<-apply(Spptax,2,tolower)
+dat$sppl<-tolower(dat$spp)
+datspp<-unique(dat$sppl)
+spptax<-as.data.frame(spptax)#
+spptax$gensp<-paste(spptax$genus,spptax$species,sep=" ")#
+sp1<-datspp %in% spptax[,1]# 808 of 4357 spp matched#
+sp11<-datspp %in% spptax[,11] #604 matched#
+sp12<-datspp %in% spptax[,12] #3 matched#
+sp13<-datspp %in% spptax[,13] #529 matched
+head(spptax)
+Spptax<-read.csv("data/spptaxonomy_2015-02-09_plusManual.csv")#
+spptax<-apply(Spptax,2,tolower)
+spptax<-as.data.frame(spptax)#
+sp1<-datspp %in% spptax[,1]# 808 of 4357 spp matched#
+sp11<-datspp %in% spptax[,11] #604 matched#
+sp12<-datspp %in% spptax[,12] #3 matched#
+sp13<-datspp %in% spptax[,13] #529 matched
+head(spptax)
+matches<-datspp %in% spptax[,1] + datspp %in% spptax[,11] + datspp %in% spptax[,12] + datspp %in% spptax[,13]  #826 matches/4937#
+#For those species datspp[matches>0], replace current name with spptax$gensp#
+#
+newnames=NULL#
+for (i in 1:length(datspp)){#
+	if (matches[i]==0) newnames[i]<-datspp[i]#
+	else if(datspp[i] %in% spptax[,1]) #
+	{#
+	ind<-match(datspp[i],spptax[,1])#
+	newnames[i]<-as.character(spptax[ind,14])#
+	} #
+	else if(datspp[i] %in% spptax[,11]) #
+	{#
+	ind<-match(datspp[i],spptax[,11])#
+	newnames[i]<-as.character(spptax[ind,14])#
+	}#
+	else if(datspp[i] %in% spptax[,13]) #
+	{#
+	ind<-match(datspp[i],spptax[,13])#
+	newnames[i]<-as.character(spptax[ind,14])#
+	}#
+	else if(datspp[i] %in% spptax[,12]) #
+	{#
+	ind<-match(datspp[i],spptax[,12])#
+	newnames[i]<-as.character(spptax[ind,14])#
+	}#
+}#
+#In some cases, the "name" field of taxonomy has spelling errors. In this case, genus+species
+cbind(datspp,newnames)[datspp!=newnames,]
+?merge
+oldnewnames<-cbind(sppl=datspp,sppnew<-newnames)
+merge(dat,oldnewnames)
+?merge
+head(oldnewnames)
+oldnewnames<-cbind(sppl=datspp,sppnew=newnames)
+head(oldnewnames)
+test<-merge(dat,oldnewnames)
+dim(test)
+dim(dat)
+head(test)
+?merge
+tail(test)
+summary(test)
+length(unique(dat$sppl))
+length(unique(dat$spp))
+length(unique(dat$sppnew))
+summary(dat$sppnew)
+summary(test$sppnew)
+length(unique(test$sppnew))
+length(unique(test$sppl))
+length(unique(test$spp))
+dat1<-merge(dat,oldnewnames,sort=F)
+head(dat)
+head(dat1)
+dat<-merge(dat,oldnewnames)
+myregions<-unique(dat$region)#
+myspp<-NULL
+r=myregions[1]
+r
+regdat<-dat[dat$region==r,]
+yrocc<-table(regdat$year,regdat$sppnew) #table of number of years each taxa is caught
+yrocc
+sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa
+sumyrs
+min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch
+myspp<-c(myspp,min1)
+myspp
+myregions<-unique(dat$region)#
+myspp<-NULL#
+for(r in myregions){#
+#	surveyyrs<-names(table(dat$year[dat$region==r]))#
+	regdat<-dat[dat$region==r,]#
+	yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year#
+	sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa#
+	min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch#
+	myspp<-c(myspp,min1)#
+}#
+#
+myspp<-unique(myspp) #length(myspp) 621 taxa (before taxa name fixing)
+length(myspp)
+myspp
+sort(myspp)
+sort(myspp)
+myspp[grep("spp.",myspp)]
+myspp[grep("spp",myspp)] #85 with "spp."
+myspp[grep("egg",myspp)] #85 with "spp."
+myspp[grep("teuthida",myspp)]
+myspp["teuthida"]
+myspp["teuthida",]
+myspp[grep("anemone",myspp)]
+myspp<-myspp[!grep("spp",myspp)] #85 with "spp."
+length(myspp)
+myregions<-unique(dat$region)#
+myspp<-NULL#
+for(r in myregions){#
+#	surveyyrs<-names(table(dat$year[dat$region==r]))#
+	regdat<-dat[dat$region==r,]#
+	yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year#
+	sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa#
+	min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch#
+	myspp<-c(myspp,min1)#
+}#
+#
+myspp<-unique(myspp) #length(myspp) 621 taxa (before taxa name fixing), 605 taxa after
+drop<-myspp[grep("spp",myspp)] #85 with "spp."#
+drop<-c(drop,myspp[grep("egg",myspp)]) #3 with "egg"#
+drop<-c(drop,myspp[grep("anemone",myspp)]) #2
+drop
+drop<-c(drop,"teuthida")
+myspp<-myspp[myspp!=drop]
+myspp<-myspp[! myspp %in% drop]
+myspp
+dim(myspp)
+length(myspp)
+"tuethida" %in% myspp
+"red" %in% myspp
+"ogac" %in% myspp
+"gadus ogac" %in% myspp
+myspp<-sort(myspp)
+myspp
+drop<-myspp[grep("spp",myspp)] #85 with "spp."#
+drop<-c(drop,myspp[grep("egg",myspp)]) #3 with "egg"#
+drop<-c(drop,myspp[grep("anemone",myspp)]) #2
+drop
+drop<-c(drop,myspp[grep("sp.",myspp)])
+drop
+drop<-myspp[grep("spp",myspp)] #85 with "spp."
+drop<-myspp[grep("spp",myspp)] #85 with "spp."#
+drop<-c(drop,myspp[grep("egg",myspp)]) #3 with "egg"#
+drop<-c(drop,myspp[grep("anemone",myspp)]) #2#
+drop<-c(drop,"teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" )#
+myspp<-myspp[! myspp %in% drop]#
+myspp<-sort(myspp)
+myspp
+dim(dat)
+dat2<-dat[dat$sppl %in% myspp,]
+dim(dat2)
+table(dat2$sppl,dat2$region)
+table(dat2$sppl,dat2$region)
+table(dat$region)
+head(dat1)
+head(dat2)
+table(dat$haulid[dat$region=="DFO_SOGulf",])
+table(dat$haulid[dat$region=="DFO_SOGulf")
+table(dat$haulid[dat$region=="DFO_SOGulf"])
+table(dat$haulid[dat$region=="DFO_SoGulf"])
+table(dat2$haulid[dat2$region=="DFO_SOGulf",])
+table(dat2$haulid[dat2$region=="DFO_SOGulf"])
+table(dat2$haulid[dat2$region=="DFO_SoGulf"])
+myregions
+r<-myregions[12]
+r
+regdat<-dat[dat$region==r,]#
+	yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year
+yrocc
+sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa
+sumyrs
+table(sumyrs)
+min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch
+min1
+dat[dat$sppl=="zoarces americanus" & dat$region=="DFO_SoGulf" & dat$year==1990,]
+dat[dat$sppl=="zoarces americanus" & dat$region=="DFO_SoGulf" & dat$wtcpue==0,]
+min1
+test<-dat[dat$sppl %in% min1,]
+dim(test)
+test<-dat[dat$region=="DFO_SoGulf",]
+test<-test[test$region=="DFO_SoGulf",]
+dim(test)
+tapply(text$wtcpue,c(text$sppl,text$year),min)
+tapply(text$wtcpue,by=c(text$sppl,text$year),min)
+tapply(text$wtcpue,by=list(text$sppl,text$year),min)
+tapply(text$wtcpue,list(text$sppl,text$year),min)
+tapply(test$wtcpue,list(test$sppl,test$year),min)
+tapply(test$wtcpue,list(test$sppl,test$year),max)
+summary(dat[dat$region=="DFO_SoGulf",])
+summary(dat$region)
+unique(dat$region)
+summary(dat[dat$region=="SEFSC_GOMex",])
+summary(dat[dat$region=="AFSC_Aleutians",])
+summary(dat[dat$region=="AFSC_GOA",])
+summary(dat[dat$region=="AFSC_EBS",])
+summary(dat[dat$region=="NEFSC_NEUSFall",])
+summary(dat[dat$region=="NEFSC_NEUSSpring",])
+summary(dat[dat$region=="AFSC_WSCTri",])
+unique(dat$region)
+summary(dat[dat$region=="AFSC_WCTri",])
+summary(dat[dat$region=="AFSC_WCAnn",])
+summary(dat[dat$region=="NWFSC_WCAnn",])
+summary(dat[dat$region=="DFO_ScotianShelf",])
+summary(dat[dat$region=="DFO_NewfoundlandFall",])
+summary(dat[dat$region=="DFO_NewfoundlandSpring",])
+summary(dat[dat$region=="DFO_SoGulf",])
+sum(datspp %in% spptax[,1])# 808 of 4357 spp matched
+dim(spptax)
+dim(datspp)
+length(datspp)
+Spptax<-read.csv("data/spptaxonomy_2015-02-09_plusManual.csv")#
+spptax<-apply(Spptax,2,tolower)#
+dat$sppl<-tolower(dat$spp)#
+datspp<-unique(dat$sppl)
+spptax<-as.data.frame(spptax)
+sum(datspp %in% spptax[,1])# 792 of 4357 spp matched
+dim(datspp)
+length(datspp)
+load('data/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.#
+#
+# need to standardize species names across regions#
+# see spptaxonomy_2015-02-09_plusManual.csv for a useful conversion table#
+Spptax<-read.csv("data/spptaxonomy_2015-02-09_plusManual.csv")#
+spptax<-apply(Spptax,2,tolower)#
+dat$sppl<-tolower(dat$spp)#
+datspp<-unique(dat$sppl)#
+#
+spptax<-as.data.frame(spptax)#
+sum(datspp %in% spptax[,1])# 792 of 4937 spp matched
+dim(dat)
+summary(dat)
+length(unique(dat$haulid))
+length(unique(dat2$haulid))
+879-533
+r
+regdat<-dat[dat$region==r,]
+abc<-tapply(regdat$wtcpue,list(regdat$sppl,regdat$year),min)
+abc
+abc<-tapply(regdat$wtcpue,list(regdat$sppl,regdat$year),max)
+abc
+maxcatch>0
+maxcatch<-tapply(regdat$wtcpue,list(regdat$sppl,regdat$year),max)
+maxcatch>0
+tapply(maxcatch>0,1,sum)
+tapply(maxcatch>0,2,sum)
+tapply(maxcatch,2,sum)
+dim(maxcatch)
+tapply(maxcatch,2,sum,na.rm=T)
+summary(maxcatch)
+tapply(maxcatch,1,sum,na.rm=T)
+apply(maxcatch,1,sum,na.rm=T)
+apply(maxcatch,1,min,na.rm=T)
+minofmax<-apply(maxcatch,1,min,na.rm=T)
+min1<-names(minofmax>0)
+min1
+min1<-names(minofmax[minofmax>0])
+min1
+minofmax<-apply(maxcatch,1,min)
+minofmax
+myregions<-unique(dat$region)#
+myspp<-NULL#
+for(r in myregions){#
+#	surveyyrs<-names(table(dat$year[dat$region==r]))#
+	regdat<-dat[dat$region==r,]#
+	if(r=="DFO_SoGulf") {#
+		maxcatch<-tapply(regdat$wtcpue,list(regdat$sppl,regdat$year),max)	#
+		#check if maxcatch is always > 0	#
+		minofmax<-apply(maxcatch,1,min,na.rm=1) #includes spps with NA's early on. Check this.	#
+		min1<-names(minofmax[minofmax>0]) #taxa with >0 catch every year #
+	}else{#
+	yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year#
+	sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa#
+	min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch#
+	myspp<-c(myspp,min1)#
+}#
+#
+myspp<-unique(myspp) #length(myspp) 605 taxa#
+#note: gadus macrocephalus used in Pacific, and gadus o
+}
+myregions<-unique(dat$region)#
+myspp<-NULL#
+for(r in myregions){#
+#	surveyyrs<-names(table(dat$year[dat$region==r]))#
+	regdat<-dat[dat$region==r,]#
+	if(r=="DFO_SoGulf") {#
+		maxcatch<-tapply(regdat$wtcpue,list(regdat$sppl,regdat$year),max)	#
+		#check if maxcatch is always > 0	#
+		minofmax<-apply(maxcatch,1,min,na.rm=1) #includes spps with NA's early on. Check this.	#
+		min1<-names(minofmax[minofmax>0]) #taxa with >0 catch every year #
+	}else{#
+	yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year#
+	sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa#
+	min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch#
+	myspp<-c(myspp,min1)#
+}#
+}
+r
+yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year
+dat<-as.data.frame(dat)
+regdat<-dat[dat$region==r,]
+yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year

@@ -4,20 +4,101 @@
 #################
 ### Prep data ###	
 #################
-load('Output/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.
+load('data/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.
 
 # need to standardize species names across regions
 # see spptaxonomy_2015-02-09_plusManual.csv for a useful conversion table
-# species names aren't standardized across regions
+Spptax<-read.csv("data/spptaxonomy_2015-02-09_plusManual.csv") #note: new column in CSV file 
+spptax<-apply(Spptax,2,tolower)
+dat$sppl<-tolower(dat$spp)
+datspp<-unique(dat$sppl)
+
+spptax<-as.data.frame(spptax)
+sum(datspp %in% spptax[,1])# 792 of 4937 spp matched
+
+#Match when possible and assign new genus species, otherwise keep old name
+#Find taxa with matches in the taxonomy table
+#In some cases, the "name" field of taxonomy has spelling errors (missing "n"s). In this case, genus+species should be used. But in some cases, "genus species" are not given if full taxonomy is missing. The spptaxonomy.csv file now has a "newname" column which merges these optimally.
+matches<-datspp %in% spptax[,1] + datspp %in% spptax[,11] + datspp %in% spptax[,12] + datspp %in% spptax[,13]  #826 matches/4937
+#For those species datspp[matches>0], replace current name with spptax$newname
+
+newnames=NULL
+for (i in 1:length(datspp)){
+	if (matches[i]==0) newnames[i]<-datspp[i]
+	else if(datspp[i] %in% spptax[,1]) 
+	{
+	ind<-match(datspp[i],spptax[,1])
+	newnames[i]<-as.character(spptax[ind,14])
+	} 
+	else if(datspp[i] %in% spptax[,11]) 
+	{
+	ind<-match(datspp[i],spptax[,11])
+	newnames[i]<-as.character(spptax[ind,14])
+	}
+	else if(datspp[i] %in% spptax[,13]) 
+	{
+	ind<-match(datspp[i],spptax[,13])
+	newnames[i]<-as.character(spptax[ind,14])
+	}
+	else if(datspp[i] %in% spptax[,12]) 
+	{
+	ind<-match(datspp[i],spptax[,12])
+	newnames[i]<-as.character(spptax[ind,14])
+	}
+}
+
+oldnewnames<-cbind(sppl=datspp,sppnew=newnames)
+#Now merge new names with old names in dat file
+dat<-merge(dat,oldnewnames) #dat now contains "sppnew"
 
 
 ## Pick the spp to model (WE NEED TO FIGURE OUT HOW WE WANT TO DO THIS)
 ## A good place to start would be to drop all taxa not identified to species? Perhaps also a minimum #years, or obs/year cutoff?
+
+# Identify taxa caught at least once every survey year (hopefully avoiding changes in species classification through time).
+#Special code for DFO_SOGulf species - these include zero hauls, and some species were not caught every year. Others (chionoecetes opilio and homarus americanus) have NAs from 1971-1979.
+#The other surveys have zero hauls, but not so systematically, may just be very small catches.
+
+myregions<-unique(dat$region)
+myspp<-NULL
+for(r in myregions){
+#	surveyyrs<-names(table(dat$year[dat$region==r]))
+	regdat<-dat[dat$region==r,]
+	if(r=="DFO_SoGulf") {
+	 	maxcatch<-tapply(regdat$wtcpue,list(regdat$sppl,regdat$year),max) 
+	 	# check if maxcatch is always > 0	
+		minofmax<-apply(maxcatch,1,min,na.rm=1) #includes spps with NA's early on. Check this.	
+		min1<-names(minofmax[minofmax>0]) #taxa with >0 catch every year 
+	}else{
+	yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year
+	sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa
+	min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch
+	myspp<-c(myspp,min1)
+}
+}
+#table(myspp) #shows which species are selected in multiple surveys
+myspp<-unique(myspp) #length(myspp) 604 taxa
+#note: gadus macrocephalus used in Pacific, and gadus ogac in Atlantic. 
+#ogac is dropped from final species list if we require it be caught each year of survey
+#remove:  any taxa missing species, egg cases, anemones missing species name
+
+drop<-myspp[grep("spp",myspp)] #85 with "spp."
+drop<-c(drop,myspp[grep("egg",myspp)]) #3 with "egg"
+drop<-c(drop,myspp[grep("anemone",myspp)]) #2
+drop<-c(drop,"teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" )
+myspp<-myspp[! myspp %in% drop]
+myspp<-sort(myspp) #down to 506 spp.
+
+dat2<-dat[dat$sppnew %in% myspp,]
+
 # At one point, I only used spp with at least 300 valid rows of data (present or not) and at least 40 rows of data where present
 spp=sort(unique(dat$spp));spp 
 sppreg = sort(unique(dat$sppregion))
 # note: some species are found in both the Atlantic and the Pacific. We probably want to treat these separately? (as separate "species")
 # then need to trim dat to just these species
+# However, we'll need to go back to the full dat file to determine where zero hauls occur, unless we assume each haul had at least one of these species. Check this here:
+length(unique(dat$haulid))  #114879
+length(unique(dat2$haulid)) #114793 (only 86 "zero" hauls not accounted for in dat2. meh.)
 
 
 # Add useful columns
@@ -34,7 +115,7 @@ dat$sppregion = paste(dat$spp, dat$region, sep='_')
 
 
 # also need to add biomassmean column: mean biomass for a species in a region in a year
-
+# also need to add Pacific/Atlantic (& GoMex?) column to create region-species
 
 
 
