@@ -51,7 +51,6 @@ oldnewnames<-cbind(sppl=datspp,sppnew=newnames)
 #Now merge new names with old names in dat file
 dat<-merge(dat,oldnewnames) #dat now contains "sppnew"
 
-
 ## Pick the spp to model (WE NEED TO FIGURE OUT HOW WE WANT TO DO THIS)
 ## A good place to start would be to drop all taxa not identified to species? Perhaps also a minimum #years, or obs/year cutoff?
 
@@ -89,14 +88,14 @@ drop<-c(drop,"teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caride
 myspp<-myspp[! myspp %in% drop]
 myspp<-sort(myspp) #down to 506 spp.
 
-dat2<-dat[dat$sppnew %in% myspp,]
 
 # At one point, I only used spp with at least 300 valid rows of data (present or not) and at least 40 rows of data where present
-spp=sort(unique(dat$spp));spp 
-sppreg = sort(unique(dat$sppregion))
+# spp=sort(unique(dat$spp));spp 
+# sppreg = sort(unique(dat$sppregion))
 # note: some species are found in both the Atlantic and the Pacific. We probably want to treat these separately? (as separate "species")
 # then need to trim dat to just these species
 # However, we'll need to go back to the full dat file to determine where zero hauls occur, unless we assume each haul had at least one of these species. Check this here:
+dat2<-dat[dat$sppnew %in% myspp,]
 length(unique(dat$haulid))  #114879
 length(unique(dat2$haulid)) #114793 (only 86 "zero" hauls not accounted for in dat2. meh.)
 
