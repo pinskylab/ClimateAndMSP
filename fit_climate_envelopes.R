@@ -6,6 +6,7 @@
 #################
 load('data/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.
 
+
 # need to standardize species names across regions
 # see spptaxonomy_2015-02-09_plusManual.csv for a useful conversion table
 Spptax<-read.csv("data/spptaxonomy_2015-02-09_plusManual.csv") #note: new column in CSV file 
@@ -51,10 +52,35 @@ oldnewnames<-cbind(sppl=datspp,sppnew=newnames)
 #Now merge new names with old names in dat file
 dat<-merge(dat,oldnewnames) #dat now contains "sppnew"
 
+
+# Add useful columns
+	# Have a biomass that never goes to zero (useful for fitting log-links) 
+dat$wtcpuena = dat$wtcpue
+dat$wtcpuena[dat$wtcpuena == 0] = 1e-4
+dat$wtcpuenal = log(dat$wtcpuena)
+
+	# other useful columns
+dat$stratumfact = as.factor(dat$stratum)
+dat$yrfact = as.factor(dat$year)
+dat$sppregion = paste(dat$sppnew, dat$region, sep='_')
+dat$ocean[dat$region %in% c("AFSC_Aleutians", "AFSC_EBS", "AFSC_GOA", "AFSC_WCTri", "NWFSC_WCAnn")] <- "Pac"
+dat$ocean[dat$region %in% c("DFO_NewfoundlandFall", "DFO_NewfoundlandSpring", "DFO_ScotianShelf","DFO_SoGulf","NEFSC_NEUSFall", "NEFSC_NEUSSpring")] <- "Atl"
+dat$ocean[dat$region == "SEFSC_GOMex"] <- "Gulf" #Or should Gulf of Mex group with Altantic?
+dat$sppocean = paste(dat$sppnew, dat$ocean, sep='_') 
+
+	# add rugosity
+rugfile<-read.csv("data/trawl_latlons_rugosity_forMalin_2015_02_10.csv")
+dat<-merge(dat,rugfile) #lose 69 instances of lumpenus lampretaeformis b/c missing lat/lon
+rm(rugfile)
+dat$logrugosity<-log(dat$rugosity+0.01) #log-transformed rugosity gave better model fits in initial tests of rugosity covariate
+
+
+
 ## Pick the spp to model (WE NEED TO FIGURE OUT HOW WE WANT TO DO THIS)
 ## A good place to start would be to drop all taxa not identified to species? Perhaps also a minimum #years, or obs/year cutoff?
 
-# Identify taxa caught at least once every survey year (hopefully avoiding changes in species classification through time).
+# Identify taxa caught at least once every survey year in a given survey (hopefully avoiding changes in species classification through time).
+# Species are identified by species+ocean for later trimming of dat.
 #Special code for DFO_SOGulf species - these include zero hauls, and some species were not caught every year. Others (chionoecetes opilio and homarus americanus) have NAs from 1971-1979.
 #The other surveys have zero hauls, but not so systematically, may just be very small catches.
 
@@ -64,29 +90,28 @@ for(r in myregions){
 #	surveyyrs<-names(table(dat$year[dat$region==r]))
 	regdat<-dat[dat$region==r,]
 	if(r=="DFO_SoGulf") {
-	 	maxcatch<-tapply(regdat$wtcpue,list(regdat$sppl,regdat$year),max) 
+	 	maxcatch<-tapply(regdat$wtcpue,list(regdat$sppocean,regdat$year),max) 
 	 	# check if maxcatch is always > 0	
-		minofmax<-apply(maxcatch,1,min,na.rm=1) #includes spps with NA's early on. Check this.	
-		min1<-names(minofmax[minofmax>0]) #taxa with >0 catch every year 
+		minofmax<-apply(maxcatch,1,min,na.rm=T) #includes spps with NA's early on. Check this.	
+		min1<-names(minofmax[minofmax>0 & minofmax<Inf]) #taxa with >0 catch every year 
 	}else{
-	yrocc<-table(regdat$year,regdat$sppnew) #table of number of occurrances each year
+	yrocc<-table(regdat$year,regdat$sppocean) #table of number of occurrances each year
 	sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa
-	min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch
-	myspp<-c(myspp,min1)
-}
+	min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch (could relax this criterion to [sumyrs <= max0yrs], where max0yrs is maximum allowable number of years with zero catch)
+	}
+	myspp<-c(myspp,min1) #now with myspp plus ocean
 }
 #table(myspp) #shows which species are selected in multiple surveys
-myspp<-unique(myspp) #length(myspp) 604 taxa
-#note: gadus macrocephalus used in Pacific, and gadus ogac in Atlantic. 
-#ogac is dropped from final species list if we require it be caught each year of survey
+myspp<-unique(myspp) #length(myspp) 622 unique taxa_ocean
+
 #remove:  any taxa missing species, egg cases, anemones missing species name
 
 drop<-myspp[grep("spp",myspp)] #85 with "spp."
 drop<-c(drop,myspp[grep("egg",myspp)]) #3 with "egg"
 drop<-c(drop,myspp[grep("anemone",myspp)]) #2
-drop<-c(drop,"teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" )
+drop<-c(drop,"teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" ,"crustacea shrimp")
 myspp<-myspp[! myspp %in% drop]
-myspp<-sort(myspp) #down to 506 spp.
+myspp<-sort(myspp) #down to 522 spp. to model. A few species are present in multiple ocean basins and thus will have multiple models.
 
 
 # At one point, I only used spp with at least 300 valid rows of data (present or not) and at least 40 rows of data where present
@@ -95,30 +120,15 @@ myspp<-sort(myspp) #down to 506 spp.
 # note: some species are found in both the Atlantic and the Pacific. We probably want to treat these separately? (as separate "species")
 # then need to trim dat to just these species
 # However, we'll need to go back to the full dat file to determine where zero hauls occur, unless we assume each haul had at least one of these species. Check this here:
-dat2<-dat[dat$sppnew %in% myspp,]
-length(unique(dat$haulid))  #114879
-length(unique(dat2$haulid)) #114793 (only 86 "zero" hauls not accounted for in dat2. meh.)
+#dat2<-dat[dat$sppocean %in% myspp,]
+#length(unique(dat$haulid))  #114810
+#length(unique(dat2$haulid)) #114640 (only 170 "zero" hauls not accounted for in dat2. meh.)
 
-
-# Add useful columns
-	# Have a biomass that never goes to zero (useful for fitting log-links) 
-dat$wtcpuena = dat$cpue
-dat$wtcpuena[dat$wtcpuena == 0] = 1e-4
-dat$wtcpuenal = log(dat$wtcpuena)
-
-	# other useful columns
-dat$stratumfact = as.factor(dat$stratum)
-dat$yrfact = as.factor(dat$year)
-dat$sppregion = paste(dat$spp, dat$region, sep='_')
-
-
-
-# also need to add biomassmean column: mean biomass for a species in a region in a year
-# also need to add Pacific/Atlantic (& GoMex?) column to create region-species
-
+dat<-dat[dat$sppocean %in% myspp,] 
 
 
 ## NEED TO EXPAND DAT TO INCLUDE OBSERVATIONS OF ZERO for every species at every tow location in regions where they are found
+## also need to add biomassmean column: mean biomass for a species in a region in a year (should be calculated after including zero hauls)
 
 
 
