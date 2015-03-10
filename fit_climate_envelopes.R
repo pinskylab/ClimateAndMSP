@@ -60,8 +60,10 @@ dat$wtcpuena[dat$wtcpuena == 0] = 1e-4
 dat$wtcpuenal = log(dat$wtcpuena)
 
 	# other useful columns
+dat$presfit = dat$wtcpue > 0 # indicator for where present
 dat$stratumfact = as.factor(dat$stratum)
 dat$yrfact = as.factor(dat$year)
+dat$regionfact<-as.factor(dat$region)
 dat$sppregion = paste(dat$sppnew, dat$region, sep='_')
 dat$ocean[dat$region %in% c("AFSC_Aleutians", "AFSC_EBS", "AFSC_GOA", "AFSC_WCTri", "NWFSC_WCAnn")] <- "Pac"
 dat$ocean[dat$region %in% c("DFO_NewfoundlandFall", "DFO_NewfoundlandSpring", "DFO_ScotianShelf","DFO_SoGulf","NEFSC_NEUSFall", "NEFSC_NEUSSpring")] <- "Atl"

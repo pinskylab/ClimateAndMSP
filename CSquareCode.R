@@ -1,3 +1,6 @@
+
+#Useful functions taken from VMStools in googlecode. 
+
 CSquare <- function(lon,lat,degrees){
 
               if(length(lon) != length(lon)) stop("length of longitude not equal to length of latitude")
