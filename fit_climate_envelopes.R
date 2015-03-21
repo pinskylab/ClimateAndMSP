@@ -6,6 +6,7 @@
 #################
 load('data/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.
 
+source("CSquareCode.r") #taken from VMStools in googlecode
 
 # need to standardize species names across regions
 # see spptaxonomy_2015-02-09_plusManual.csv for a useful conversion table
@@ -66,8 +67,8 @@ dat$yrfact = as.factor(dat$year)
 dat$regionfact<-as.factor(dat$region)
 dat$sppregion = paste(dat$sppnew, dat$region, sep='_')
 dat$ocean[dat$region %in% c("AFSC_Aleutians", "AFSC_EBS", "AFSC_GOA", "AFSC_WCTri", "NWFSC_WCAnn")] <- "Pac"
-dat$ocean[dat$region %in% c("DFO_NewfoundlandFall", "DFO_NewfoundlandSpring", "DFO_ScotianShelf","DFO_SoGulf","NEFSC_NEUSFall", "NEFSC_NEUSSpring")] <- "Atl"
-dat$ocean[dat$region == "SEFSC_GOMex"] <- "Gulf" #Or should Gulf of Mex group with Altantic?
+dat$ocean[dat$region %in% c("DFO_NewfoundlandFall", "DFO_NewfoundlandSpring", "DFO_ScotianShelf","DFO_SoGulf","NEFSC_NEUSFall", "NEFSC_NEUSSpring","SEFSC_GOMex")] <- "Atl"
+#dat$ocean[dat$region == "SEFSC_GOMex"] <- "Gulf" #Or should Gulf of Mex group with Altantic?
 dat$sppocean = paste(dat$sppnew, dat$ocean, sep='_') 
 
 	# add rugosity
@@ -76,6 +77,8 @@ dat<-merge(dat,rugfile) #lose 69 instances of lumpenus lampretaeformis b/c missi
 rm(rugfile)
 dat$logrugosity<-log(dat$rugosity+0.01) #log-transformed rugosity gave better model fits in initial tests of rugosity covariate
 
+dat$cs1<-as.factor(CSquare(dat$lon,dat$lat,1)) #classify into 1 degree squares
+#dat$cs6m<-as.factor(CSquare(dat$lon,dat$lat,0.1)) #classify into 6 arcminute squares
 
 
 ## Pick the spp to model (WE NEED TO FIGURE OUT HOW WE WANT TO DO THIS)
@@ -104,16 +107,19 @@ for(r in myregions){
 	myspp<-c(myspp,min1) #now with myspp plus ocean
 }
 #table(myspp) #shows which species are selected in multiple surveys
-myspp<-unique(myspp) #length(myspp) 622 unique taxa_ocean
+myspp<-unique(myspp) #length(myspp) 621 unique taxa_ocean
 
 #remove:  any taxa missing species, egg cases, anemones missing species name
 
 drop<-myspp[grep("spp",myspp)] #85 with "spp."
-drop<-c(drop,myspp[grep("egg",myspp)]) #3 with "egg"
-drop<-c(drop,myspp[grep("anemone",myspp)]) #2
-drop<-c(drop,"teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" ,"crustacea shrimp")
+# drop<-c(drop,myspp[grep("egg",myspp)]) #3 with "egg"
+# drop<-c(drop,myspp[grep("anemone",myspp)]) #2
+# drop<-c(drop,myspp["teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" ,"crustacea shrimp")
+droplist<-c("egg","anemone","teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" ,"crustacea shrimp")
+for (i in 1:length(droplist)) {drop<-c(drop,myspp[grep(droplist[i],myspp)])}
+
 myspp<-myspp[! myspp %in% drop]
-myspp<-sort(myspp) #down to 522 spp. to model. A few species are present in multiple ocean basins and thus will have multiple models.
+myspp<-sort(myspp) #down to 512 spp. to model. A few species are present in multiple ocean basins and thus will have multiple models.
 
 
 # At one point, I only used spp with at least 300 valid rows of data (present or not) and at least 40 rows of data where present
@@ -127,12 +133,17 @@ myspp<-sort(myspp) #down to 522 spp. to model. A few species are present in mult
 #length(unique(dat2$haulid)) #114640 (only 170 "zero" hauls not accounted for in dat2. meh.)
 
 dat<-dat[dat$sppocean %in% myspp,] 
+#remove unnecessary columns:
+dat<-dat[,!colnames(dat) %in% c("spp","sppl")] #could probably remove others
+
+save(dat,file="data/dat_selectedspp.Rdata")
 
 
-## NEED TO EXPAND DAT TO INCLUDE OBSERVATIONS OF ZERO for every species at every tow location in regions where they are found
-## also need to add biomassmean column: mean biomass for a species in a region in a year (should be calculated after including zero hauls)
 
 
+#######################################
+###### EXTRA code for reference #######
+#######################################
 
 # **IF** we want to fit stratum effects, we need this:
 # Create a column that is an indicator for where a species is present, but also has at least one TRUE value per spp per stratum in each region, for fitting stratum effects. Randomly pick a row to turn into a "presence" even though not actually present.

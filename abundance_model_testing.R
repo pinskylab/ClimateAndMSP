@@ -1,7 +1,7 @@
 #Test how much variation/deviance is explained by temperature in abundance GAMs
 
 library(mgcv)
-source("~/backup/NatCap/NFSC_bottomtrawl/NOAA Trawl Files/code/CSquareCode.r") #taken from VMStools in googlecode
+source("CSquareCode.r") #taken from VMStools in googlecode
 #start with dat file with selected species from fit_climate_envelopes.R
 
 moddev<-data.frame()

@@ -32,7 +32,7 @@ zeros$wtcpuenal<-log(zeros$wtcpuena)
 
 mydatw0<-rbind(mydat,zeros) #combine positive hauls with zero hauls
 
-mydatw0$cs30m<-as.factor(CSquare(mydatw0$lon,mydatw0$lat,1)) #5 degree squares
+mydatw0$cs1<-as.factor(CSquare(mydatw0$lon,mydatw0$lat,1)) #1 degree squares
 
 #Calculate mean catch per haul (by region??). For true biomass estimate, would need to stratify
 ave.catch.wt<-tapply(mydatw0$wtcpue,list(mydatw0$year,mydatw0$region),mean,na.rm=T)
@@ -53,11 +53,11 @@ dim(spdata[spdata$stratum %in% trainstrata,])[1]/dim(spdata)[1] #generally btw 7
 
 #subset training and testing data by 5-deg square: should be roughly 80/20
 
-# allstrata<-unique(spdata$cs30m)
+# allstrata<-unique(spdata$cs1)
 # nstrata<-length(allstrata)
 # trainstrata<-sample(allstrata,round(nstrata*0.8))
 # teststrata<- allstrata[! allstrata %in% trainstrata]
-# dim(spdata[spdata$cs30m %in% trainstrata,])[1]/dim(spdata)[1] 
+# dim(spdata[spdata$cs1 %in% trainstrata,])[1]/dim(spdata)[1] 
 
 #subset training and testing data by region (use 1-4 to predict 5th)
 
@@ -74,15 +74,22 @@ trainstrata<-1963:2002
 teststrata<- 2003:2014
 dim(spdata[spdata$year %in% trainstrata,])[1]/dim(spdata)[1] 
 
+#subset training and testing data by year (use first 80% to predict last 20%)
+
+spdata1<-spdata[order(spdata$year,spdata$month),]
+ninds<-dim(spdata)[1]
+traininds<-1:round(ninds*0.8)
+testinds<- (round(ninds*0.8)+1):ninds
+
 #Fit model with training dataset
-mygamm<-gam(presfit~s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4) + region ,family="binomial",data=spdata[spdata$year %in% trainstrata,]) #+ s(biomassmean,k=4)
+mygamm<-gam(presfit~s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4) + region ,family="binomial",data=spdata[traininds,]) #+ s(biomassmean,k=4)
 
 #mygamm2<-gam(presfit~s(lon,lat),family="binomial",data=spdata)
 #mygamm3<-gam(presfit~s(rugosity,k=4)+s(biomassmean),family="binomial",data=spdata) 
 
 #Test model with testing data set
-preds1<- predict(mygamm,spdata[spdata$year %in% teststrata,],type="response")
-preds1.rocr = prediction(predictions=as.numeric(preds1), labels=spdata$presfit[spdata$year %in% teststrata])
+preds1<- predict(mygamm,spdata[testinds,],type="response")
+preds1.rocr = prediction(predictions=as.numeric(preds1), labels=spdata$presfit[testinds])
 perf = performance(preds1.rocr, 'tpr', 'fpr')
 plot(perf)
 auc = performance(preds1.rocr, 'auc')@y.values[[1]]
@@ -124,8 +131,8 @@ plot(spdata[spdata$stratum %in% teststrata,"wtcpuenal"],preds)
 
 
 test<-cbind(spdata[spdata$year %in% teststrata,],preds1)
-t1<-tapply(test$preds1,list(test$year,test$cs30m),mean)
-t2<-tapply(test$presfit,list(test$year,test$cs30m),mean)
+t1<-tapply(test$preds1,list(test$year,test$cs1),mean)
+t2<-tapply(test$presfit,list(test$year,test$cs1),mean)
 plot(stack(as.data.frame(t2))[,1],stack(as.data.frame(t1))[,1],xlab="Proportion of hauls with species present (by 1 deg square)",ylab="Mean predicted probability of occurrence", cex=0.5)
 cor(stack(as.data.frame(t2))[,1],stack(as.data.frame(t1))[,1],use="p")
 
