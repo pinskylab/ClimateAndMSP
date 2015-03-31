@@ -8,7 +8,7 @@ n = rep(NA, length(allspp))
 modeldiag = data.frame(sppocean = n, npres = n, ntot = n, auc = n, auc.tt=n, r2.biomass = n, r2.biomass.tt = n, r2.all = n, r2.all.tt = n, r2.pres.1deg = n, r2.abun.1deg = n, dev.pres = n, dev.biomass = n, stringsAsFactors=FALSE)
 
 
-for(i in 11:20){#length(allspp)){
+for(i in 1:length(allspp)){
 
 sp<-allspp[i]
 print(paste(i,sp, Sys.time()))
