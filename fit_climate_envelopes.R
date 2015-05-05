@@ -8,7 +8,7 @@ load('data/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.fra
 
 source("CSquareCode.r") #taken from VMStools in googlecode
 
-# need to standardize species names across regions
+# First, standardize species names across regions
 # see spptaxonomy_2015-02-09_plusManual.csv for a useful conversion table
 Spptax<-read.csv("data/spptaxonomy_2015-02-09_plusManual.csv") #note: new column in CSV file 
 spptax<-apply(Spptax,2,tolower)
@@ -16,38 +16,35 @@ dat$sppl<-tolower(dat$spp)
 datspp<-unique(dat$sppl)
 
 spptax<-as.data.frame(spptax)
-sum(datspp %in% spptax[,1])# 792 of 4937 spp matched
+sum(datspp %in% spptax$taxon)# 792 of 4937 spp matched
 
 #Match when possible and assign new genus species, otherwise keep old name
 #Find taxa with matches in the taxonomy table
 #In some cases, the "name" field of taxonomy has spelling errors (missing "n"s). In this case, genus+species should be used. But in some cases, "genus species" are not given if full taxonomy is missing. The spptaxonomy.csv file now has a "newname" column which merges these optimally.
-matches<-datspp %in% spptax[,1] + datspp %in% spptax[,11] + datspp %in% spptax[,12] + datspp %in% spptax[,13]  #826 matches/4937
-#For those species datspp[matches>0], replace current name with spptax$newname
+matches<-datspp %in% spptax$taxon + datspp %in% spptax$name + datspp %in% spptax$common + datspp %in% spptax$genusspecies  #826 matches/4937
 
-newnames=NULL
+#For those species datspp[matches>0], replace current name with spptax$newname
+newnames=character(length(datspp))
 for (i in 1:length(datspp)){
-	if (matches[i]==0) newnames[i]<-datspp[i]
-	else if(datspp[i] %in% spptax[,1]) 
-	{
-	ind<-match(datspp[i],spptax[,1])
-	newnames[i]<-as.character(spptax[ind,14])
-	} 
-	else if(datspp[i] %in% spptax[,11]) 
-	{
-	ind<-match(datspp[i],spptax[,11])
-	newnames[i]<-as.character(spptax[ind,14])
-	}
-	else if(datspp[i] %in% spptax[,13]) 
-	{
-	ind<-match(datspp[i],spptax[,13])
-	newnames[i]<-as.character(spptax[ind,14])
-	}
-	else if(datspp[i] %in% spptax[,12]) 
-	{
-	ind<-match(datspp[i],spptax[,12])
-	newnames[i]<-as.character(spptax[ind,14])
+	if(matches[i]==0){
+		newnames[i]<-datspp[i]
+	} else if(datspp[i] %in% spptax$taxon){
+		ind<-match(datspp[i],spptax$taxon)
+		newnames[i]<-as.character(spptax$newname[ind])
+	} else if(datspp[i] %in% spptax$name){
+		ind<-match(datspp[i],spptax$name)
+		newnames[i]<-as.character(spptax$newname[ind])
+	} else if(datspp[i] %in% spptax$genusspecies){
+		ind<-match(datspp[i],spptax$genusspecies)
+		newnames[i]<-as.character(spptax$newname[ind])
+	} else if(datspp[i] %in% spptax$common){ # is this needed? (Malin 5/4/2015)
+		ind<-match(datspp[i],spptax$common)
+		newnames[i]<-as.character(spptax$newname[ind])
 	}
 }
+
+length(unique(datspp))
+length(unique(newnames)) # down to 4840 unique spp, from 4937
 
 oldnewnames<-cbind(sppl=datspp,sppnew=newnames)
 #Now merge new names with old names in dat file
