@@ -2,21 +2,23 @@
 ## Still very much in progress
 
 #################
-### Prep data ###	
+### Load data ###	
 #################
 load('data/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.
 
 source("CSquareCode.r") #taken from VMStools in googlecode
 
-# First, standardize species names across regions
+############################################
+# Standardize species names across regions #
+############################################
 # see spptaxonomy_2015-02-09_plusManual.csv for a useful conversion table
-Spptax<-read.csv("data/spptaxonomy_2015-02-09_plusManual.csv") #note: new column in CSV file 
+Spptax<-read.csv("data/spptaxonomy_plusManual.csv") #note: new column in CSV file 
 spptax<-apply(Spptax,2,tolower)
 dat$sppl<-tolower(dat$spp)
 datspp<-unique(dat$sppl)
 
 spptax<-as.data.frame(spptax)
-sum(datspp %in% spptax$taxon)# 792 of 4937 spp matched
+sum(datspp %in% spptax$taxon)# 798 of 4937 spp matched
 
 #Match when possible and assign new genus species, otherwise keep old name
 #Find taxa with matches in the taxonomy table
@@ -44,20 +46,22 @@ for (i in 1:length(datspp)){
 }
 
 length(unique(datspp))
-length(unique(newnames)) # down to 4840 unique spp, from 4937
+length(unique(newnames)) # down to 4837 unique spp, from 4937
 
 oldnewnames<-cbind(sppl=datspp,sppnew=newnames)
 #Now merge new names with old names in dat file
 dat<-merge(dat,oldnewnames) #dat now contains "sppnew"
 
+######################
+# Add useful columns #
+######################
 
-# Add useful columns
-	# Have a biomass that never goes to zero (useful for fitting log-links) 
+# Have a biomass that never goes to zero (useful for fitting log-links) 
 dat$wtcpuena = dat$wtcpue
 dat$wtcpuena[dat$wtcpuena == 0] = 1e-4
 dat$wtcpuenal = log(dat$wtcpuena)
 
-	# other useful columns
+# other useful columns
 dat$presfit = dat$wtcpue > 0 # indicator for where present
 dat$stratumfact = as.factor(dat$stratum)
 dat$yrfact = as.factor(dat$year)
@@ -68,7 +72,7 @@ dat$ocean[dat$region %in% c("DFO_NewfoundlandFall", "DFO_NewfoundlandSpring", "D
 #dat$ocean[dat$region == "SEFSC_GOMex"] <- "Gulf" #Or should Gulf of Mex group with Altantic?
 dat$sppocean = paste(dat$sppnew, dat$ocean, sep='_') 
 
-	# add rugosity
+# add rugosity
 rugfile<-read.csv("data/trawl_latlons_rugosity_forMalin_2015_02_10.csv")
 dat<-merge(dat,rugfile) #lose 69 instances of lumpenus lampretaeformis b/c missing lat/lon
 rm(rugfile)
@@ -77,47 +81,45 @@ dat$logrugosity<-log(dat$rugosity+0.01) #log-transformed rugosity gave better mo
 dat$cs1<-as.factor(CSquare(dat$lon,dat$lat,1)) #classify into 1 degree squares
 #dat$cs6m<-as.factor(CSquare(dat$lon,dat$lat,0.1)) #classify into 6 arcminute squares
 
+##########################
+## Pick the spp to model #
+##########################
 
-## Pick the spp to model (WE NEED TO FIGURE OUT HOW WE WANT TO DO THIS)
-## A good place to start would be to drop all taxa not identified to species? Perhaps also a minimum #years, or obs/year cutoff?
+# Perhaps also a minimum #years, or obs/year cutoff?
 
-# Identify taxa caught at least once every survey year in a given survey (hopefully avoiding changes in species classification through time).
+# Identify taxa caught in at least 5 survey years and at least 40 total observations > 0 in a given survey (hopefully avoiding changes in species classification through time).
 # Species are identified by species+ocean for later trimming of dat.
-#Special code for DFO_SOGulf species - these include zero hauls, and some species were not caught every year. Others (chionoecetes opilio and homarus americanus) have NAs from 1971-1979.
-#The other surveys have zero hauls, but not so systematically, may just be very small catches.
+# Some surveys have zero hauls, but not so systematically: these are very small catches (<1kg)
 
 myregions<-unique(dat$region)
 myspp<-NULL
 for(r in myregions){
 #	surveyyrs<-names(table(dat$year[dat$region==r]))
-	regdat<-dat[dat$region==r,]
-	if(r=="DFO_SoGulf") {
-	 	maxcatch<-tapply(regdat$wtcpue,list(regdat$sppocean,regdat$year),max) 
-	 	# check if maxcatch is always > 0	
-		minofmax<-apply(maxcatch,1,min,na.rm=T) #includes spps with NA's early on. Check this.	
-		min1<-names(minofmax[minofmax>0 & minofmax<Inf]) #taxa with >0 catch every year 
-	}else{
+	regdat<-dat[dat$region==r & dat$wtcpue > 0 & !is.na(dat$wtcpue),] # trim to focal region and rows with catch > 0
 	yrocc<-table(regdat$year,regdat$sppocean) #table of number of occurrances each year
-	sumyrs<-apply(yrocc,2,function(x) sum(x==0)) #identify years with zero catch of taxa
-	min1<-colnames(yrocc)[sumyrs==0]  #identify taxa with no years of zero catch (could relax this criterion to [sumyrs <= max0yrs], where max0yrs is maximum allowable number of years with zero catch)
-	}
+	sumyrs<-apply(yrocc,2,function(x) sum(x>0)) #identify years with more than zero catch of each taxon
+	sumobs<-colSums(yrocc)
+	min1<-colnames(yrocc)[sumyrs>=5 & sumobs >= 40]  #identify taxa with at least 5 years of catch and at least 40 total catch records
 	myspp<-c(myspp,min1) #now with myspp plus ocean
 }
 #table(myspp) #shows which species are selected in multiple surveys
-myspp<-unique(myspp) #length(myspp) 621 unique taxa_ocean
+myspp<-unique(myspp) 
+length(myspp) # 1548 unique taxa_ocean (up from 621 if we require presence in all years of a survey)
 
-#remove:  any taxa missing species, egg cases, anemones missing species name
+#remove  any taxa missing species name, egg cases, anemones, families
+drop<-myspp[grep("spp",myspp)] #158 with "spp." (missing species name)
+#drop<-c(drop,myspp[grep("egg",myspp)]) #7 with "egg"
+#drop<-c(drop,myspp[grep("anemone",myspp)]) #2 anemones
+# drop<-c(drop,myspp["teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" ,"crustacea shrimp") # also missing species name
+droplist<-c("sp.", "egg","anemone","unident", "unknown", "teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" ,"crustacea shrimp", "artediellus _Atl", "asteroidea s.c._Atl", "bivalvia c._Atl", "cephalopoda c._Atl", "decapoda o._Atl", "gastropoda o._Atl", "mytilidae f._Atl", "ophiuroidea s.c._Atl", "paguridae f._Atl", "paguroidea s.f._Atl", "penaeus _Atl", "polychaeta c._Atl", "porifera p._Atl", "pycnogonida s.p._Atl", "scyphozoa c._Atl", "sepiolodae f._Atl", "anthozoa c._Atl", "beryciformes (order)_Atl", "cirripedia s.c._Atl", "clypeasteroida o._Atl", "etropus _Atl", "euphausiacea o._Atl", "fistularia _Atl", "halichondria cf. sitiens_Pac", "holothuroidea c._Atl", "macrouriformes (order)_Atl", "melanostomiidae (stomiatidae)_Atl", "octopoda o._Atl", "pandalidae f._Atl", "paralepididae _Atl", "seapen (order)_Atl", "symphurus _Atl", "tunicata s.p._Atl", "urophycis _Atl", "melanostomiidae (stomiatidae)_Atl", "gorgonocephalidae,asteronychidae f._Atl", "trash species in catch_Atl")
+for (i in 1:length(droplist)) {drop<-c(drop,myspp[grep(droplist[i],myspp, fixed=TRUE)])}
 
-drop<-myspp[grep("spp",myspp)] #85 with "spp."
-# drop<-c(drop,myspp[grep("egg",myspp)]) #3 with "egg"
-# drop<-c(drop,myspp[grep("anemone",myspp)]) #2
-# drop<-c(drop,myspp["teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" ,"crustacea shrimp")
-droplist<-c("egg","anemone","teuthida","liparidinae","bathylagus sp.","lampanyctus sp.","caridea", "carinariidae","antipatharia","annelida" ,"crustacea shrimp")
-for (i in 1:length(droplist)) {drop<-c(drop,myspp[grep(droplist[i],myspp)])}
 
-myspp<-myspp[! myspp %in% drop]
-myspp<-sort(myspp) #down to 512 spp. to model. A few species are present in multiple ocean basins and thus will have multiple models.
+# remove any taxa that lack a space (e.g., only one word, like a Family or Order name)
+drop2 <- myspp[!grepl(' ', myspp)] # 92 more taxa to remove
 
+myspp<-myspp[!(myspp %in% drop | myspp %in% drop2)]
+myspp<-sort(myspp) #down to 1146 spp. to model (but up from 512 if we require presence in all years). A few species are present in multiple ocean basins and thus will have multiple models.
 
 # At one point, I only used spp with at least 300 valid rows of data (present or not) and at least 40 rows of data where present
 # spp=sort(unique(dat$spp));spp 
