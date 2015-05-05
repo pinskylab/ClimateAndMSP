@@ -1,7 +1,7 @@
 ###############################################################################
 ## Create climatologies for each region: gridded averages with interpolation ##
 ###############################################################################
-setwd('/Users/mpinsky/Documents/Rutgers/Range projections/')
+setwd('~/Documents/Rutgers/Range projections/proj_ranges')
 load("Output/trawl_allregionsforprojections_2015-02-02.RData") # loads dat
 
 # remove NA lat/lon
@@ -221,6 +221,30 @@ climold = clim # save a copy
 	write.csv(clim, file=paste('Output/climGrid_', Sys.Date(), '.csv', sep=''))
 	
 # write out all grid cell lat/lons for Lauren Rogers
+	clim = read.csv('Output/climGrid_2015-02-02.csv')
 	outlatlons2 = clim[!duplicated(clim[,c('lat', 'lon')]),c('lat', 'lon', 'depth')]
 	outlatlons2 = outlatlons2[order(outlatlons2$lat, outlatlons2$lon),]
 	write.csv(outlatlons2, file=paste('Output/projectiongrid_latlons_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+
+	# split each grid cell into 4 sub-cells (from 1/4 to 1/8 degree)
+	a = numeric(nrow(outlatlons2)*4)
+	outlatlons3 = data.frame(lat=a, lon=a, depth=a)
+	for(i in 1:nrow(outlatlons2)){
+		outlatlons3$lat[((i-1)*4+1):(i*4)] = outlatlons2$lat[i] + rep(c(-0.0625, 0.0625),2)
+		outlatlons3$lon[((i-1)*4+1):(i*4)] = outlatlons2$lon[i] + rep(c(-0.0625, 0.0625),c(2,2))
+	}
+	
+	write.csv(outlatlons3, file=paste('Output/projectiongrid_latlons1.8th_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+	
+	# split each 1/8 grid cell into 4 sub-cells (from 1/8 to 1/16 degree)
+	a = numeric(nrow(outlatlons3)*4)
+	outlatlons4 = data.frame(lat=a, lon=a, depth=a)
+	nrow(outlatlons3)
+	for(i in 1:nrow(outlatlons3)){ # takes a few minutes
+		if(i %% 1000 == 0) print(i) # a little progress meter
+		outlatlons4$lat[((i-1)*4+1):(i*4)] = outlatlons3$lat[i] + rep(c(-0.03125, 0.03125),2)
+		outlatlons4$lon[((i-1)*4+1):(i*4)] = outlatlons3$lon[i] + rep(c(-0.03125, 0.03125),c(2,2))
+	}
+	
+	write.csv(outlatlons4, file=paste('Output/projectiongrid_latlons1.16th_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+	
