@@ -46,7 +46,7 @@ for (i in 1:length(datspp)){
 }
 
 length(unique(datspp))
-length(unique(newnames)) # down to 4837 unique spp, from 4937
+length(unique(newnames)) # down to 4833 unique spp, from 4937
 
 oldnewnames<-cbind(sppl=datspp,sppnew=newnames)
 #Now merge new names with old names in dat file
@@ -56,17 +56,17 @@ dat<-merge(dat,oldnewnames) #dat now contains "sppnew"
 # Add useful columns #
 ######################
 
-# Have a biomass that never goes to zero (useful for fitting log-links) 
-dat$wtcpuena = dat$wtcpue
-dat$wtcpuena[dat$wtcpuena == 0] = 1e-4
-dat$wtcpuenal = log(dat$wtcpuena)
+# Have a biomass that never goes to zero (useful for fitting log-links with a stratum effect) 
+#dat$wtcpuena = dat$wtcpue
+#dat$wtcpuena[dat$wtcpuena == 0] = 1e-4
+#dat$wtcpuenal = log(dat$wtcpuena)
 
 # other useful columns
 dat$presfit = dat$wtcpue > 0 # indicator for where present
-dat$stratumfact = as.factor(dat$stratum)
-dat$yrfact = as.factor(dat$year)
-dat$regionfact<-as.factor(dat$region)
-dat$sppregion = paste(dat$sppnew, dat$region, sep='_')
+#dat$stratumfact = as.factor(dat$stratum)
+#dat$yrfact = as.factor(dat$year)
+#dat$regionfact<-as.factor(dat$region)
+#dat$sppregion = paste(dat$sppnew, dat$region, sep='_')
 dat$ocean[dat$region %in% c("AFSC_Aleutians", "AFSC_EBS", "AFSC_GOA", "AFSC_WCTri", "NWFSC_WCAnn")] <- "Pac"
 dat$ocean[dat$region %in% c("DFO_NewfoundlandFall", "DFO_NewfoundlandSpring", "DFO_ScotianShelf","DFO_SoGulf","NEFSC_NEUSFall", "NEFSC_NEUSSpring","SEFSC_GOMex")] <- "Atl"
 #dat$ocean[dat$region == "SEFSC_GOMex"] <- "Gulf" #Or should Gulf of Mex group with Altantic?
@@ -99,12 +99,12 @@ for(r in myregions){
 	yrocc<-table(regdat$year,regdat$sppocean) #table of number of occurrances each year
 	sumyrs<-apply(yrocc,2,function(x) sum(x>0)) #identify years with more than zero catch of each taxon
 	sumobs<-colSums(yrocc)
-	min1<-colnames(yrocc)[sumyrs>=5 & sumobs >= 40]  #identify taxa with at least 5 years of catch and at least 40 total catch records
+	min1<-colnames(yrocc)[sumyrs>=10 & sumobs >= 300]  #identify taxa with at least 8 years of catch and at least 40 total catch records
 	myspp<-c(myspp,min1) #now with myspp plus ocean
 }
 #table(myspp) #shows which species are selected in multiple surveys
 myspp<-unique(myspp) 
-length(myspp) # 1548 unique taxa_ocean (up from 621 if we require presence in all years of a survey)
+length(myspp) # 665 unique taxa_ocean (up from 621 if we require presence in all years of a survey)
 
 #remove  any taxa missing species name, egg cases, anemones, families
 drop<-myspp[grep("spp",myspp)] #158 with "spp." (missing species name)
@@ -119,7 +119,8 @@ for (i in 1:length(droplist)) {drop<-c(drop,myspp[grep(droplist[i],myspp, fixed=
 drop2 <- myspp[!grepl(' ', myspp)] # 92 more taxa to remove
 
 myspp<-myspp[!(myspp %in% drop | myspp %in% drop2)]
-myspp<-sort(myspp) #down to 1146 spp. to model (but up from 512 if we require presence in all years). A few species are present in multiple ocean basins and thus will have multiple models.
+myspp<-sort(myspp) 
+length(myspp) #down to 553 spp. to model (but up from 512 if we require presence in all years). A few species are present in multiple ocean basins and thus will have multiple models.
 
 # At one point, I only used spp with at least 300 valid rows of data (present or not) and at least 40 rows of data where present
 # spp=sort(unique(dat$spp));spp 
