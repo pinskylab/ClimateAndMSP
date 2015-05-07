@@ -239,9 +239,10 @@ for(i in 347:length(allspp)){
 			mygam2tt<-gam(myabunmod, data=spdata[trainindsp,]) # only fit where species is present
 		}, error = function(e) { # ignore warnings, since no function to catch them
 			mywarn <- paste('Error in training gam fitting for', i, sp, ':', e)
-			allwarnings <- c(allwarnings, mywarn)
-			warning(mywarn)
+			assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv) # these assigns outside the local scope are poor form in R. But not sure how else to do it here...
 			assign('fittrain', FALSE, envir=.GlobalEnv) # if we hit an error in predictions, we can't calculate performance stats
+			warning(mywarn)
+
 		})
 	}
 
@@ -257,7 +258,7 @@ for(i in 347:length(allspp)){
 		mygam2<-gam(myabunmod,data=spdata[spdata$presfit,]) # only fit where spp is present
 	}, error = function(e) {
 		mywarn <- paste('Error in gam fitting for', i, sp, ':', e)
-		allwarnings <- c(allwarnings, mywarn)
+		assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv) # these assigns outside the local scope are poor form in R. But not sure how else to do it here...
 		warning(mywarn)
 	})
 
@@ -283,7 +284,7 @@ for(i in 347:length(allspp)){
 		}, error = function(e) {
 			assign('fittrain', FALSE, envir=.GlobalEnv) # if we hit an error in predictions, we can't calculate performance stats
 			mywarn <- paste('Error in predicting to test data for', i, sp, ':', e)
-			allwarnings <- c(allwarnings, mywarn)
+			assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv) # these assigns outside the local scope are poor form in R. But not sure how else to do it here...
 			warning(mywarn)
 		})
 	}
