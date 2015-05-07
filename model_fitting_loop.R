@@ -5,6 +5,10 @@ load("data/dat_selectedspp.Rdata")
 	dat$logwtcpue <- log(dat$wtcpue)
 	dat$regionfact <- as.factor(dat$region)
 
+	# if using season
+	dat$season <- c(rep('wi', 3), rep('sp', 3), rep('su', 3), rep('fa', 3))[dat$month]
+	dat$regseas <- paste(dat$region, dat$season, sep='_')
+
 allspp = sort(unique(dat$sppocean))
 n = rep(NA, length(allspp))
 modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=n, auc.tt=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n, stringsAsFactors=FALSE) # tt is for training/testing model
@@ -29,7 +33,7 @@ modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=
 
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
-for(i in 1:length(allspp)){ 
+for(i in 347:length(allspp)){ 
 	fittrain = TRUE
 	mygam1tt <- mygam2tt <- mygam1 <- mygam2 <- preds <- preds1 <- preds2 <- predstt <- preds1tt <- preds2tt <- NULL
 
@@ -40,14 +44,13 @@ for(i in 1:length(allspp)){
 	myregions<-unique(mydat$region)
 	myhauls<-unique(mydat$haulid)
 	#myocean<-mydat[1,"ocean"]
-	#mydat$season <- c(rep('wi', 3), rep('sp', 3), rep('su', 3), rep('fa', 3))[mydat$month]
+	#myregseas<-unique(mydat$regseas)
 
 	###################################################
 	# Test whether we have enough data in each region #
 	###################################################
 
-	## NEED TO TEST FOR SEASON/REGION COMBINATIONS
-
+	# if ignoring season in the models
 	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
 		ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","rugosity","presfit")])]) # number of presences per region with complete data (not inc. surftemp)
 	} else {
@@ -56,12 +59,27 @@ for(i in 1:length(allspp)){
 	myregions <- names(ninds)[ninds >= 10] # require at least 10 presences with complete data to keep a region
 	mydat <- mydat[mydat$region %in% myregions,]
 
+	# if including season in the models
+#	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
+#		ninds<-table(mydat$regseas[mydat$presfit & complete.cases(mydat[,c("bottemp","rugosity","presfit")])]) # number of presences per region with complete data (not inc. surftemp)
+#	} else {
+#		ninds<-table(mydat$regseas[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
+#	}
+#	myregseas <- names(ninds)[ninds >= 50] # require at least this many presences with complete data to keep a region/season combination (not sure if this is a reasonable level)
+#	mydat <- mydat[mydat$regseas %in% myregseas,]
+
+
 	####################################################
 	# Add records for when there was a haul but no fish
 	####################################################
-
 	# Only expand catches (pad with zeros) in regions where the species has previously been caught.
+
+	# without season
 	zs<-dat[!(dat$haulid %in% myhauls) & dat$region %in% myregions,] #extract haulids where this species is missing, but only from regions where this species has at least one record.
+
+	# with season
+#	zs<-dat[!(dat$haulid %in% myhauls) & dat$regseas %in% myregseas,] #extract haulids where this species is missing, but only from regions where this species has at least one record.
+
 	matchpos<-match(unique(zs$haulid),zs$haulid) # Extract one record of each haulid
 	zeros<-zs[matchpos,]
 	#Add/change relevant columns --> zero catch for target spp.
@@ -106,11 +124,6 @@ for(i in 1:length(allspp)){
 		spdata<-spdata[complete.cases(spdata[,c("surftemp","bottemp","rugosity","presfit")]),] 
 	}
 
-	# Subset by month or season?? (should test whether it matters)
-	#mymonths<-c(10,11,12)
-	#spdata<-spdata[spdata$month %in% mymonths,]
-
-
 	####################################################
 	#Set up data for training and testing to evaluate performance
 	####################################################
@@ -145,18 +158,19 @@ for(i in 1:length(allspp)){
 	nprestrain <- table(spdata$region[trainindsp])
 	nprestest <- table(spdata$region[testindsp])
 	if(any(nprestrain < 1)){
-		mywarn <- paste('Zero training presences for', i, sp)
+		mywarn <- paste('Zero training presences for', i, sp, 'in', names(nprestrain)[nprestrain<1])
 		allwarnings <- c(allwarnings, mywarn)
 		warning(mywarn)
 	}
 	if(any(nprestest < 1)){
-		mywarn <- paste('Zero testing presences for', i, sp)
+		mywarn <- paste('Zero testing presences for', i, sp, 'in', names(nprestest)[nprestest<1])
 		allwarnings <- c(allwarnings, mywarn)
 		warning(mywarn)
 	}
 	
 	# make sure we have at least 4 unique levels for each variable (necessary to fit gam with 4 knots)
 	# look at training presence indices, since the most constraining (for mygam2tt)
+	# this doesn't test by season... and so wont' catch a season with very few datapoints
 	levs <- apply(spdata[trainindsp,c('bottemp', 'surftemp', 'logrugosity', 'biomassmean')], 2, FUN=function(x) length(unique(x)))
 	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
 		levs <- apply(spdata[trainindsp,c('bottemp', 'logrugosity', 'biomassmean')], 2, FUN=function(x) length(unique(x)))
@@ -173,8 +187,7 @@ for(i in 1:length(allspp)){
 	# Figure out which model formula given data
 	####################################################
 
-	## ADD SEASON
-
+	# without season
 	#Default models. Leave out region factor if necessary
 	if(length(myregions)==1){
 			mypresmod<-formula(presfit ~ s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4)+s(biomassmean,k=4))
@@ -193,6 +206,26 @@ for(i in 1:length(allspp)){
 			myabunmod<-formula(logwtcpue~s(bottemp,k=4)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
 		}
 	}
+
+	# with season
+	#Default models. Leave out region factor if necessary
+#	if(length(myregions)==1){
+#			mypresmod<-formula(presfit ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +s(biomassmean,k=4))
+#			myabunmod<-formula(logwtcpue ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +s(biomassmean,k=4))
+#	} else {
+#			mypresmod<-formula(presfit ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
+#			myabunmod<-formula(logwtcpue ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
+#	}
+#	#Replace with formula missing surftemp if necessary
+#	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
+#		if(length(myregions)==1){
+#			mypresmod<-formula(presfit~s(bottemp,k=4,by=season) +s(logrugosity,k=4) +s(biomassmean,k=4))
+#			myabunmod<-formula(logwtcpue~s(bottemp,k=4,by=season) +s(logrugosity,k=4)+s(biomassmean,k=4))
+#		} else {
+#			mypresmod<-formula(presfit~s(bottemp,k=4,by=season) +s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
+#			myabunmod<-formula(logwtcpue~s(bottemp,k=4,by=season) +s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
+#		}
+#	}
 
 
 	####################################	
@@ -310,7 +343,9 @@ for(i in 1:length(allspp)){
 	#mygam2<-stripGAM(mygam2)
 	runname <- "test"
 	mods = list(mygam1=mygam1, mygam2 = mygam2)
-	save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # 2mb file
+	
+	sp <- gsub('/', '', sp) # would mess up saving the file
+	save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
 
 	#think about figures to output - thermal response curves? spatial prediction by 1 deg square?
 	#think about other data to save - number of pres/abs by region (?) 
