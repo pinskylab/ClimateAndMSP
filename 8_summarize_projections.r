@@ -1,8 +1,8 @@
 ## Set working directories
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	projfolder = '../CEmodels_proj' # holds model projections
-	modfolder = '../CEModels' # holds the models
+	projfolder = '../CEmodels_proj' # holds model projections (outside Git)
+	modfolder = '../CEModels' # holds the models (outside Git)
 	}
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
@@ -13,9 +13,9 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 
 
 
-##################################################
-## Calculate mean lat/depth and sum of biomass  ##
-##################################################
+##########################################################
+## Calculate mean lat/depth and sum of biomass by year  ##
+##########################################################
 require(mgcv)
 require(Hmisc)
 
@@ -26,7 +26,10 @@ runtype <- 'test'
 files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, '_', sep=''))
 
 # weighted mean function to use with summarize()
-wmean <- function(x) return(weighted.mean(x[,1], x[,2])) # values in col 1, weights in col 2
+wmean <- function(x){ # values in col 1, weights in col 2
+	inds <- !is.na(x[,1]) & !is.na(x[,2])
+	return(weighted.mean(x[inds,1], x[inds,2])) 
+}
 
 # save observed and predicted positions for lat, lon, and depth
 meanpos <- list(0)
@@ -35,8 +38,8 @@ meanpos <- list(0)
 # set up dataframes
 # Don't know how many regions for each taxon, so can't pre-allocate the rows (but could guess high... might speed this up)
 # could also calc mean depth, but would need to pull from rugosity file
-biomassave = data.frame(sppocean = character(0), region = character(0), year = numeric(0)) # sum of average wtcpue across the region (2020-2099) for each survey in each model (columns)
-	for(i in 1:13) biomassave[[paste('summwtcpue', i, sep='_')]] <- numeric(0)
+biomasssum = data.frame(sppocean = character(0), region = character(0), year = numeric(0)) # sum of average wtcpue across the region (2020-2099) for each survey in each model (columns)
+	for(i in 1:13) biomasssum[[paste('summwtcpue', i, sep='_')]] <- numeric(0)
 meanlat = data.frame(sppocean = character(0), region = character(0), year = numeric(0)) # biomass-weighted mean latitude across the region (2020-2099) for each survey in each model (columns)
 	for(i in 1:13) meanlat[[paste('lat', i, sep='_')]] <- numeric(0)
 meanlon = data.frame(sppocean = character(0), region = character(0), year = numeric(0))
@@ -48,22 +51,23 @@ options(warn=1) # print warnings as they occur
 # loop through all files
 for(i in 1:length(files)){ # takes a while (a couple hours ?)
 	# load data for this species
-	print(paste(i, 'of', length(files), Sys.time()))
 	load(paste(projfolder, '/', files[i], sep='')) # load summproj for this taxon
 	myregions <- sort(unique(summproj$region))
 	mysppocean <- gsub('.Rdata', '', gsub(paste('summproj_', runtype, '_', sep=''), '', files[i]))
 
+	print(paste(i, 'of', length(files), mysppocean, myregions, Sys.time()))
+
 	# set up dataframes for this taxon
-	mybiomassave = data.frame(sppocean = mysppocean, region = rep(myregions, rep(80,length(myregions))), year = rep(2020:2099, length(myregions)))
+	mybiomasssum = data.frame(sppocean = mysppocean, region = rep(myregions, rep(80,length(myregions))), year = rep(2020:2099, length(myregions)))
 	mymeanlat = data.frame(sppocean = mysppocean, region = rep(myregions, rep(80,length(myregions))), year = rep(2020:2099, length(myregions)))
 	mymeanlon = data.frame(sppocean = mysppocean, region = rep(myregions, rep(80,length(myregions))), year = rep(2020:2099, length(myregions)))
 
 	# Summarize projections
 	for(j in 1:13){
 		snm <- paste('wtcpue.proj', j, sep='_')
-		temp <- aggregate(summproj[,snm], by=list(year = summproj$year, region = summproj$region), FUN=sum)
+		temp <- aggregate(summproj[,snm], by=list(year = summproj$year, region = summproj$region), FUN=sum, na.rm=TRUE) # remove NAs: assumes that NA gridcells are constant through time, which they should be, since determined by the GCM grid
 			names(temp)[3] <- paste('summwtcpue', j, sep='_')
-		mybiomassave <- merge(mybiomassave, temp)
+		mybiomasssum <- merge(mybiomasssum, temp)
 
 		temp <- summarize(summproj[,c('lat', snm)], by=list(region = summproj$region, year = summproj$year), FUN=wmean)
 			names(temp)[3] <- paste('lat', j, sep='_')
@@ -75,22 +79,22 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 
 	}
 
-	biomassave <- rbind(biomassave, mybiomassave) # an inefficient way to do this: better to pre-allocate
+	biomasssum <- rbind(biomasssum, mybiomasssum) # an inefficient way to do this: better to pre-allocate
 	meanlat <- rbind(meanlat, mymeanlat)
 	meanlon <- rbind(meanlon, mymeanlon)
 
 }
 
 
-### Save meanpos and biomassave
-save(biomassave, meanlat, meanlon, file = paste('data/meanlat,lon,biomass_', runtype, '.RData', sep=''))
+### Save meanpos and biomasssum
+save(biomasssum, meanlat, meanlon, file = paste('data/meanlat,lon,biomass_', runtype, '.RData', sep=''))
 
 
 
 
-####################################################
-## Plot summary data about spp biomass and ranges ##
-####################################################
+###########################################################
+## Plot time-series of summarized spp biomass and ranges ##
+###########################################################
 require(Hmisc)
 
 wmean <- function(x){
@@ -101,13 +105,14 @@ wmean <- function(x){
 
 ## load the data
 runtype <- 'test'
-load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomassave, meanlat, meanlon: projected biomass by year for each taxon in each region
+load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomasssum, meanlat, meanlon: projected biomass by year for each taxon in each region
 
 ## plots of change in biomass
-	sppregions <- sort(unique(paste(biomassave$region, biomassave$sppocean)))
+	sppregions <- sort(unique(paste(biomasssum$region, biomasssum$sppocean)))
+	length(sppregions)
 
 	# quartz(width=10, height=8)
-	pdf(file=paste('figures/biomassave_proj_', runtype, Sys.Date(), '.pdf', sep=''), width=10, height=8)
+	pdf(file=paste('figures/biomasssum_proj_', runtype, '.pdf', sep=''), width=10, height=8)
 	par(mfrow = c(6,6), mai=c(0.3, 0.3, 0.2, 0.05), cex.main=0.7, cex.axis=0.8, omi=c(0,0.2,0.1,0), mgp=c(2.8, 0.7, 0), font.main=3)
 
 	rc = 1 # row counter
@@ -115,9 +120,10 @@ load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomassave
 
 	options(warn=1) # print warnings as they occur
 	for(i in 1:length(sppregions)){
-		inds <- paste(biomassave$region, biomassave$sppocean) == sppregions[i]
-		thisreg <- unique(biomassave$region[inds])
-		thisspp <- unique(biomassave$sppocean[inds])
+		if(i %% 100 == 0) print(i)
+		inds <- paste(biomasssum$region, biomasssum$sppocean) == sppregions[i]
+		thisreg <- unique(biomasssum$region[inds])
+		thisspp <- unique(biomasssum$sppocean[inds])
 
 		# increment row and column counters as needed
 		cc = cc+1
@@ -129,15 +135,19 @@ load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomassave
 				rc = 1; cc = 1
 		}}
 		
+		# ylims
+		ylims <- c(0, max(biomasssum[inds, grep('summwtcpue', names(biomasssum))], na.rm=TRUE)) # will warn if all values are NA
+		if(is.infinite(ylims[2])) ylims = c(0,1)
+
 		# plot data for each GCM
-		plot(biomassave$year[inds], biomassave$summwtcpue_1[inds], col='grey', las=1, type='l')
-		for(j in 2:13) lines(biomassave$year[inds], biomassave[[paste('summwtcpue', j, sep='_')]][inds], col='grey')
+		plot(biomasssum$year[inds], biomasssum$summwtcpue_1[inds], col='grey', las=1, type='l', ylim=ylims, main=thisspp)
+		for(j in 2:13) lines(biomasssum$year[inds], biomasssum[[paste('summwtcpue', j, sep='_')]][inds], col='grey')
 		
 		# plot ensemble mean
-		agg <- cbind(biomassave$year, rowMeans(biomassave[inds, grep('sumwtcpue', names(biomassave))])
-		lines(agg$year, agg[,2], col='black')
+		agg <- cbind(biomasssum$year[inds], rowMeans(biomasssum[inds, grep('summwtcpue', names(biomasssum))]))
+		lines(agg[,1], agg[,2], col='black')
 	
-		if(cc==1) mtext(text='Biomass', side=2, line=2.3, cex=0.6) # add y label on left of each row
+		if(cc==1) mtext(text='Biomass index', side=2, line=2.3, cex=0.6) # add y label on left of each row
 		if(rc==1) mtext(text=thisreg, side=3, line=1.3, cex=0.6) # add region header on top of page
 
 		oldreg = thisreg # save the previous region to see if we need a new page on the next round
@@ -147,51 +157,47 @@ load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomassave
 
 
 ## plots of change in latitude
-	#load('Output/meanpos_allyrsonlytemp_2013-11-10.RData')
+	sppregions <- sort(unique(paste(meanlat$region, meanlat$sppocean)))
+	length(sppregions)
 
 	# quartz(width=10, height=8)
-	pdf(file=paste('Figures/avelat_proj_', Sys.Date(), '.pdf', sep=''), width=10, height=8)
+	pdf(file=paste('figures/meanlat_proj_', runtype, '.pdf', sep=''), width=10, height=8)
 	par(mfrow = c(6,6), mai=c(0.3, 0.3, 0.2, 0.05), cex.main=0.7, cex.axis=0.8, omi=c(0,0.2,0.1,0), mgp=c(2.8, 0.7, 0), font.main=3)
 
 	rc = 1 # row counter
 	cc = 0 # column counter
-	for(s in 1:length(files)){
-		print(paste(s, 'of', length(files)))
 
-		thisspp = spp[sapply(spp, FUN=grepl, x=files[s], fixed=TRUE)] # extract spp name from file name
-		if(length(thisspp)>1){ # if there were multiple matches, take the one that was longest
-			i = which.max(nchar(as.character(thisspp)))
-			print(paste('picked', thisspp[i], 'from', paste(thisspp, collapse=', '), 'for', files[s]))
-			thisspp = thisspp[i]
-		}
-		thisreg = regs[sapply(regs, FUN=grepl, x=files[s])]
-
-		#j = which(grepl(thisspp, names(meanpos), fixed=TRUE) & grepl(thisreg, names(meanpos))) # calculate the correct index into meanpos for this spp and region
-		thisproj = read.csv(paste(folder, '/', files[s], sep=''), row.names=1)
-		meanlat = summarize(thisproj[,c('lat', 'wtcpue.hist')], by=thisproj$year, FUN=wmean)
-		for(i in 1:13)	meanlat = cbind(meanlat, summarize(thisproj[,c('lat', paste('wtcpue.proj_', i, sep=''))], by=thisproj$year, FUN=wmean)[,2])
-		names(meanlat) = c('year', 'hist', paste('m', 1:13, sep=''))
-
-		i = data$spp == as.character(thisspp) & data$region == as.character(thisreg) & complete.cases(data[,c('surftemp', 'bottemp')])
-		if(thisreg=='DFO_Newfoundland_Fall') i = data$spp == as.character(thisspp) & data$region == as.character(thisreg) & complete.cases(data[,c('bottemp')])
-		obs = summarize(data[i,c('lat', 'wtcpue')], by=data$year[i], FUN=wmean)
+	options(warn=1) # print warnings as they occur
+	for(i in 1:length(sppregions)){
+		if(i %% 100 == 0) print(i)
+		inds <- paste(meanlat$region, meanlat$sppocean) == sppregions[i]
+		thisreg <- unique(meanlat$region[inds])
+		thisspp <- unique(meanlat$sppocean[inds])
 
 		# increment row and column counters as needed
 		cc = cc+1
 		if(cc == 7){ cc = 1; rc = rc + 1}
 		if(rc == 7){ cc = 1; rc = 1}
 	
-		if(s>1){ if(thisreg != oldreg){  # switch to a new page when I get to a new region
+		if(i>1){ if(thisreg != oldreg){  # switch to a new page when I get to a new region
 				par(mfrow = c(6,6), mai=c(0.3, 0.3, 0.2, 0.05), cex.main=0.7, cex.axis=0.8, omi=c(0,0.2,0.1,0), mgp=c(2.8, 0.7, 0), font.main=3)
 				rc = 1; cc = 1
 		}}
-
-		#boxplot(as.data.frame(meanpos[[j]]$meanlat), names=c('Obs', 'Hist', '2060', '2100'), las=1, main=thisspp, col='grey')
-		ylims = range(c(obs[,2], meanlat[,2:15]), na.rm=TRUE)
-		matplot(meanlat$year, meanlat[,2:15], type='l', col='grey', lty=1, ylim=ylims, las=1, main=thisspp)
-		lines(obs[,1], obs[,2], col='black')		
-		lines(meanlat$year, rowMeans(meanlat[,3:15], na.rm=TRUE), col='blue')
-		if(cc==1) mtext(text='Latitude (°N)', side=2, line=2.3, cex=0.6) # add y label on left of each row
+		
+		# ylims
+		ylims <- range(meanlat[inds, grep('lat', names(meanlat))], na.rm=TRUE) # set ylims for this species in this region
+#		ylims <- range(meanlat[meanlat$region == thisreg, grep('lat', names(meanlat))])	# set ylims for the whole region
+		if(is.infinite(ylims[1])) ylims = c(0,1)
+	
+		# plot data for each GCM
+		plot(meanlat$year[inds], meanlat$lat_1[inds], col='grey', las=1, type='l', ylim=ylims, main=thisspp)
+		for(j in 2:13) lines(meanlat$year[inds], meanlat[[paste('lat', j, sep='_')]][inds], col='grey')
+		
+		# plot ensemble mean
+		agg <- cbind(meanlat$year[inds], rowMeans(meanlat[inds, grep('lat', names(meanlat))]))
+		lines(agg[,1], agg[,2], col='black')
+	
+		if(cc==1) mtext(text='Mean latitude (°N)', side=2, line=2.3, cex=0.6) # add y label on left of each row
 		if(rc==1) mtext(text=thisreg, side=3, line=1.3, cex=0.6) # add region header on top of page
 
 		oldreg = thisreg # save the previous region to see if we need a new page on the next round
@@ -201,147 +207,15 @@ load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomassave
 
 
 
-	
+#######################################
+## Summarize distributions by decade
+#######################################
 
-
-
-##################################################################################
-## Summarize position shifts within each assemblage for 2020-2060 and 2060-2100 ##
-##################################################################################
-setwd('/Users/mpinsky/Documents/Rutgers/Range projections/')
-load('Output/meanpos_allyrsonlytemp_2013-11-10_2.RData')
-folder = 'Output/proj_annual_2013-11-08/'
-dataclim = read.csv('Output/dataclim_2013-10-23.csv', row.names=1) # just to get spp names
-	spp = sort(unique(dataclim$taxon))
-	regs = sort(unique(dataclim$region))
-	
-files = list.files(folder, pattern='biomassave_')
-	
-# find median position projections for each taxon
-df = data.frame(region = character(0), spp = character(0), clim=numeric(0), hist=numeric(0), X2020=numeric(0), X2060=numeric(0)) # 2020-2060 and 2060-2100
-medianpos = list(medianlat = df, medianlon = df, mediandepth = df, medianbio = df)
-
-for(s in 1:length(meanpos)){
-	thisspp = spp[sapply(spp, FUN=grepl, x=names(meanpos)[s], fixed=TRUE)] # extract spp name from meanpos name
-	if(length(thisspp)>1){ # if there were multiple matches, take the one that was longest
-		i = which.max(nchar(as.character(thisspp)))
-		print(paste('picked', thisspp[i], 'from', paste(thisspp, collapse=', '), 'for', names(meanpos)[s]))
-		thisspp = thisspp[i]
-	}
-	thisreg = regs[sapply(regs, FUN=grepl, x=names(meanpos)[s])]
-
-	newlat = data.frame(t(apply(meanpos[[s]]$meanlat, MARGIN=2, FUN=median, na.rm=TRUE)))
-		newlat$spp = thisspp
-		newlat$region = thisreg
-	newlon = data.frame(t(apply(meanpos[[s]]$meanlon, MARGIN=2, FUN=median, na.rm=TRUE)))
-		newlon$spp = thisspp
-		newlon$region = thisreg
-	newdepth = data.frame(t(apply(meanpos[[s]]$meandepth, MARGIN=2, FUN=median, na.rm=TRUE)))
-		newdepth$spp = thisspp
-		newdepth$region = thisreg
-	
-	medianpos$medianlat = rbind(medianpos$medianlat, newlat)
-	medianpos$medianlon = rbind(medianpos$medianlon, newlon)
-	medianpos$mediandepth = rbind(medianpos$mediandepth, newdepth)
-	
-	# biomass
-	biomassave = read.csv(paste(folder, files[grepl(paste(thisreg, '_', thisspp, sep=''), files, fixed=TRUE)], sep=''), row.names=1)
-	newbio = data.frame(t(apply(biomassave, MARGIN=2, FUN=median, na.rm=TRUE)))
-		names(newbio)[1:2] = c('obs', 'clim')
-		newbio$spp = thisspp
-		newbio$region = thisreg
-	medianpos$medianbio = rbind(medianpos$medianbio, newbio)
-}
-
-
-# summarize into position shifts from historical to 2020-2060 or to 2060-2100
-df = data.frame(region = medianpos$medianlat$region, spp = medianpos$medianlat$spp) # shifts from historical projection to future time periods
-posshift = list(latshift = df, lonshift = df, depshift = df)
-posshift$latshift$X2020 = medianpos$medianlat$X2020 - medianpos$medianlat$clim
-posshift$latshift$X2060 = medianpos$medianlat$X2060 - medianpos$medianlat$clim
-posshift$lonshift$X2020 = medianpos$medianlon$X2020 - medianpos$medianlon$clim
-posshift$lonshift$X2060 = medianpos$medianlon$X2060 - medianpos$medianlon$clim
-posshift$depshift$X2020 = medianpos$mediandepth$X2020 - medianpos$mediandepth$clim
-posshift$depshift$X2060 = medianpos$mediandepth$X2060 - medianpos$mediandepth$clim
-
-# t-tests of mean shift over all species in the assemblage
-regs = sort(unique(posshift$latshift$region))
-ttestlat2020 = matrix(NA, nrow=6, ncol=9)
-	rownames(ttestlat2020) = c('mean', 'u95', 'l95', 't', 'df', 'p'); colnames(ttestlat2020) = regs
-for(i in 1:9){
-	mod = t.test(posshift$latshift$X2020[posshift$latshift$region==regs[i]])
-	ttestlat2020[,i] = c(mod$estimate, mod$conf.int, mod$statistic, mod$parameter, mod$p.value)		
-} 
-
-ttestlon2020 = matrix(NA, nrow=6, ncol=9)
-	rownames(ttestlon2020) = c('mean', 'u95', 'l95', 't', 'df', 'p'); colnames(ttestlon2020) = regs
-for(i in 1:9){
-	mod = t.test(posshift$lonshift$X2020[posshift$lonshift$region==regs[i]])
-	ttestlon2020[,i] = c(mod$estimate, mod$conf.int, mod$statistic, mod$parameter, mod$p.value)		
-} 
-
-ttestdepth2020 = matrix(NA, nrow=6, ncol=9)
-	rownames(ttestdepth2020) = c('mean', 'u95', 'l95', 't', 'df', 'p'); colnames(ttestdepth2020) = regs
-for(i in 1:9){
-	mod = t.test(posshift$depshift$X2020[posshift$depshift$region==regs[i]])
-	ttestdepth2020[,i] = c(mod$estimate, mod$conf.int, mod$statistic, mod$parameter, mod$p.value)		
-} 
-
-ttestlat2060 = matrix(NA, nrow=6, ncol=9)
-	rownames(ttestlat2060) = c('mean', 'u95', 'l95', 't', 'df', 'p'); colnames(ttestlat2060) = regs
-for(i in 1:9){
-	mod = t.test(posshift$latshift$X2060[posshift$latshift$region==regs[i]])
-	ttestlat2060[,i] = c(mod$estimate, mod$conf.int, mod$statistic, mod$parameter, mod$p.value)		
-} 
-
-ttestlon2060 = matrix(NA, nrow=6, ncol=9)
-	rownames(ttestlon2060) = c('mean', 'u95', 'l95', 't', 'df', 'p'); colnames(ttestlon2060) = regs
-for(i in 1:9){
-	mod = t.test(posshift$lonshift$X2060[posshift$lonshift$region==regs[i]])
-	ttestlon2060[,i] = c(mod$estimate, mod$conf.int, mod$statistic, mod$parameter, mod$p.value)		
-} 
-
-ttestdepth2060 = matrix(NA, nrow=6, ncol=9)
-	rownames(ttestdepth2060) = c('mean', 'u95', 'l95', 't', 'df', 'p'); colnames(ttestdepth2060) = regs
-for(i in 1:9){
-	mod = t.test(posshift$depshift$X2060[posshift$depshift$region==regs[i]])
-	ttestdepth2060[,i] = c(mod$estimate, mod$conf.int, mod$statistic, mod$parameter, mod$p.value)		
-} 
-
-
-# plot position shifts (lat/lon/depth)
-plotstar = function(ttest){
-	x = (1:9)[ttest[6,]<0.05]
-	lims = par('usr')
-	y = rep(lims[4] - 0.1*(lims[4]-lims[3]), length(x))
-	pchs = (c('-', '+')[(ttest[1,]>0)+1])[ttest[6,]<0.05]
-	points(x, y, pch=pchs, col='red', cex=2)
-}
-
-quartz(width=9, height=6)
-# pdf(width=9, height=6, file=paste('Figures/assemblage_shift_boxplots_', Sys.Date(), '.pdf', sep=''))
-par(mfrow=c(2,3), las=2, mgp = c(2,0.8,0), mai=c(0.85,0.4, 0.3, 0.1))
-regnms = c('Aleutians', 'E. Bering', 'Gulf AK', 'Newfoundland', 'Scotian', 'Gulf St. Law.', 'Northeast', 'Gulf Mex.', 'West Coast')
-boxplot(X2020 ~ region, data = posshift$latshift, names=regnms, ylab='Change in lat (°)', main='Latitude to 2020-2060', range=0)
-	abline(h=0, col='grey'); plotstar(ttestlat2020)
-boxplot(X2020 ~ region, data = posshift$lonshift, names=regnms, ylab='Change in lon (°)', main='Longitude to 2020-2060', range=0)
-	abline(h=0, col='grey'); plotstar(ttestlon2020)
-boxplot(X2020 ~ region, data = posshift$depshift, names=regnms, ylab='Change in depth (m)', main='Depth to 2020-2060', range=0)
-	abline(h=0, col='grey'); plotstar(ttestdepth2020)
-boxplot(X2060 ~ region, data = posshift$latshift, names=regnms, ylab='Change in lat (°)', main='Latitude to 2060-2100', range=0)
-	abline(h=0, col='grey'); plotstar(ttestlat2060)
-boxplot(X2060 ~ region, data = posshift$lonshift, names=regnms, ylab='Change in lon (°)', main='Longitude to 2060-2100', range=0)
-	abline(h=0, col='grey'); plotstar(ttestlon2060)
-boxplot(X2060 ~ region, data = posshift$depshift, names=regnms, ylab='Change in depth (m)', main='Depth to 2060-2100', range=0)
-	abline(h=0, col='grey'); plotstar(ttestdepth2060)
-	
-dev.off()
-
-
+# need to write
 
 
 ##########################################################
-## Plot maps of spp projections from each climate model 
+## Plot maps of spp projections from each climate model by decade
 ##########################################################
 ## NOTE: THIS IS OLD CODE. NEEDS TO BE RE-WRITTEN
 ## NOTE: not set up for annual data yet

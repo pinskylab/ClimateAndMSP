@@ -1,7 +1,16 @@
+## Set working directories
+if(Sys.info()["nodename"] == "pinsky-macbookair"){
+	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
+	}
+if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
+	setwd('~/Documents/range_projections/')
+	}
+# could add code for Lauren's working directory here
+
+
 #################################
 ## Read netCDF files from IPCC ##
 #################################
-setwd('/Users/mpinsky/Documents/Rutgers/Range projections/')
 require(ncdf4) # for reading ncdf files
 require(chron) # for converting julian days
 
@@ -38,8 +47,8 @@ season = function(x){ # convert month of year to season
 }
 roundto = function(x,y){r = which.min(abs(x-y)); return(y[r])} # rounds x to nearest number in y
 
-load("Output/trawl_allregionsforprojections_2014-11-03.RData") # loads dat to get base years for each region
-clim = read.csv('Output/climGrid_2014-12-10.csv', row.names=1, stringsAsFactors=FALSE); type='Grid'
+load("data/trawl_allregionsforprojections_2015-02-02.RData") # loads dat to get base years for each region
+clim = read.csv('data/climGrid_2015-02-02.csv', row.names=1, stringsAsFactors=FALSE); type='Grid'
 
 # Fix dat to match CMIP5 format
 	dat = dat[!is.na(dat$lat) & !is.na(dat$lon),] # remove NA lat/lon
@@ -119,94 +128,14 @@ for(j in 1:length(agency)){
 }
 
 
-# Identify depth of bottom grid cell in each model: is more than one cell the "bottom" at each lat/lon point? YES (it turns out)
-#	agency = c('CNRM-CERFACS', 'IPSL', 'IPSL', 'MOHC', 'MPI-M', 'MPI-M', 'MRI', 'NCAR', 'NCC', 'NCC', 'NOAA-GFDL', 'NOAA-GFDL', 'NOAA-GFDL')
-#	model = c('CNRM-CM5', 'IPSL-CM5A-MR', 'IPSL-CM5B-LR', 'HadGem2-CC', 'MPI-ESM-LR', 'MPI-ESM-MR', 'MRI-CGCM3', 'CCSM4', 'NorESM1-M', 'NorESM1-ME', 'GFDL-CM3', 'GFDL-ESM2G', 'GFDL-ESM2M')
-#	regs = sort(unique(clim$region))
-
-	# add depthgrid to clim (nearest depthgrid relevant to each climate model)
-	# mark each gridcell that we'll use (sst or bt)
-#	for(i in 1:length(agency)){ # for each climate model
-#		load(paste('Output/tempshist_', agency[i], '_', model[i], '.RData', sep=''))
-#		botindstokeep = vector('list', length(basetemps)) # array with 1 where we will need a value for the bottom temp calculation
-#
-#		dgnm = paste('depthgrid', i, sep='') # different grid for each model
-#		clim[[dgnm]] = NA # to hold depth rounded to the GCM grid
-#		for(j in 1:length(regs)){ # for each region
-#			inds = clim$region == regs[j]
-#			regind = which(names(basetemps) == regs[j]) # index into array for this region (likely same as j)
-#
-#			#add depth grid specific to each region and each model
-#			deps = sort(unique(as.numeric(dimnames(basetemps[[regind]])$depth))) # find the depths used by each model
-#			clim[[dgnm]][inds] = sapply(clim$depth[inds], FUN=roundto, y=deps) # round and save
-#
-#			# create an empty botindstokeep for this region
-#			botindstokeep[[regind]] = array(0, dim=dim(basetemps[[regind]]))
-#
-#			# mark all surface to keep
-#			#indstokeep[[regind]][,,1,] = 1
-#
-#			# mark bottom gridcells as to keep where we will need it ###### workign here####
-#			dims = dimnames(basetemps[[regind]])
-#			for(k in 1:nrow(clim[inds,])){ # cycle through each row of clim for this region
-#				lonind = which(as.numeric(dims$lon) == clim$longrid[inds][k]) # indices into basetemp for this lon/lat/depth (all seasons)
-#				latind = which(as.numeric(dims$lat) == clim$latgrid[inds][k]) 
-#				depind = which(as.numeric(dims$depth) == clim[[dgnm]][inds][k])
-#				lookwider = FALSE # flag to look at adjacent cells
-#				if(length(lonind)>0 & length(latind)>0 & length(depind)>0){ # make sure the cell exists in the array
-#
-#					if(!is.na(basetemps[[regind]][lonind, latind, depind, 1])){ # test if this gridcell has data in the climate model
-#						botindstokeep[[regind]][lonind, latind, depind, ] = 1 # if so, mark it as to keep for all seasons (assumes all seasons have data)
-#					} else { # look elsewhere in the water column at same lat/lon for an existing value
-#						if(any(!is.na(basetemps[[regind]][lonind, latind, , 1]))){
-#							jj = which(!is.na(basetemps[[regind]][lonind, latind, , 1])) # find depths that have a temperature value
-#							kk = which.min(abs(as.numeric(dims$depth)[jj] - clim[[dgnm]][inds][k]))
-#							botindstokeep[[regind]][lonind, latind, jj[kk], ] = 1 #mark value closest to desired depth as "keep"
-#						} else {
-#							lookwider= TRUE # if no value exists in the water column here, look at a wider set of cells
-#						}
-#					}
-#				}
-#				if(lookwider | length(lonind)==0 | length(latind)==0 | length(depind)==0){ # need to look at 3x3 grid of lat/lons for climate values
-#					loninds = which(abs(as.numeric(dims$lon) - clim$longrid[inds][k])<=1) # indices into basetemp within 1 degree of this lon
-#					latinds = which(abs(as.numeric(dims$lat) - clim$latgrid[inds][k])<=1) # indices into basetemp within 1 degree of this lat
-#					if(any(!is.na(basetemps[[regind]][loninds, latinds, depind, 1]))){ # look in adjacent cells at same depth for climate values
-#						botindstokeep[[regind]][loninds, latinds, depind, ] = 1 #mark values as "keep"
-#					} else {
-#						if(any(!is.na(basetemps[[regind]][loninds, latinds, , 1]))){ # look in adjacent cells at any depth
-#							for(jj in loninds){ # cycle through all nine cells <= 1 step away
-#								for(kk in latinds){
-#									iii = which(!is.na(as.numeric(basetemps[[regind]][jj, kk, , 1]))) # find depths that have a temperature value
-#									jjj = which.min(abs(as.numeric(dims$depth)[iii] - clim[[dgnm]][inds][k])) # find depth closest to desired depth
-#									botindstokeep[[regind]][jj, kk, iii[jjj], ] = 1 #mark value closest to desired depth as "keep" in this cell		
-#								}
-#							}
-#						}	else {
-#							print(paste(model[i], regs[j], 'k=', k, 'lat=', clim$lat[inds][k], 'lon=', clim$lon[inds][k], ': missing all <=1 deg'))
-#						}									
-#					}
-#				}
-#			}
-#		}	
-#	}
-#
-#
-#	# does every marked lat/lon have only depth marked?
-#	sums = vector('list', length(botindstokeep))
-#	for(i in 1:length(sums)){
-#		sums[[i]] = apply(botindstokeep[[i]][,,,1], MARGIN=c(1,2), FUN=sum)
-#	}
-#	sums # NO: multiple depths marked in each lat/lon cell. so I can't simply trim to the single depth that corresponds to true depth
-
-
-# Read in and write out each model's 2020-2100 period RCP8.5 (by year and season)
+# Read in and write out each model's 2006-2100 period RCP8.5 (by year and season)
 agency = c('CNRM-CERFACS', 'IPSL', 'IPSL', 'MOHC', 'MPI-M', 'MPI-M', 'MRI', 'NCAR', 'NCC', 'NCC', 'NOAA-GFDL', 'NOAA-GFDL', 'NOAA-GFDL')
 model = c('CNRM-CM5', 'IPSL-CM5A-MR', 'IPSL-CM5B-LR', 'HadGem2-CC', 'MPI-ESM-LR', 'MPI-ESM-MR', 'MRI-CGCM3', 'CCSM4', 'NorESM1-M', 'NorESM1-ME', 'GFDL-CM3', 'GFDL-ESM2G', 'GFDL-ESM2M')
 
-for(j in 1:length(agency)){ # very slow because of apply() down below. takes 36 hours on Amphiprion.
-	print(j)
+for(j in 1:length(agency)){ # very slow because of apply() down below.
+	print(paste(j, agency[j], model[j]))
 	file = paste('Froelicher_data/', agency[j], '/', model[j], '/rcp85/thetao_all_regrid_malin.nc', sep='')
-	print(paste(agency[j], model[j]))
+	print(paste(agency[j], model[j], Sys.time()))
 	n = nc_open(file) # Open the netCDF file
 	lats = ncvar_get(n, 'LAT')
 	lons = ncvar_get(n, 'LON')
@@ -219,8 +148,8 @@ for(j in 1:length(agency)){ # very slow because of apply() down below. takes 36 
 	temps2100 = vector('list', length(regs))
 		names(temps2100) = regs
 
-	# times to extract for each model: Jan 2020 to Dec 2100 = 960 months. measured in months since the model's start month/year
-	keeptimes = seq(from=(2020-startyear)*12+1-startmonth+1, length.out=960) # time, measured in months since model's start month/year
+	# times to extract for each model: Jan 2006 to Dec 2100 = 1140 months. measured in months since the model's start month/year
+	keeptimes = seq(from=(2006-startyear)*12+1-startmonth+1, length.out=1140) # time, measured in months since model's start month/year
 	xtimes = intersect(times, keeptimes) # the intersecting times
 	if(keeptimes[1] != xtimes[1]) stop(paste('j=',j, 'did not start in January'))
 
@@ -236,7 +165,8 @@ for(j in 1:length(agency)){ # very slow because of apply() down below. takes 36 
 
 		# reshape so that month, season and year are in separate dimensions
 		dim(temp)
-		temp2 = array(temp, dim=c(dim(temp)[1:3], 3, 4, floor(length(xtimes)/12))) # lon, lat, depth, month, season, year
+		temp2 = array(temp, dim=c(dim(temp)[1:3], 3, 4, ceiling(length(xtimes)/12))) # lon, lat, depth, month, season, year
+		if(length(temp2) > length(temp)) temp2[(length(temp)+1):length(temp2)] <- NA # if needed, fill in extra values in temp2 with NAs (R otherwise recycles the values in temp)
 		dim(temp2)
 
 		# Average across months within each lat/lon/depth/season/year
@@ -245,11 +175,11 @@ for(j in 1:length(agency)){ # very slow because of apply() down below. takes 36 
 		print(dim(temp3))
 
 		temps2100[[i]] = temp3
-		dimnames(temps2100[[i]]) = list(lon=theselons, lat=theselats, depth=thesedepths, yr = 2020:(2019+floor(length(xtimes)/12)), season=1:4)
+		dimnames(temps2100[[i]]) = list(lon=theselons, lat=theselats, depth=thesedepths, season=1:4, yr = 2006:(2005+ceiling(length(xtimes)/12)))
 	}
 
 	# Write out
-	outfile = paste('Output/tempsRCP85_2020-2100_', agency[j], '_', model[j], '.RData', sep='')
+	outfile = paste('data/tempsRCP85_2006-2100_', agency[j], '_', model[j], '.RData', sep='')
 	save(temps2100, file=outfile)
 
 	# close
@@ -311,7 +241,7 @@ for(j in 1:length(agency)){
 	nc_close(n)
 }
 
-# next: read in rcp45 runs for 2020-2100
+# next: could read in rcp45 runs for 2006-2100
 
 
 
@@ -319,19 +249,18 @@ for(j in 1:length(agency)){
 #####################################
 ## Calculate climate change deltas ##
 #####################################
-setwd('/Users/mpinsky/Documents/Rutgers/Range projections/')
 agency = c('CNRM-CERFACS', 'IPSL', 'IPSL', 'MOHC', 'MPI-M', 'MPI-M', 'MRI', 'NCAR', 'NCC', 'NCC', 'NOAA-GFDL', 'NOAA-GFDL', 'NOAA-GFDL')
 model = c('CNRM-CM5', 'IPSL-CM5A-MR', 'IPSL-CM5B-LR', 'HadGem2-CC', 'MPI-ESM-LR', 'MPI-ESM-MR', 'MRI-CGCM3', 'CCSM4', 'NorESM1-M', 'NorESM1-ME', 'GFDL-CM3', 'GFDL-ESM2G', 'GFDL-ESM2M')
 
-basedates = read.csv('Output/basedates_2014-11-22.csv')
+basedates = read.csv('data/basedates_2014-11-22.csv')
 require(chron) # for converting julian days
 nyrs = function(x) as.numeric(as.character(years(x))) # return year from a chron object
 
-# Read in data (historical, rcp85 2020-2100, and control)
+# Read in data (historical, rcp85 2006-2100, and control)
 histl = vector('list', length(agency)) # "l" at end so that it matches tempscontroll and temps2100l
 	for(i in 1:length(agency)){
 		print(i)
-		infile = paste('Output/tempshist_', agency[i], '_', model[i], '.RData', sep='')
+		infile = paste('data/tempshist_', agency[i], '_', model[i], '.RData', sep='')
 		load(infile)
 		histl[[i]] = basetemps
 	}
@@ -340,7 +269,7 @@ histl = vector('list', length(agency)) # "l" at end so that it matches tempscont
 tempscontroll = vector('list', length(agency)) # "l" at end so that it doesn't get overwritten by load()
 	for(i in 1:length(agency)){
 		print(i)
-		infile = paste('Output/tempscontrol_', agency[i], '_', model[i], '.RData', sep='')
+		infile = paste('data/tempscontrol_', agency[i], '_', model[i], '.RData', sep='')
 		load(infile)
 		tempscontroll[[i]] = tempscontrol
 	}
@@ -349,9 +278,11 @@ tempscontroll = vector('list', length(agency)) # "l" at end so that it doesn't g
 temps2100l = vector('list', length(agency)) # "l" at end so that it doesn't get overwritten by load()
 	for(i in 1:length(agency)){
 		print(i)
-		infile = paste('Output/tempsRCP85_2020-2100_', agency[i], '_', model[i], '.RData', sep='')
+		infile = paste('data/tempsRCP85_2006-2100_', agency[i], '_', model[i], '.RData', sep='')
 		load(infile)
-		temps2100 = lapply(temps2100, FUN=aperm, perm=c(1,2,3,5,4)) # transpose so that year is last dimension
+		dim(temps2100) # check dimensions
+		dimnames(temps2100)
+#		temps2100 = lapply(temps2100, FUN=aperm, perm=c(1,2,3,5,4)) # transpose so that year is last dimension. may not be needed
 		temps2100l[[i]] = temps2100
 	}
 	names(temps2100l) = paste(agency, model, sep='_')
@@ -362,6 +293,7 @@ regs = names(temps2100l[[1]])
 	# RCP8.5 deltas for each season in each year in each region in each model
 	delta.raw2100 = vector('list', length(agency)) # each item is a model
 	for(i in 1:length(agency)){ # for each model
+		print(i)
 		delta.raw2100[[i]] = vector('list', length(histl[[i]])) # each item is a region (in a model)
 		for(j in 1:length(histl[[i]])){ # for each region
 			a = histl[[i]][[j]] # dims are lon, lat, depth, season
@@ -376,25 +308,25 @@ regs = names(temps2100l[[1]])
 	rm(a) # remove our copy of histl
 
 	# write out
-	save(delta.raw2100, file=paste('Output/delta.raw2100_', Sys.Date(), '.Rdata', sep=''))
+	save(delta.raw2100, file='data/delta.raw2100.Rdata')
 
 
 		# Plot raw deltas for each model in each region (averaged across all depths and lon/lats)
 		require(RColorBrewer)
 		cols = c('#000000', brewer.pal(12, 'Set3')) 
 
-		quartz(width=11, height=8.5)
-		# pdf(width=11, height=8.5, file=paste('Figures/delta.raw_', Sys.Date(), '.pdf', sep=''))
+		# quartz(width=11, height=8.5)
+		pdf(width=11, height=8.5, file=paste('figures/delta.raw.pdf', sep=''))
 		par(mfrow=c(4,3), mai=c(0.5, 0.5, 0.3, 0.1), mgp = c(2.3,0.8,0))
 		ylims = c(-1,7.5)
-		xlims=c(2020,2100)
+		xlims=c(2006,2100)
 		for(i in 1:length(delta.raw2100[[1]])){ # for each region
 			print(regs[i])
 			plot(1,1, col='white', xlim=xlims, ylim=ylims, xlab='Year', ylab='Delta (°C)', main=names(delta.raw2100[[1]])[i])
 			for(j in 1:length(delta.raw2100)){ # for each model
 				y = apply(delta.raw2100[[j]][[i]], MARGIN=5, FUN=mean, na.rm=TRUE) # mean by year within region across all lon/lat/depth
-				x = (2020:2100)[1:length(y)]
-				lines(x, y, col=cols[j]) # for 2020-2100
+				x = (2006:2100)[1:length(y)]
+				lines(x, y, col=cols[j]) # for 2006-2100
 			}
 		}
 		legend('topleft', col=cols, legend=model, cex=0.8, lty=1, ncol=2, bty='n')
@@ -406,8 +338,8 @@ regs = names(temps2100l[[1]])
 		cols = c('#000000', brewer.pal(12, 'Set3')) 
 		ymat = sapply(tempscontroll, FUN=function(x){ sapply(x, FUN=mean, na.rm=TRUE)}) # take mean by region and model
 
-		quartz(width=6, height=4)
-		# pdf(width=6, height=4, file=paste('Figures/delta.cont_', Sys.Date(), '.pdf', sep=''))
+		#quartz(width=6, height=4)
+		pdf(width=6, height=4, file=paste('figures/delta.cont.pdf', sep=''))
 		par(mai=c(1.3, 0.7, 0.3, 0.1), mgp = c(2.3,0.8,0))
 		plot(0,0, xlim=c(0,13), ylim=c(-0.017, 0.017), col='white', xlab='', ylab='Control Drift (°C/year)', xaxt='n')
 		axis(1, at=1:length(regs), labels=regs, cex.axis=0.5, las=2)
@@ -424,7 +356,7 @@ regs = names(temps2100l[[1]])
 		for(i in 1:length(delta.raw2100[[1]])){ # for each region
 			for(j in 1:length(delta.raw2100)){ # for each model
 				y = apply(delta.raw2100[[j]][[i]], MARGIN=5, FUN=mean, na.rm=TRUE) # mean within region across years # is year in dim 1??
-				x = (2020:2100)[1:length(y)]
+				x = (2006:2100)[1:length(y)]
 				ind = compare$region==names(delta.raw2100[[1]])[i] & paste(as.character(compare$agency), as.character(compare$model), sep='_') == names(delta.raw2100)[j]
 				compare$rawdelt[ind] = coef(lm(y ~ x))[2]
 				compare$controldelt[ind] = mean(tempscontroll[[j]][[i]], na.rm=TRUE)
@@ -434,46 +366,50 @@ regs = names(temps2100l[[1]])
 		compare$ratio = compare$controldelt/compare$rawdelt
 
 	# write out
-	write.csv(compare, file=paste('Tables/compare_delta_control_', Sys.Date(), '.csv', sep=''))
-
+	write.csv(compare, file=paste('Tables/compare_delta_control.csv', sep=''))
+	
 # Calculate total deltas (raw delta - drift*year)
 	require(plyr) # for aaply() function
 	delta2100 = vector('list', length(agency))
+	options(warn=1)
 	for(i in 1:length(agency)){ # for each model
-		print(agency[i])
+		print(paste(i, model[i]))
 		delta2100[[i]] = vector('list', length(histl[[i]]))
 		for(j in 1:length(histl[[i]])){ # for each region
 			print(regs[j])
-			print(as.character(basedates$region[j]))
+			#print(as.character(basedates$region[j])) # should be the same as regs[j]
 			baseyear = mean(c(nyrs(basedates$min[j]), nyrs(basedates$max[j])))
 			a = tempscontroll[[i]][[j]]
 			dim(a) = c(dim(a), 1) # add a year dimension
 			a = a[,,,,rep(1,dim(temps2100l[[i]][[j]])[5])] # expand a to match dimensions of temps2100l	(80 years)
-			a = aaply(a, .margins=c(1,2,3,4), .fun= function(x){return(x*((2020:2099)-baseyear))}) # multiply degC/yr by years to get degC of drift
+			a = aaply(a, .margins=c(1,2,3,4), .fun= function(x){return(x*((2006:2100)-baseyear))}) # multiply degC/yr by years to get degC of drift
 			delta2100[[i]][[j]] = delta.raw2100[[i]][[j]] - a
 		}
 		names(delta2100[[i]]) = names(delta.raw2100[[i]])
 	}
 	names(delta2100) = names(delta.raw2100)
 
+	print(warnings())
+
+
 	# write out
-	save(delta2100, file=paste('Output/delta2100_', Sys.Date(), '.Rdata', sep=''))
+	save(delta2100, file=paste('data/delta2100.Rdata', sep=''))
 
 # Plot deltas for each model in each region
 	require(RColorBrewer)
 	cols = c('#000000', brewer.pal(12, 'Set3')) 
 
-	quartz(width=11, height=8.5)
-	# pdf(width=11, height=8.5, file=paste('Figures/deltas_', Sys.Date(), '.pdf', sep=''))
+	#quartz(width=11, height=8.5)
+	pdf(width=11, height=8.5, file=paste('figures/deltas.pdf', sep=''))
 	par(mfrow=c(4,3), mai=c(0.5, 0.5, 0.3, 0.1), mgp = c(2.3,0.8,0))
 	ylims = c(-1,7.5)
-	xlims=c(2020,2100)
+	xlims=c(2006,2100)
 	for(i in 1:length(delta2100[[1]])){ # for each region
 		plot(1,1, col='white', xlim=xlims, ylim=ylims, xlab='Year', ylab='Delta (°C)', main=names(delta2100[[1]])[i])
 		for(j in 1:length(delta2100)){ # for each model
 			y = apply(delta2100[[j]][[i]], MARGIN=5, FUN=mean, na.rm=TRUE)
 			x = as.numeric(names(y))
-			lines(x, y, col=cols[j]) # for 2020-2100
+			lines(x, y, col=cols[j]) # for 2006-2100
 		}
 	}
 	legend('topleft', col=cols, legend=model, cex=0.8, lty=1, ncol=2, bty='n')
@@ -486,8 +422,7 @@ regs = names(temps2100l[[1]])
 # (for each region of each model) #
 # takes ~ 1 hour                  #
 ###################################
-setwd('/Users/mpinsky/Documents/Rutgers/Range projections/')
-load('Output/delta2100_2014-11-22.RData')
+#load('data/delta2100.RData')
 require(reshape2) # for melt()
 
 delta2100long = vector('list', length(delta2100)) # one for each model
@@ -513,13 +448,14 @@ for(i in 1:length(delta2100)){ # for each climate model
 
 
 # but the same lat/lon/depth can appear in multiple regions. trim those duplicates out!
-for(i in 1:length(delta2100long)){
-	print(nrow(delta2100long[[i]]))
-	rem = duplicated(delta2100long[[i]][,c('lat', 'lon', 'depth', 'year', 'delta')])
-	delta2100long[[i]] = delta2100long[[i]][!rem, c('lat', 'lon', 'depth', 'year', 'delta')]
-	print(nrow(delta2100long[[i]]))
-
-}
+# NO: different regions use different base dates, so not identical
+#for(i in 1:length(delta2100long)){
+#	print(nrow(delta2100long[[i]]))
+#	rem = duplicated(delta2100long[[i]][,c('lat', 'lon', 'depth', 'year', 'delta')])
+#	delta2100long[[i]] = delta2100long[[i]][!rem, c('lat', 'lon', 'depth', 'year', 'delta')]
+#	print(nrow(delta2100long[[i]]))
+#
+#}
 
 # write out
-save(delta2100long, file=paste('Output/delta2100long_', Sys.Date(), '.RData', sep=''))
+save(delta2100long, file=paste('data/delta2100long.RData', sep=''))

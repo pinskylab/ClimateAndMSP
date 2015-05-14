@@ -11,12 +11,14 @@ if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
 	projfolder = '../CEmodels_proj'
 	modfolder = '../CEModels'
+	climgridfolder <- '../data/'
 	numcorestouse <- 2
 	}
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
 	projfolder = 'CEmodels_proj'
 	modfolder = 'CEmodels'
+	climgridfolder <- 'data/'
 	numcorestouse <- 20
 	}
 # could add code for Lauren's working directory here
@@ -40,10 +42,20 @@ files <- list.files(modfolder)
 files <- files[grepl(paste('_', runtype, '_', sep=''), files) & grepl(paste(gsub('/|\\(|\\)', '', projspp), collapse='|'), gsub('/|\\(|\\)', '', files))] # have to strip out parentheses and slashes from file and taxon names so that grep doesn't interpret them
 length(files) # should match length of projspp
 
+## Remove spp from planned projections IF the projection file already exists (OPTIONAL). 
+# If this step is skipped, the existing files will be overwritten.
+donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
+donespp <- gsub('summproj_testseason_', '', gsub('.Rdata', '', donefiles))
+files <- files[!grepl(paste(donespp, collapse='|'), files)] # remove any models that we made earlier
+length(files)
+projspp <- projspp[!grepl(paste(donespp, collapse='|'), projspp)]
+length(projspp)
+
+
 #################################
 # Prep environmental data
 #################################
-load('data/climGrid.proj2_2015-02-10.RData') # projected temperature for each year ("clim")
+load(paste(climgridfolder, 'climGrid.proj2_2015-02-10.RData', sep='')) # projected temperature for each year ("clim")
 
 # drop unneeded columns
 clim <- clim[,!grepl('depthgrid', names(clim))] #  refer to GCM depth grids
@@ -99,11 +111,10 @@ doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){
 
 	# get seasons from this model
 	myseasons <- gsub('s(bottemp):season', '', grep('bottemp', names(mods$mygam1$sp), value=TRUE), fixed=TRUE)
-	if(myseasons == 's(bottemp)') myseasons <- c('wi', 'sp', 'su', 'fa') # catch if this is a non-seasonal model
+	if(myseasons[1] == 's(bottemp)') myseasons <- c('wi', 'sp', 'su', 'fa') # catch if this is a non-seasonal model
 
 	# rows of clim to project to
-#	inds <- clim$regionfact %in% names(avemeanbiomass) # for non-seasonal models
-	inds <- clim$regionfact %in% names(avemeanbiomass) & clim$season %in% myseasons # for models with season
+	inds <- clim$regionfact %in% names(avemeanbiomass) & clim$season %in% myseasons # for models with season or without
 
 	# Dataframe for this species' projections
 	thisproj <- clim[inds,c('regionfact', 'lat', 'lon', 'depth16th', 'year', 'season')] # dataframe to hold projections for this taxon
@@ -120,7 +131,7 @@ doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){
 		preds[preds<0] <- 0
 		
 		pnm = paste('wtcpue.proj_', i, sep='')
-		thisproj[[pnm]] = preds
+		thisproj[[pnm]] = preds # can do this because clim[inds,] and thisproj are in the same order
 
 		# set biomass projections on land to zero
 		thisproj[[pnm]][thisproj$depth16th > 0] <- 0
@@ -136,3 +147,5 @@ doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){
 }
 
 result <- mclapply(X= projspp, FUN=doprojection, files=files, clim=clim, projfolder=projfolder, modfolder=modfolder, runtype=runtype, mc.cores=numcorestouse) # spawn out to multiple cores. errors will be stored in results
+
+print(result)
