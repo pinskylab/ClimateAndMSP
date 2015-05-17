@@ -1,3 +1,14 @@
+## Set working directories
+if(Sys.info()["nodename"] == "pinsky-macbookair"){
+	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
+	}
+if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
+	setwd('~/Documents/range_projections/')
+	}
+# could add code for Lauren's working directory here
+
+
+
 # Loop through species and fit models.
 library(mgcv);library(ROCR)
 

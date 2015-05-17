@@ -1,6 +1,22 @@
-# useful functions from http://www.r-bloggers.com/great-circle-distance-calculations-in-r/
+## Set working directories
+if(Sys.info()["nodename"] == "pinsky-macbookair"){
+	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
+	deltafolder <- '../data/' # not stored in Git
+	}
+if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
+	setwd('~/Documents/range_projections/')
+	deltafolder <- 'data/'
+	}
+# could add code for Lauren's working directory here
+
+######################
+# useful functions 
+######################
+
 deg2rad <- function(deg) return(deg*pi/180)
-# Haversine formula (hf)
+
+# Haversine formula (hf) for distance between 2 points on a sphere
+#from http://www.r-bloggers.com/great-circle-distance-calculations-in-r/
 gcd.hf <- function(long1, lat1, long2, lat2) {
 	long1 = deg2rad(long1); long2 = deg2rad(long2); lat1 = deg2rad(lat1); lat2=deg2rad(lat2)
 	R <- 6371 # Earth mean radius [km]
@@ -14,6 +30,9 @@ gcd.hf <- function(long1, lat1, long2, lat2) {
 # weighted mean for use with summarize(). values in col 1, weights in col 2
 wgtmean = function(x, na.rm=FALSE) wtd.mean(x=x[,1], weights=x[,2], na.rm=na.rm)
 
+# rounds x to nearest number in y
+roundto = function(x,y){r = which.min(abs(x-y)); return(y[r])}
+
 	
 ####################################################
 ## Add deltas to climatology (run this overnight) ##
@@ -21,12 +40,9 @@ wgtmean = function(x, na.rm=FALSE) wtd.mean(x=x[,1], weights=x[,2], na.rm=na.rm)
 require(Hmisc)
 
 # Load data needed to run
-setwd('/Users/mpinsky/Documents/Rutgers/Range projections/')
-load('Output/delta2100long_2014-12-11.RData') # slow (1.3G)
-load('Output/delta2100_2014-11-22.RData') # slow (1.2G)
-clim = read.csv('Output/climGrid_2015-02-02.csv', row.names=1, stringsAsFactors=FALSE); type='Grid'
-
-roundto = function(x,y){r = which.min(abs(x-y)); return(y[r])} # rounds x to nearest number in y
+load(paste(deltafolder, 'delta2100long.RData', sep='')) # loads delta2100long. slow (1.6G) 
+#load('Output/delta2100_2014-11-22.RData') # slow (1.2G) # loads delta2100
+clim = read.csv('data/climGrid_2015-02-02.csv', row.names=1, stringsAsFactors=FALSE); type='Grid' # the gridded climatology
 
 regs = sort(unique(clim$region))
 
@@ -49,13 +65,13 @@ for(i in 1:length(delta2100long)){ # for each climate model
 }
 
 
-# expand clim to include each year 2020-2099
-clim$year = 2020
+# expand clim to include each year in delta2100long
+clim$year = min(delta2100long[[1]]$year)
 clim_old = clim
 nrow(clim)*80
 
-for(i in 2021:2099){
-	cat(i); cat(' ')
+for(i in (min(clim$year)+1):max(delta2100long[[1]]$year)){
+	cat(i); cat(' ') # watch the loop slow down as clim gets big...
 	clim_old$year = i
 	clim = rbind(clim, clim_old)
 		#dim(clim)
@@ -63,9 +79,9 @@ for(i in 2021:2099){
 dim(clim)
 
 clim_old2 = clim # save a copy in case the next step goes awry
-save(clim, file=paste('Output/climGrid.proj_step1_', Sys.Date(), '.RData', sep=''))
+save(clim, file=paste(deltafolder, 'climGrid.proj_step1.RData', sep=''))
 
-# load('Output/climGrid.proj_step1_2015-02-07.RData')
+# load(paste(deltafolder, 'climGrid.proj_step1.RData', sep=''))
 
 # merge in the bottemp deltas from delta2100long (~10 min)
 for(i in 1:length(delta2100long)){ # for each climate model
@@ -94,9 +110,9 @@ for(i in 1:length(delta2100long)){ # for each climate model
 names(clim)
 
 clim_old3 = clim # save a copy in case the next step goes awry
-save(clim, file=paste('Output/climGrid.proj_step2_', Sys.Date(), '.RData', sep=''))
+save(clim, file=paste(deltafolder, 'climGrid.proj_step2.RData', sep=''))
 
-# load('Output/climGrid.proj_step2_2015-02-07.RData')
+# load(paste(deltafolder, 'climGrid.proj_step2.RData', sep=''))
 
 # calculate future bottemp by adding delta to climatology
 # look for NAs in bottemp.delta2100 and fix to nearest available delta (same lat/lon, shallower depth)
@@ -209,9 +225,9 @@ unique(clim$region)
 
 # write out clim with projections
 clim_old4 = clim # save a copy in case the next step goes awry
-save(clim, file=paste('Output/climGrid.proj_step3_', Sys.Date(), '.RData', sep=''))
+save(clim, file=paste(deltafolder, 'climGrid.proj_step3.RData', sep=''))
 
-# load('Output/climGrid.proj_step3_2015-02-04.RData')
+# load(paste(deltafolder, 'climGrid.proj_step3.RData', sep=''))
 
 # merge in the surftemp deltas from delta2100long
 for(i in 1:length(delta2100long)){ # for each climate model
@@ -242,9 +258,9 @@ for(i in 1:length(delta2100long)){ # for each climate model
 names(clim)
 
 clim_old4 = clim # save a copy in case the next step goes awry
-save(clim, file=paste('Output/climGrid.proj_step4_', Sys.Date(), '.RData', sep=''))
+save(clim, file=paste(deltafolder, 'climGrid.proj_step4.RData', sep=''))
 
-# load('Output/climGrid.proj_step4_2015-02-04.RData')
+# load(paste(deltafolder, 'climGrid.proj_step4.RData', sep=''))
 
 
 # calculate future surftemp
@@ -348,6 +364,6 @@ unique(clim$region)
 
 # write out clim dataframe with projections
 	# write.csv(clim, file=paste('Output/clim', type, '.proj2_', Sys.Date(), '.csv', sep=''))
-	save(clim, file=paste('Output/clim', type, '.proj2_', Sys.Date(), '.RData', sep=''))
+	save(clim, file=paste(deltafolder, 'clim', type, '.proj2.RData', sep=''))
 
 

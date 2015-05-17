@@ -46,9 +46,9 @@ length(files) # should match length of projspp
 # If this step is skipped, the existing files will be overwritten.
 donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
 donespp <- gsub('summproj_testseason_', '', gsub('.Rdata', '', donefiles))
-files <- files[!grepl(paste(donespp, collapse='|'), files)] # remove any models that we made earlier
+files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
 length(files)
-projspp <- projspp[!grepl(paste(donespp, collapse='|'), projspp)]
+projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
 length(projspp)
 
 
@@ -90,12 +90,11 @@ options(warn=1) # print warnings as they occur
 
 # VERY slow
 doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){ 
-	print(paste(projspp, Sys.time()))
-
 	mod <- avemeanbiomass <- NULL
+	fileindex <- which(grepl(gsub('/|\\(|\\)', '', projspp), gsub('/|\\(|\\)', '', files)))
+	print(paste(fileindex, projspp, Sys.time()))
 
-	infile <- grep(projspp, files, value=TRUE)
-	load(paste(modfolder, '/', infile, sep='')) # loads mod and avemeanbiomass
+	load(paste(modfolder, '/', files[fileindex], sep='')) # loads mod and avemeanbiomass
 
 	# modify the GAMs to remove the regionfact term?
 	# or set all regions within the ocean of this taxon to a region name in the model? (to 'trick' the model)
@@ -123,7 +122,7 @@ doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){
 
 	# Calculate predictions for 2020-2100 for each model
 	for(i in 1:13){ # this alone takes a long time
-		print(paste('model', i))
+		print(paste(fileindex, 'model', i))
 		nd <- data.frame(regionfact = clim$regionfact[inds], surftemp = clim[[paste('surftemp.proj_', i, sep='')]][inds], bottemp = clim[[paste('bottemp.proj_', i, sep='')]][inds], logrugosity = log(clim$rugosity[inds]+0.01), biomassmean = clim$biomassmean[inds], season = clim$season[inds], row.names=1:sum(inds))
 		preds1 <- predict.gam(mods$mygam1, newdata = nd, type='response')
 		preds2 <- exp(predict(mods$mygam2, newdata = nd, type='response'))
@@ -142,7 +141,8 @@ doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){
 	
 #	print(summary(summproj))
 #	print(dim(summproj))	
-	
+
+	projspp <- gsub('/', '', projspp) # would mess up saving the file
 	save(summproj, file=paste(projfolder, '/summproj_', runtype, '_', projspp, '.Rdata', sep='')) # write out the projections (15MB file)
 }
 
