@@ -5,7 +5,10 @@ if(Sys.info()["nodename"] == "pinsky-macbookair"){
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
 	}
-# could add code for Lauren's working directory here
+if(Sys.info()["user"] == "lauren"){
+	setwd('~/backup/NatCap/proj_ranges/')
+}
+
 
 
 
@@ -113,8 +116,6 @@ for(i in 88:length(allspp)){
 	zeros$sppocean<-mydat$sppocean[1] #may need to add "ocean"
 	zeros$wtcpue<-0
 	zeros$presfit<-F
-#	zeros$wtcpuena<-1e-4 #for consistency, but really zero
-#	zeros$wtcpuenal<-log(zeros$wtcpuena)
 
 	mydatw0<-rbind(mydat,zeros) #combine positive hauls with zero hauls
 
@@ -263,7 +264,8 @@ for(i in 88:length(allspp)){
 	# Fit the training/testing models
 	####################################	
 
-	# We could use select=TRUE so that terms can be smoothed out of the model (a model selection algorithm)
+	# We could use select=TRUE so that terms can be smoothed out of the model (a model selection algorithm),
+	# however, this is unlikely to change the model since p-values are inflated due to spatial autocorrelation. 
 	if(fittrain){
 		try1 <- tryCatch({
 			mygam1tt<-gam(mypresmod, family="binomial",data=spdata[traininds,]) 
@@ -284,7 +286,6 @@ for(i in 88:length(allspp)){
 	#Fit models to All data (no test/training split)
 	####################################################
 
-	# We could use select=TRUE so that terms can be smoothed out of the model (a model selection algorithm)
 	try2 <- tryCatch({
 		mygam1<-gam(mypresmod,family="binomial",data=spdata)
 		mygam2<-gam(myabunmod,data=spdata[spdata$presfit,]) # only fit where spp is present
