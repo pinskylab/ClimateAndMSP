@@ -15,7 +15,7 @@ if(Sys.info()["user"] == "lauren"){
 # Loop through species and fit models.
 library(mgcv);library(ROCR)
 
-runname <- "testseason"
+runname <- "testseasonNewSST"
 
 
 load("data/dat_selectedspp.Rdata")
@@ -49,7 +49,7 @@ modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=
 
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
-for(i in 88:length(allspp)){ 
+for(i in 1:50){#length(allspp)){ 
 	fittrain = TRUE
 	mygam1tt <- mygam2tt <- mygam1 <- mygam2 <- preds <- preds1 <- preds2 <- predstt <- preds1tt <- preds2tt <- NULL
 
@@ -67,30 +67,20 @@ for(i in 88:length(allspp)){
 	##############################################################
 
 	# check each region
-	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
-		ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","rugosity","presfit")])]) # number of presences per region with complete data (not inc. surftemp)
-	} else {
-		ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
-	}
+	ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
 	myregions <- names(ninds)[ninds >= 10] # require at least 10 presences with complete data to keep a region
 	mydat <- mydat[mydat$region %in% myregions,]
 
-
 	# check each season IFF including season in the models
-	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
-		ninds<-table(mydat$season[mydat$presfit & complete.cases(mydat[,c("bottemp","rugosity","presfit")])]) # number of presences per region with complete data (not inc. surftemp)
-	} else {
-		ninds<-table(mydat$season[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
-	}
+	ninds<-table(mydat$season[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
+
 	myseasons <- names(ninds)[ninds >= 50] # require at least this many presences with complete data to keep a season (not sure if this is a reasonable level)
 	mydat <- mydat[mydat$season %in% myseasons,]
 	myregions<-unique(mydat$region) # set this again, in case removing seasons also removed a region
 
-	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){ # re-run this in case removing seasons also removes all presences for a species in a region (happens for chaetodipterus faber_Atl)
-		ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","rugosity","presfit")])]) # number of presences per region with complete data (not inc. surftemp)
-	} else {
-		ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
-	}
+	# re-run this in case removing seasons also removes all presences for a species in a region (happens for chaetodipterus faber_Atl)
+	ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
+
 	myregions <- names(ninds)[ninds >= 10] # require at least 10 presences with complete data to keep a region
 	mydat <- mydat[mydat$region %in% myregions,]
 
@@ -104,7 +94,7 @@ for(i in 88:length(allspp)){
 #	zs<-dat[!(dat$haulid %in% myhauls) & dat$region %in% myregions,] #extract haulids where this species is missing, but only from regions where this species has at least one record.
 
 	# with season
-	zs<-dat[!(dat$haulid %in% myhauls) & dat$region %in% myregions & dat$season %in% myseasons,] #extract haulids where this species is missing, but only from regions where this species has at least one record.
+	zs<-dat[!(dat$haulid %in% myhauls) & dat$region %in% myregions & dat$season %in% myseasons,] #extract haulids where this species is missing, but only from regions & seasons where this species has sufficient records.
 
 	matchpos<-match(unique(zs$haulid),zs$haulid) # Extract one record of each haulid
 	zeros<-zs[matchpos,]
@@ -140,13 +130,7 @@ for(i in 88:length(allspp)){
 	# Trim data to complete cases
 	####################################################
 
-	#What if only a few records exist for catch in one of these regions - worth excuding surftemp from model? Or rather exclude region?
-	#Another option would be to fill in surftemp from HadISST or another SST product
-	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
-		spdata<-spdata[complete.cases(spdata[,c("bottemp","rugosity","presfit")]),] 
-	} else {
-		spdata<-spdata[complete.cases(spdata[,c("surftemp","bottemp","rugosity","presfit")]),] 
-	}
+	spdata<-spdata[complete.cases(spdata[,c("surftemp","bottemp","rugosity","presfit")]),] 
 
 	####################################################
 	#Set up data for training and testing to evaluate performance
@@ -196,9 +180,6 @@ for(i in 88:length(allspp)){
 	# look at training presence indices, since the most constraining (for mygam2tt)
 	# this doesn't test by season... and so wont' catch a season with very few datapoints
 	levs <- apply(spdata[trainindsp,c('bottemp', 'surftemp', 'logrugosity', 'biomassmean')], 2, FUN=function(x) length(unique(x)))
-	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
-		levs <- apply(spdata[trainindsp,c('bottemp', 'logrugosity', 'biomassmean')], 2, FUN=function(x) length(unique(x)))
-	}
 	if(any(levs < 4)){
 		mywarn <- paste("Not enough (>=4) unique levels in training presence set for", i, sp, ". Won't fit training models")
 		allwarnings <- c(allwarnings, mywarn)
@@ -220,16 +201,7 @@ for(i in 88:length(allspp)){
 #			mypresmod<-formula(presfit ~ s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
 #			myabunmod<-formula(logwtcpue ~ s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
 #	}
-#	#Replace with formula missing surftemp if necessary
-#	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
-#		if(length(myregions)==1){
-#			mypresmod<-formula(presfit~s(bottemp,k=4)+s(logrugosity,k=4)+s(biomassmean,k=4))
-#			myabunmod<-formula(logwtcpue~s(bottemp,k=4)+s(logrugosity,k=4)+s(biomassmean,k=4))
-#		} else {
-#			mypresmod<-formula(presfit~s(bottemp,k=4)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-#			myabunmod<-formula(logwtcpue~s(bottemp,k=4)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-#		}
-#	}
+
 
 	# with season
 	#Default models. Leave out region factor if necessary
@@ -243,20 +215,6 @@ for(i in 88:length(allspp)){
 			myabunmod<-formula(logwtcpue ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
 			mypresmodalt<-formula(presfit ~ s(bottemp,k=4) +s(surftemp,k=4) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
 			myabunmodalt<-formula(logwtcpue ~ s(bottemp,k=4) +s(surftemp,k=4) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
-	}
-	#Replace with formula missing surftemp if necessary
-	if(any(c("DFO_NewfoundlandSpring","DFO_NewfoundlandFall","NWFSC_WCAnn") %in% myregions)){
-		if(length(myregions)==1){
-			mypresmod<-formula(presfit~s(bottemp,k=4,by=season) +s(logrugosity,k=4) +s(biomassmean,k=4))
-			myabunmod<-formula(logwtcpue~s(bottemp,k=4,by=season) +s(logrugosity,k=4)+s(biomassmean,k=4))
-			mypresmodalt<-formula(presfit~s(bottemp,k=4) +s(logrugosity,k=4) +s(biomassmean,k=4))
-			myabunmodalt<-formula(logwtcpue~s(bottemp,k=4) +s(logrugosity,k=4)+s(biomassmean,k=4))
-		} else {
-			mypresmod<-formula(presfit~s(bottemp,k=4,by=season) +s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-			myabunmod<-formula(logwtcpue~s(bottemp,k=4,by=season) +s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-			mypresmodalt<-formula(presfit~s(bottemp,k=4) +s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-			myabunmodalt<-formula(logwtcpue~s(bottemp,k=4) +s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-		}
 	}
 
 
@@ -394,7 +352,16 @@ for(i in 88:length(allspp)){
 	mods = list(mygam1=mygam1, mygam2 = mygam2)
 	
 	sp <- gsub('/', '', sp) # would mess up saving the file
-	save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
+	
+	if(Sys.info()["nodename"] == "pinsky-macbookair"){
+		save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
+	}
+	if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
+		save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
+	}
+	if(Sys.info()["user"] == "lauren"){
+		save(mods, avemeanbiomass, myregions, file=paste('output/CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
+	}
 
 	#think about figures to output - thermal response curves? spatial prediction by 1 deg square?
 	#think about other data to save - number of pres/abs by region (?) 
