@@ -34,7 +34,10 @@ runtype <- 'testseason'
 #############################
 load(paste('output/modeldiag_', runtype, '.Rdata', sep='')) # model diagnostics
 
-projspp <- modeldiag$sppocean[modeldiag$auc.tt >= 0.75 & !is.na(modeldiag$auc.tt)] # from Elith et al., but there may be better criteria to use
+#projspp <- modeldiag$sppocean[modeldiag$auc.tt >= 0.75 & !is.na(modeldiag$auc.tt)] # from Elith et al., but there may be better criteria to use
+
+#With additional criteria: ***
+projspp <- modeldiag$sppocean[modeldiag$auc.tt >= 0.75 & !is.na(modeldiag$auc.tt) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))] # from Elith et al., and deviance explained by temp must be > 5% for at least one model
 length(projspp) # number of species to project to
 
 # find the files with these species for our chosen model fit

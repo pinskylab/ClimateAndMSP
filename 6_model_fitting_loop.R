@@ -15,19 +15,22 @@ if(Sys.info()["user"] == "lauren"){
 # Loop through species and fit models.
 library(mgcv);library(ROCR)
 
-runname <- "testseasonNewSST"
+runname <- "testK6noSeas"
 
 
 load("data/dat_selectedspp.Rdata")
 	dat$logwtcpue <- log(dat$wtcpue)
-	dat$regionfact <- as.factor(dat$region)
-
+	dat$survey <- dat$region #keeps NEFSC as two separate surveys in "survey"
+	dat$surveyfact <-as.factor(dat$survey)
+	dat$region[dat$region %in% c("NEFSC_NEUSFall","NEFSC_NEUSSpring")] <- "NEFSC_NEUS"
+	dat$regionfact <- as.factor(dat$region) #NEFSC as one region in "region"
 	# if using season
 	dat$season <- as.factor(c(rep('wi', 3), rep('sp', 3), rep('su', 3), rep('fa', 3))[dat$month])
+	dat$regseas <- as.factor(paste(dat$region,dat$season,sep="_"))
 
 allspp = sort(unique(dat$sppocean))
 n = rep(NA, length(allspp))
-modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=n, auc.tt=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n, stringsAsFactors=FALSE) # tt is for training/testing model
+modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=n, auc.tt=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
 
 
 ## small test to see which species are only marginally present in Newfoundland or WCAnn surveys
@@ -46,6 +49,9 @@ modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=
 ######################
 # Start the big loop #
 ######################
+
+#Open pdf to print figures 
+pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_",runname,".pdf",sep=""),width=6,height=6)
 
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
@@ -194,28 +200,32 @@ for(i in 1:50){#length(allspp)){
 
 	# without season
 	#Default models. Leave out region factor if necessary
-#	if(length(myregions)==1){
-#			mypresmod<-formula(presfit ~ s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4)+s(biomassmean,k=4))
-#			myabunmod<-formula(logwtcpue ~ s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4)+s(biomassmean,k=4))
-#	} else {
-#			mypresmod<-formula(presfit ~ s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-#			myabunmod<-formula(logwtcpue ~ s(bottemp,k=4)+s(surftemp,k=4)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-#	}
+	if(length(myregions)==1){
+			mypresmod<-formula(presfit ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+s(biomassmean,k=4))
+			myabunmod<-formula(logwtcpue ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+s(biomassmean,k=4))
+			mynullpresmod<-formula(presfit ~ s(logrugosity,k=4)+s(biomassmean,k=4)) #Null model w/o temp
+			mynullabunmod<-formula(logwtcpue ~ s(logrugosity,k=4)+s(biomassmean,k=4)) #Null model w/o temp
+	} else {
+			mypresmod<-formula(presfit ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
+			myabunmod<-formula(logwtcpue ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
+			mynullpresmod<-formula(presfit ~ s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1) #Null model w/o temp
+			mynullabunmod<-formula(logwtcpue ~ s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1) #Null model w/o temp
+	}
 
 
 	# with season
 	#Default models. Leave out region factor if necessary
-	if(length(myregions)==1){
-			mypresmod<-formula(presfit ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +s(biomassmean,k=4))
-			myabunmod<-formula(logwtcpue ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +s(biomassmean,k=4))
-			mypresmodalt<-formula(presfit ~ s(bottemp,k=4) +s(surftemp,k=4) +s(logrugosity,k=4) +s(biomassmean,k=4))
-			myabunmodalt<-formula(logwtcpue ~ s(bottemp,k=4) +s(surftemp,k=4) +s(logrugosity,k=4) +s(biomassmean,k=4))
-	} else {
-			mypresmod<-formula(presfit ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
-			myabunmod<-formula(logwtcpue ~ s(bottemp,k=4,by=season) +s(surftemp,k=4,by=season) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
-			mypresmodalt<-formula(presfit ~ s(bottemp,k=4) +s(surftemp,k=4) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
-			myabunmodalt<-formula(logwtcpue ~ s(bottemp,k=4) +s(surftemp,k=4) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
-	}
+	# if(length(myregions)==1){
+			# mypresmod<-formula(presfit ~ s(bottemp,k=6,by=season) +s(surftemp,k=6,by=season) +s(logrugosity,k=4) +s(biomassmean,k=4))
+			# myabunmod<-formula(logwtcpue ~ s(bottemp,k=6,by=season) +s(surftemp,k=6,by=season) +s(logrugosity,k=4) +s(biomassmean,k=4))
+			# mypresmodalt<-formula(presfit ~ s(bottemp,k=6) +s(surftemp,k=6) +s(logrugosity,k=4) +s(biomassmean,k=4))
+			# myabunmodalt<-formula(logwtcpue ~ s(bottemp,k=6) +s(surftemp,k=6) +s(logrugosity,k=4) +s(biomassmean,k=4))
+	# } else {
+			# mypresmod<-formula(presfit ~ s(bottemp,k=6,by=season) +s(surftemp,k=6,by=season) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
+			# myabunmod<-formula(logwtcpue ~ s(bottemp,k=6,by=season) +s(surftemp,k=6,by=season) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
+			# mypresmodalt<-formula(presfit ~ s(bottemp,k=6) +s(surftemp,k=6) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
+			# myabunmodalt<-formula(logwtcpue ~ s(bottemp,k=6) +s(surftemp,k=6) +s(logrugosity,k=4) +regionfact +s(biomassmean,k=4)-1)
+	# }
 
 
 	####################################	
@@ -223,13 +233,12 @@ for(i in 1:50){#length(allspp)){
 	####################################	
 
 	# We could use select=TRUE so that terms can be smoothed out of the model (a model selection algorithm),
-	# however, this is unlikely to change the model since p-values are inflated due to spatial autocorrelation. 
 	if(fittrain){
 		try1 <- tryCatch({
 			mygam1tt<-gam(mypresmod, family="binomial",data=spdata[traininds,]) 
 			mygam2tt<-gam(myabunmod, data=spdata[trainindsp,]) # only fit where species is present
-			mygam1ttalt<-gam(mypresmodalt, family="binomial",data=spdata[traininds,]) # without season
-			mygam2ttalt<-gam(myabunmodalt, data=spdata[trainindsp,])
+			# mygam1ttalt<-gam(mypresmodalt, family="binomial",data=spdata[traininds,]) # without season
+			# mygam2ttalt<-gam(myabunmodalt, data=spdata[trainindsp,])
 		}, error = function(e) { # ignore warnings, since no function to catch them
 			mywarn <- paste('Error in training gam fitting for', i, sp, ':', e)
 			assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv) # these assigns outside the local scope are poor form in R. But not sure how else to do it here...
@@ -247,26 +256,39 @@ for(i in 1:50){#length(allspp)){
 	try2 <- tryCatch({
 		mygam1<-gam(mypresmod,family="binomial",data=spdata)
 		mygam2<-gam(myabunmod,data=spdata[spdata$presfit,]) # only fit where spp is present
-		mygam1alt<-gam(mypresmodalt,family="binomial",data=spdata) # without season
-		mygam2alt<-gam(myabunmodalt,data=spdata[spdata$presfit,])
-		comp <- AIC(mygam1, mygam1alt) + AIC(mygam2, mygam2alt) # should probably use AICc instead
+		mygam1null<-gam(mynullpresmod,family="binomial",data=spdata)
+		mygam2null<-gam(mynullabunmod,data=spdata[spdata$presfit,]) # only fit where spp is present
+	
+		# mygam1alt<-gam(mypresmodalt,family="binomial",data=spdata) # without season
+		# mygam2alt<-gam(myabunmodalt,data=spdata[spdata$presfit,])
+		# comp <- AIC(mygam1, mygam1alt) + AIC(mygam2, mygam2alt) # should probably use AICc instead
 
 		# if AIC is lower for models without season, use those instead
 		# not an ideal test, since using the full fitting data: more likely to overfit
-		if(comp$AIC[2] < comp$AIC[1]){
-			mygam1tt <- mygam1ttalt
-			mygam2tt <- mygam2ttalt
-			mygam1 <- mygam1alt
-			mygam2 <- mygam2alt
-			mywarn <- paste('Chose gams without season for', i, sp)
-			warning(mywarn)
-			assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv)
-		}
+		# if(comp$AIC[2] < comp$AIC[1]){
+			# mygam1tt <- mygam1ttalt
+			# mygam2tt <- mygam2ttalt
+			# mygam1 <- mygam1alt
+			# mygam2 <- mygam2alt
+			# mywarn <- paste('Chose gams without season for', i, sp)
+			# warning(mywarn)
+			# assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv)
+		# }
 	}, error = function(e) {
 		mywarn <- paste('Error in gam fitting for', i, sp, ':', e)
 		assign('allwarnings', c(get('allwarnings', envir=.GlobalEnv), mywarn), envir=.GlobalEnv) # these assigns outside the local scope are poor form in R. But not sure how else to do it here...
 		warning(mywarn)
 	})
+
+
+	####################################################
+	# Plot gam smooths to check for unrealistic out-of-range responses 
+	####################################################
+	
+	#Should write out to PDF
+	plot(mygam1,pages=1,scale=0);mtext(paste(sp,"presence"),outer=T,line=-2)
+	plot(mygam2,pages=1,scale=0);mtext(paste(sp,"abundance"),outer=T,line=-2)
+
 
 	####################################################
 	# Compare predictions to observations to assess model performance
@@ -320,6 +342,10 @@ for(i in 1:50){#length(allspp)){
 	if(length(testindsp)>0 & fittrain) modeldiag$r2.all.tt[i] = cor(predstt, spdata$wtcpue[testinds])^2 # overall biomass correlation. only makes sense to do this if the species is present at least once in the testing dataset
 	modeldiag$dev.pres[i] = summary(mygam1)$dev.expl
 	modeldiag$dev.biomass[i] = summary(mygam2)$dev.expl
+	
+	#Compare to models without temperature to ultimately calculation %explained by temp terms
+	modeldiag$dev.pres.null[i] = summary(mygam1null)$dev.expl
+	modeldiag$dev.biomass.null[i] = summary(mygam2null)$dev.expl
 
 	# Some metrics at a spatially aggregated level (1x1deg square) (by year) may be more informative:
 	test<-cbind(spdata,preds1,preds)
@@ -366,7 +392,7 @@ for(i in 1:50){#length(allspp)){
 	#think about figures to output - thermal response curves? spatial prediction by 1 deg square?
 	#think about other data to save - number of pres/abs by region (?) 
 }
-
+dev.off()
 save(modeldiag,file=paste("output/modeldiag_",runname,".Rdata",sep=""))
 write.csv(modeldiag, file=paste("output/modeldiag_",runname,".csv",sep=""))
 

@@ -1,0 +1,3 @@
+"","x"
+"1","Error in predicting to test data for 35 argis dentata_Atl : Error in predict.gam(mygam2tt, newdata = spdata[testinds, ], type = ""response""): DFO_ScotianShelf not in original fit
+"
