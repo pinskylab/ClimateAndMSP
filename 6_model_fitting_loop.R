@@ -24,10 +24,13 @@ load("data/dat_selectedspp.Rdata")
 	dat$surveyfact <-as.factor(dat$survey)
 	dat$region[dat$region %in% c("NEFSC_NEUSFall","NEFSC_NEUSSpring")] <- "NEFSC_NEUS"
 	dat$regionfact <- as.factor(dat$region) #NEFSC as one region in "region"
+	# if using season
+	dat$season <- as.factor(c(rep('wi', 3), rep('sp', 3), rep('su', 3), rep('fa', 3))[dat$month])
+	dat$regseas <- as.factor(paste(dat$region,dat$season,sep="_"))
 
 allspp = sort(unique(dat$sppocean))
 n = rep(NA, length(allspp))
-modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=n, auc.tt=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
+modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=n, auc.tt=n, tss=n, tss.tt=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
 
 
 ## small test to see which species are only marginally present in Newfoundland or WCAnn surveys
@@ -62,15 +65,18 @@ for(i in 1:5){#length(allspp)){
 	mydat<-dat[dat$sppocean==sp,] 
 	myregions<-unique(mydat$region)
 	myhauls<-unique(mydat$haulid)
+	#myocean<-mydat[1,"ocean"]
+	myseasons<-unique(mydat$season)
 
-	###################################################
-	# Test whether we have enough data in each region #
-	###################################################
+	##############################################################
+	# Test whether we have enough data in each region and season #
+	##############################################################
 
 	# check each region
 	ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
 	myregions <- names(ninds)[ninds >= 10] # require at least 10 presences with complete data to keep a region
 	mydat <- mydat[mydat$region %in% myregions,]
+
 
 	####################################################
 	# Add records for when there was a haul but no fish
@@ -159,7 +165,7 @@ for(i in 1:5){#length(allspp)){
 		warning(mywarn)
 	}
 	
-	# make sure we have at least 6 unique levels for each variable (necessary to fit gam with 6 knots)
+	# make sure we have at least 6 unique levels for each variable (necessary to fit gam with 4 knots)
 	# look at training presence indices, since the most constraining (for mygam2tt)
 	# this doesn't test by season... and so wont' catch a season with very few datapoints
 	levs <- apply(spdata[trainindsp,c('bottemp', 'surftemp', 'logrugosity', 'biomassmean')], 2, FUN=function(x) length(unique(x)))
@@ -272,14 +278,28 @@ for(i in 1:5){#length(allspp)){
 	modeldiag$ntot[i] = dim(spdata)[1]
 	# fill in myregions and myseasons too? would be useful for projections
 
-	# calculate performance (in part using ROCR)
+	# calculate performance using AUC (in part using ROCR)
 	preds1.rocr = prediction(predictions=as.numeric(preds1), labels=spdata$presfit)
 	modeldiag$auc[i] = performance(preds1.rocr, 'auc')@y.values[[1]] # area under the ROC curve
 	if(length(testindsp)>0 & fittrain){ # need presences in the test dataset
 		preds1tt.rocr = prediction(predictions=as.numeric(preds1tt), labels=spdata$presfit[testinds])
 		modeldiag$auc.tt[i] = performance(preds1tt.rocr, 'auc')@y.values[[1]] #
 	}
-	# could add true skill statistic
+
+	# true skill statistic
+	a = performance(preds1.rocr, 'tpr')@y.values[[1]] # true positive
+	b = performance(preds1.rocr, 'fnr')@y.values[[1]] # false negative
+	c = performance(preds1.rocr, 'fpr')@y.values[[1]] # false pos
+	d = performance(preds1.rocr, 'tnr')@y.values[[1]] # true neg
+	modeldiag$tss[i] = 	max((a*d - b*c)/((a+c)*(b+d)), na.rm=TRUE)
+	if(length(testindsp)>0 & fittrain){ # need presences in the test dataset
+		preds1tt.rocr = prediction(predictions=as.numeric(preds1tt), labels=spdata$presfit[testinds])
+		a = performance(preds1tt.rocr, 'tpr')@y.values[[1]] # true positive
+		b = performance(preds1tt.rocr, 'fnr')@y.values[[1]] # false negative
+		c = performance(preds1tt.rocr, 'fpr')@y.values[[1]] # false pos
+		d = performance(preds1tt.rocr, 'tnr')@y.values[[1]] # true neg
+		modeldiag$tss.tt[i] = max((a*d - b*c)/((a+c)*(b+d)), na.rm=TRUE)
+	}
 
 	modeldiag$r2.biomass[i] = cor(log(preds2[spdata$presfit]), spdata$logwtcpue[spdata$presfit])^2 # correlation of log(biomass) where present
 	if(length(testindsp)>0 & fittrain) modeldiag$r2.biomass.tt[i] = cor(preds2tt[which(testinds %in% testindsp)], spdata$logwtcpue[testindsp])^2 # only if presences exist in the test dataset
@@ -288,7 +308,7 @@ for(i in 1:5){#length(allspp)){
 	modeldiag$dev.pres[i] = summary(mygam1)$dev.expl
 	modeldiag$dev.biomass[i] = summary(mygam2)$dev.expl
 	
-	#Compare to models without temperature to ultimately calculate %explained by temp terms
+	#Compare to models without temperature to ultimately calculation %explained by temp terms
 	modeldiag$dev.pres.null[i] = summary(mygam1null)$dev.expl
 	modeldiag$dev.biomass.null[i] = summary(mygam2null)$dev.expl
 
@@ -319,7 +339,7 @@ for(i in 1:5){#length(allspp)){
 
 	mods = list(mygam1=mygam1, mygam2 = mygam2)
 	
-	sp <- gsub('/', '', sp) # remove / from species names, since this would mess up saving the file
+	sp <- gsub('/', '', sp) # would mess up saving the file
 	
 	if(Sys.info()["nodename"] == "pinsky-macbookair"){
 		save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
