@@ -55,7 +55,9 @@ pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_",runname,".pdf",sep=""),width=6,
 
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
-for(i in 1:5){#length(allspp)){ 
+print(paste(length(allspp), 'models to fit'))
+
+for(i in 1:length(allspp)){ 
 	fittrain = TRUE
 	mygam1tt <- mygam2tt <- mygam1 <- mygam2 <- preds <- preds1 <- preds2 <- predstt <- preds1tt <- preds2tt <- NULL
 
@@ -65,7 +67,6 @@ for(i in 1:5){#length(allspp)){
 	mydat<-dat[dat$sppocean==sp,] 
 	myregions<-unique(mydat$region)
 	myhauls<-unique(mydat$haulid)
-	#myocean<-mydat[1,"ocean"]
 	myseasons<-unique(mydat$season)
 
 	##############################################################
@@ -342,13 +343,13 @@ for(i in 1:5){#length(allspp)){
 	sp <- gsub('/', '', sp) # would mess up saving the file
 	
 	if(Sys.info()["nodename"] == "pinsky-macbookair"){
-		save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
+		save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '.RData', sep='')) # ~4mb file
 	}
 	if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-		save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
+		save(mods, avemeanbiomass, myregions, file=paste('CEmodels/CEmods_',runname, '_', sp, '.RData', sep=''))
 	}
 	if(Sys.info()["user"] == "lauren"){
-		save(mods, avemeanbiomass, myregions, file=paste('output/CEmodels/CEmods_',runname, '_', sp, '_', Sys.Date(), '.RData', sep='')) # ~2mb file
+		save(mods, avemeanbiomass, myregions, file=paste('output/CEmodels/CEmods_',runname, '_', sp, '.RData', sep=''))
 	}
 
 	#think about figures to output - thermal response curves? spatial prediction by 1 deg square?

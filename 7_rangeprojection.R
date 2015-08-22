@@ -19,7 +19,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	projfolder = 'CEmodels_proj'
 	modfolder = 'CEmodels'
 	climgridfolder <- 'data/'
-	numcorestouse <- 20
+	numcorestouse <- 2
 	}
 # could add code for Lauren's working directory here
 
@@ -27,7 +27,8 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 # Choose the model fit to use
 ##############################
 #runtype <- 'test'
-runtype <- 'testseason'
+#runtype <- 'testseason'
+runtype <- 'testK6noSeas'
 
 #############################
 # Choose species to project #
@@ -48,10 +49,12 @@ length(files) # should match length of projspp
 ## Remove spp from planned projections IF the projection file already exists (OPTIONAL). 
 # If this step is skipped, the existing files will be overwritten.
 donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
-donespp <- gsub('summproj_testseason_', '', gsub('.Rdata', '', donefiles))
+donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles))
 files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
 length(files)
-projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
+if(length(donespp)>0){
+	projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
+}
 length(projspp)
 
 
@@ -111,9 +114,8 @@ doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){
 	# smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/resources/faq_e02.asp)
 	smear <- mean(exp(mods[['mygam2']]$residuals))
 
-	# get seasons from this model
-	myseasons <- gsub('s(bottemp):season', '', grep('bottemp', names(mods$mygam1$sp), value=TRUE), fixed=TRUE)
-	if(myseasons[1] == 's(bottemp)') myseasons <- c('wi', 'sp', 'su', 'fa') # catch if this is a non-seasonal model
+	# get seasons from this model (all seasons since non-seasonal model)
+	myseasons <- c('wi', 'sp', 'su', 'fa')
 
 	# rows of clim to project to
 	inds <- clim$regionfact %in% names(avemeanbiomass) & clim$season %in% myseasons # for models with season or without
