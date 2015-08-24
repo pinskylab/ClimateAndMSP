@@ -50,18 +50,18 @@ length(files) # should match length of projspp
 # If this step is skipped, the existing files will be overwritten.
 donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
 donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles))
-files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
-length(files)
 if(length(donespp)>0){
+	files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
 	projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
 }
+length(files)
 length(projspp)
 
 
 #################################
 # Prep environmental data
 #################################
-load(paste(climgridfolder, 'climGrid.proj2_2015-02-10.RData', sep='')) # projected temperature for each year ("clim")
+load(paste(climgridfolder, 'climGrid.proj2.RData', sep='')) # projected temperature for each year ("clim")
 
 # drop unneeded columns
 clim <- clim[,!grepl('depthgrid', names(clim))] #  refer to GCM depth grids
@@ -69,6 +69,10 @@ clim <- clim[,!grepl('bottemp.clim|surftemp.clim|delta|latgrid|longrid', names(c
 
 # fix season colum
 clim$season <- as.factor(c('wi', 'sp', 'su', 'fa')[clim$season]) # convert to same format we used for model fitting
+
+# change region column to combine NEUSSpring and NEUSFall
+clim$region[clim$region == 'NEFSC_NEUSSpring'] = 'NEFSC_NEUS'
+clim$region[clim$region == 'NEFSC_NEUSFall'] = 'NEFSC_NEUS'
 
 # add regionfact
 clim$region<- as.factor(clim$region)
@@ -95,10 +99,10 @@ dim(clim) # 11,050,240 rows
 options(warn=1) # print warnings as they occur
 
 # VERY slow
-doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){ 
+doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtype){ 
 	mod <- avemeanbiomass <- NULL
-	fileindex <- which(grepl(gsub('/|\\(|\\)', '', projspp), gsub('/|\\(|\\)', '', files)))
-	print(paste(fileindex, projspp, Sys.time()))
+	fileindex <- which(grepl(gsub('/|\\(|\\)', '', thisprojspp), gsub('/|\\(|\\)', '', files)))
+	print(paste(fileindex, thisprojspp, Sys.time()))
 
 	load(paste(modfolder, '/', files[fileindex], sep='')) # loads mod and avemeanbiomass
 
@@ -147,8 +151,8 @@ doprojection <- function(projspp, files, clim, projfolder, modfolder, runtype){
 #	print(summary(summproj))
 #	print(dim(summproj))	
 
-	projspp <- gsub('/', '', projspp) # would mess up saving the file
-	save(summproj, file=paste(projfolder, '/summproj_', runtype, '_', projspp, '.Rdata', sep='')) # write out the projections (15MB file)
+	thisprojspp <- gsub('/', '', thisprojspp) # would mess up saving the file
+	save(summproj, file=paste(projfolder, '/summproj_', runtype, '_', thisprojspp, '.Rdata', sep='')) # write out the projections (15MB file)
 }
 
 result <- mclapply(X= projspp, FUN=doprojection, files=files, clim=clim, projfolder=projfolder, modfolder=modfolder, runtype=runtype, mc.cores=numcorestouse) # spawn out to multiple cores. errors will be stored in results
