@@ -21,7 +21,8 @@ require(mgcv)
 require(Hmisc)
 
 ## choose which run to use
-runtype <- 'testseason'
+#runtype <- 'testseason'
+runtype <- 'testK6noSeas'
 
 # list all projections from this run
 files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, '_', sep=''))
@@ -105,8 +106,10 @@ wmean <- function(x){
 	else return(weighted.mean(x[i,1], x[i,2])) # weighted mean function for summarize()
 }
 
+#runtype <- 'testseason'
+runtype <- 'testK6noSeas'
+
 ## load the data
-runtype <- 'testseason'
 load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomasssum, meanlat, meanlon: projected biomass by year for each taxon in each region
 
 ## plots of change in biomass
@@ -223,7 +226,8 @@ wmean <- function(x){ # values in col 1, weights in col 2
 
 
 ## choose which run and time periods to use
-runtype <- 'test'
+#runtype <- 'test'
+runtype <- 'testK6noSeas'
 timeperiods <- data.frame(year = 2006:2100, period = c(rep('2006-2020', 15), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20)))
 periods <- sort(unique(timeperiods$period))
 nt <- length(unique(periods))
@@ -291,8 +295,10 @@ save(biomassavemap, file = paste('data/biomassavemap_', runtype, '.RData', sep='
 require(lattice)
 require(gridExtra)
 
-runtype <- 'test' # which run type to use
-	
+# which run type to use
+#runtype <- 'test' 
+runtype <- 'testK6noSeas'
+ 	
 load(paste('data/biomassavemap_', runtype, '.RData', sep=''))
 	
 sppregseas <- biomassavemap[!duplicated(biomassavemap[,c('sppocean', 'region', 'season')]), c('sppocean', 'region', 'season')] # each spp/region combination to make maps for

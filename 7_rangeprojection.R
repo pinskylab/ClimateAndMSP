@@ -19,7 +19,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	projfolder = 'CEmodels_proj'
 	modfolder = 'CEmodels'
 	climgridfolder <- 'data/'
-	numcorestouse <- 2
+	numcorestouse <- 8
 	}
 # could add code for Lauren's working directory here
 
