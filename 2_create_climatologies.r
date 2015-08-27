@@ -2,7 +2,7 @@
 ## Create climatologies for each region: gridded averages with interpolation ##
 ###############################################################################
 setwd('~/Documents/Rutgers/Range projections/proj_ranges')
-load("data/trawl_allregionsforprojections_2015-02-02.RData") # loads dat
+load("data/trawl_allregionsforprojections_wSST_2015-06-02.RData") # loads dat
 
 # remove NA lat/lon
 	dat = dat[!is.na(dat$lat) & !is.na(dat$lon),]
@@ -48,10 +48,6 @@ load("data/trawl_allregionsforprojections_2015-02-02.RData") # loads dat
 	temp$season[inds] = 3
 	inds = temp$month > 9
 	temp$season[inds] = 4
-
-	# Remove Newfoundland SST data, since there is so little
-	temp$surftemp[temp$region %in% c('DFO_NewfoundlandSpring', 'DFO_NewfoundlandFall')] = NA
-
 	
 # Average by grid cell and by decade within seasons. lat, lon are now grid centers
 	climdec = aggregate(list(bottemp.clim = temp$bottemp, surftemp.clim = temp$surftemp, depth=temp$depth), by=list(lat = temp$latgrid, lon = temp$longrid, decade = temp$decade, region=temp$region, season=temp$season), FUN=mean, na.rm=TRUE)
@@ -66,14 +62,14 @@ load("data/trawl_allregionsforprojections_2015-02-02.RData") # loads dat
 		# plot each region in a separate figure. color axis is relative within each region
 		require(lattice)
 		cols = colorRampPalette(colors = c('blue', 'white', 'red'))
-		pdf(width=30, height=12, file=paste('Figures/climBT_grid_', Sys.Date(), '.pdf', sep=''))
+		pdf(width=30, height=12, file=paste('figures/climBT_grid.pdf', sep=''))
 		levelplot(bottemp.clim ~ lon*lat|region*season, scales = list(x='free', y='free'), data=clim, at = seq(0,1, length.out=40), col.regions=cols, panel=function(...,z, subscripts, at){
 				panel.fill(col='light grey')
 				panel.levelplot(..., z=z, subscripts=subscripts, at=seq(min(z[subscripts], na.rm=TRUE), max(z[subscripts], na.rm=TRUE), length.out=20))})
 
 		dev.off()
 
-		pdf(width=30, height=12, file=paste('Figures/climSST_grid_', Sys.Date(), '.pdf', sep=''))
+		pdf(width=30, height=12, file=paste('figures/climSST_grid.pdf', sep=''))
 		levelplot(surftemp.clim ~ lon*lat|region*season, scales = list(x='free', y='free'), data=clim, at = seq(0,1, length.out=40), col.regions=cols, panel=function(...,z, subscripts, at){
 				panel.fill(col='light grey')
 				panel.levelplot(..., z=z, subscripts=subscripts, at=seq(min(z[subscripts], na.rm=TRUE), max(z[subscripts], na.rm=TRUE), length.out=20))})
@@ -147,7 +143,7 @@ climold = clim # save a copy
 		unique(clim$region[is.na(clim$bottemp.clim.int)]) # EBS, NEUSSpring, GOMex
 		table(clim$region, is.na(clim$bottemp.clim.int))
 
-	inds = which(is.na(clim$surftemp.clim) & !(clim$region %in% c('DFO_NewfoundlandSpring', 'DFO_NewfundlandFall', 'NWFSC_WCAnn'))) # points to fill for SST
+	inds = which(is.na(clim$surftemp.clim)) # points to fill for SST
 	clim$surftemp.clim.int = clim$surftemp.clim # interpolated ST
 	for(i in 1:length(inds)){
 		lt = clim$lat[inds[i]]
@@ -156,8 +152,8 @@ climold = clim # save a copy
 		dist = pmax(1,gcd.hf(ln, lt, clim$lon[nn], clim$lat[nn])) # distances in km (>=1)
 		clim$surftemp.clim.int[inds[i]] = weighted.mean(x=clim$surftemp.clim[nn], w=1/dist, na.rm=TRUE)
 	}	
-		sum(is.na(clim$surftemp.clim.int)) # = 2373: many missing SST values
-		unique(clim$region[is.na(clim$surftemp.clim.int)]) # Newfoundland Fall and Spring and West Coast Annual still missing, plus DFO_SoGulf. That's what we'd expect based on missing SST data. Also EBS, GOA, NEUSSpring, GOMex.
+		sum(is.na(clim$surftemp.clim.int)) # = 247 missing SST values
+		unique(clim$region[is.na(clim$surftemp.clim.int)]) # EBS, NEUSSpring, GOMex.
 		table(clim$region, is.na(clim$surftemp.clim.int))
 
 
@@ -168,14 +164,14 @@ climold = clim # save a copy
 		#BT
 	require(lattice)
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
-	pdf(width=30, height=12, file=paste('Figures/climBT_grid_interp_', Sys.Date(), '.pdf', sep=''))
+	pdf(width=30, height=12, file=paste('figures/climBT_grid_interp.pdf', sep=''))
 	levelplot(bottemp.clim.int ~ lon*lat|region*season, scales = list(x='free', y='free'), data=clim, at = seq(0,1, length.out=40), col.regions = cols, panel=function(...,z, subscripts, at){
 			panel.fill(col='light grey')
 			panel.levelplot(..., z=z, subscripts=subscripts, at=seq(min(z[subscripts], na.rm=TRUE), max(z[subscripts], na.rm=TRUE), length.out=20))})
 	dev.off()
 
 		#SST
-	pdf(width=30, height=12, file=paste('Figures/climSST_grid_interp_', Sys.Date(), '.pdf', sep=''))
+	pdf(width=30, height=12, file=paste('figures/climSST_grid_interp.pdf', sep=''))
 	levelplot(surftemp.clim.int ~ lon*lat|region*season, scales = list(x='free', y='free'), data=clim, at = seq(0,1, length.out=40), col.regions = cols, panel=function(...,z, subscripts, at){
 			panel.fill(col='light grey')
 			panel.levelplot(..., z=z, subscripts=subscripts, at=seq(min(z[subscripts], na.rm=TRUE), max(z[subscripts], na.rm=TRUE), length.out=20))})
@@ -183,7 +179,7 @@ climold = clim # save a copy
 	dev.off()
 
 		#Depth
-	pdf(width=10, height=6, file=paste('Figures/climDepth_grid_interp_', Sys.Date(), '.pdf', sep=''))
+	pdf(width=10, height=6, file=paste('figures/climDepth_grid_interp.pdf', sep=''))
 	levelplot(depth ~ lon*lat|region, scales = list(x='free', y='free'), data=clim, at = seq(0,1, length.out=40), col.regions = terrain.colors, panel=function(...,z, subscripts, at){
 			panel.fill(col='light grey')
 			panel.levelplot(..., z=z, subscripts=subscripts, at=quantile(z[subscripts], probs = seq(0,1, length.out=40), na.rm=TRUE))})
@@ -218,33 +214,33 @@ climold = clim # save a copy
 #	sum(is.na(clim$stratum)) # 0
 
 # write out climatology
-	write.csv(clim, file=paste('data/climGrid_', Sys.Date(), '.csv', sep=''))
+	write.csv(clim, file=paste('data/climGrid.csv', sep=''))
 	
 # write out all grid cell lat/lons for Lauren Rogers
-	clim = read.csv('data/climGrid_2015-02-02.csv')
-	outlatlons2 = clim[!duplicated(clim[,c('lat', 'lon')]),c('lat', 'lon', 'depth')]
-	outlatlons2 = outlatlons2[order(outlatlons2$lat, outlatlons2$lon),]
-	write.csv(outlatlons2, file=paste('data/projectiongrid_latlons_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
-
-	# split each grid cell into 4 sub-cells (from 1/4 to 1/8 degree)
-	a = numeric(nrow(outlatlons2)*4)
-	outlatlons3 = data.frame(lat=a, lon=a, depth=a)
-	for(i in 1:nrow(outlatlons2)){
-		outlatlons3$lat[((i-1)*4+1):(i*4)] = outlatlons2$lat[i] + rep(c(-0.0625, 0.0625),2)
-		outlatlons3$lon[((i-1)*4+1):(i*4)] = outlatlons2$lon[i] + rep(c(-0.0625, 0.0625),c(2,2))
-	}
-	
-	write.csv(outlatlons3, file=paste('data/projectiongrid_latlons1.8th_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
-	
-	# split each 1/8 grid cell into 4 sub-cells (from 1/8 to 1/16 degree)
-	a = numeric(nrow(outlatlons3)*4)
-	outlatlons4 = data.frame(lat=a, lon=a, depth=a)
-	nrow(outlatlons3)
-	for(i in 1:nrow(outlatlons3)){ # takes a few minutes
-		if(i %% 1000 == 0) print(i) # a little progress meter
-		outlatlons4$lat[((i-1)*4+1):(i*4)] = outlatlons3$lat[i] + rep(c(-0.03125, 0.03125),2)
-		outlatlons4$lon[((i-1)*4+1):(i*4)] = outlatlons3$lon[i] + rep(c(-0.03125, 0.03125),c(2,2))
-	}
-	
-	write.csv(outlatlons4, file=paste('data/projectiongrid_latlons1.16th_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+#	clim = read.csv('data/climGrid_2015-02-02.csv')
+#	outlatlons2 = clim[!duplicated(clim[,c('lat', 'lon')]),c('lat', 'lon', 'depth')]
+#	outlatlons2 = outlatlons2[order(outlatlons2$lat, outlatlons2$lon),]
+#	write.csv(outlatlons2, file=paste('data/projectiongrid_latlons_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+#
+#	# split each grid cell into 4 sub-cells (from 1/4 to 1/8 degree)
+#	a = numeric(nrow(outlatlons2)*4)
+#	outlatlons3 = data.frame(lat=a, lon=a, depth=a)
+#	for(i in 1:nrow(outlatlons2)){
+#		outlatlons3$lat[((i-1)*4+1):(i*4)] = outlatlons2$lat[i] + rep(c(-0.0625, 0.0625),2)
+#		outlatlons3$lon[((i-1)*4+1):(i*4)] = outlatlons2$lon[i] + rep(c(-0.0625, 0.0625),c(2,2))
+#	}
+#	
+#	write.csv(outlatlons3, file=paste('data/projectiongrid_latlons1.8th_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+#	
+#	# split each 1/8 grid cell into 4 sub-cells (from 1/8 to 1/16 degree)
+#	a = numeric(nrow(outlatlons3)*4)
+#	outlatlons4 = data.frame(lat=a, lon=a, depth=a)
+#	nrow(outlatlons3)
+#	for(i in 1:nrow(outlatlons3)){ # takes a few minutes
+#		if(i %% 1000 == 0) print(i) # a little progress meter
+#		outlatlons4$lat[((i-1)*4+1):(i*4)] = outlatlons3$lat[i] + rep(c(-0.03125, 0.03125),2)
+#		outlatlons4$lon[((i-1)*4+1):(i*4)] = outlatlons3$lon[i] + rep(c(-0.03125, 0.03125),c(2,2))
+#	}
+#	
+#	write.csv(outlatlons4, file=paste('data/projectiongrid_latlons1.16th_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
 	

@@ -42,7 +42,7 @@ require(Hmisc)
 # Load data needed to run
 load(paste(deltafolder, 'delta2100long.RData', sep='')) # loads delta2100long. slow (1.6G) 
 #load('Output/delta2100_2014-11-22.RData') # slow (1.2G) # loads delta2100
-clim = read.csv('data/climGrid_2015-02-02.csv', row.names=1, stringsAsFactors=FALSE); type='Grid' # the gridded climatology
+clim = read.csv('data/climGrid.csv', row.names=1, stringsAsFactors=FALSE); type='Grid' # the gridded climatology
 
 regs = sort(unique(clim$region))
 
