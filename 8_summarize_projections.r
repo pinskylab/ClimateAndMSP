@@ -317,12 +317,13 @@ for(i in 1:nrow(sppregseas)){
 	inds <- biomassavemap$sppocean == sppregseas$sppocean[i] & biomassavemap$region == sppregseas$region[i]
 	maintitle <- paste(sppregseas$region[i], sppregseas$season[i], sppregseas$sppocean[i])
 
-	rng <- c(0, 1.01*max(biomassavemap$wtcpue.proj[inds], na.rm=TRUE)) # slightly expanded to capture all values
+	if(!all(is.na(biomassavemap$wtcpue.proj[inds]))){
+		rng <- c(0, 1.01*max(biomassavemap$wtcpue.proj[inds], na.rm=TRUE)) # slightly expanded to capture all values
 
-	thisplot <- levelplot(wtcpue.proj ~ lon*lat|period, data=biomassavemap[inds,], at=seq(rng[1], rng[2], length.out=20), colorkey=list(axis.text=list(cex=0.5)), col.regions=cols(100), main=list(label=maintitle, cex=1), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), scales=list(cex=0.5), layout = c(length(periods), 1)) # observed averaged biomass
+		thisplot <- levelplot(wtcpue.proj ~ lon*lat|period, data=biomassavemap[inds,], at=seq(rng[1], rng[2], length.out=20), colorkey=list(axis.text=list(cex=0.5)), col.regions=cols(100), main=list(label=maintitle, cex=1), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), scales=list(cex=0.5), layout = c(length(periods), 1)) # observed averaged biomass
 
-	grid.arrange(thisplot) # plot on one page
-	
+		grid.arrange(thisplot) # plot on one page
+	}	
 }
 
 dev.off()
