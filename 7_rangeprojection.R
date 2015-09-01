@@ -19,7 +19,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	projfolder = 'CEmodels_proj'
 	modfolder = 'CEmodels'
 	climgridfolder <- 'data/'
-	numcorestouse <- 8
+	numcorestouse <- 12
 	}
 # could add code for Lauren's working directory here
 
@@ -71,6 +71,7 @@ clim <- clim[,!grepl('bottemp.clim|surftemp.clim|delta|latgrid|longrid', names(c
 clim$season <- as.factor(c('wi', 'sp', 'su', 'fa')[clim$season]) # convert to same format we used for model fitting
 
 # change region column to combine NEUSSpring and NEUSFall
+# this is only OK to do because NEUSSpring and NEUSFall do not overlap at all (completely different seasons)
 clim$region[clim$region == 'NEFSC_NEUSSpring'] = 'NEFSC_NEUS'
 clim$region[clim$region == 'NEFSC_NEUSFall'] = 'NEFSC_NEUS'
 
