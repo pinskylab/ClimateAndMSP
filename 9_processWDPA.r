@@ -68,12 +68,13 @@ wdpa = readShapePoly('data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp',
 		pgns[[i]] = Polygons(list(Polygon(cbind(x[inds],y[inds]))), i)
 	}
 	SP <- SpatialPolygons(pgns, proj4string=CRS(proj4string(wdpa)))
+	SPdata <- data.frame(gridpolyID = as.numeric(sapply(slot(SP, 'polygons'), slot, 'ID')), lat = clim$lat[inds], lon = clim$lon[inds]) # would be better to put this in with SP is a SpatialPolygonsDataFrame
 		length(SP)
 		#plot(SP[1:10])
 		#plot(SP[1:1000]) # slow for so many
 		#plot(SP) # very slow
 
-# Intersect the grid and the PAs
+# Intersect the grid and the PAs (slow: can skip if done earlier)
 	# see https://stat.ethz.ch/pipermail/r-sig-geo/2012-June/015340.html and https://stat.ethz.ch/pipermail/r-sig-geo/2011-June/012099.html
 	gI <- gIntersects(SP, wdpa, byid=TRUE) # slowish (~1 min)
 		sum(gI); dim(gI)
@@ -90,6 +91,10 @@ wdpa = readShapePoly('data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp',
 	}
 	table(sapply(out, class)) # should only be SpatialPolygons
 	out1 <- do.call("rbind", out) # make a big SpatialPolygons out of the intersections
+	save(out1, file=paste('data/wdpa_by_grid', gridsz, '_intersect.RData', sep='')) # save
+	
+# Read in intersection (if desired)
+load('data/wdpa_by_grid0.25_intersect.RData'); gridsz <- 0.25
 	
 # Calc fraction of each grid covered by a PA
 	# Merge together wdpa pieces in the same grid cell
@@ -149,7 +154,10 @@ wdpa = readShapePoly('data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp',
 	wdpa.by.grid2 <- merge(wdpa.by.grid, wdpatomerge@data)
 		dim(wdpa.by.grid2)
 		head(wdpa.by.grid2)
-		
+
+	# add in grid cell metadata
+	wdpa.by.grid2 <- merge(wdpa.by.grid2, SPdata)
+			
 	# re-order
 	wdpa.by.grid2 <- wdpa.by.grid2[order(wdpa.by.grid2$wdpapolyID, wdpa.by.grid2$gridpolyID),]
 	
