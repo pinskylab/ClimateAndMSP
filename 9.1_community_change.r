@@ -30,7 +30,7 @@ calcrichtrend <- function(x){
 }
 
 # normalize to 0-1
-norm <- function(x){
+norm01 <- function(x){
 	mn <- min(x)
 	mx <- max(x)
 	return((x-mn)/(mx-mn))
@@ -112,6 +112,10 @@ rich <- aggregate(list(rich = presmap$sppocean[i]), by=list(region=presmap$regio
 	# write out
 	save(rich, file='data/rich.RData')
 	
+# load in richness calcs
+load('data/rich.RData') # loads rich data.frame
+
+	
 # calculate trend in richness by grid cell
 richtrend <- Hmisc::summarize(X=rich[,c('period', 'rich')], by=list(region=rich$region, lat=rich$lat, lon=rich$lon, dummy=rich$lon), FUN=calcrichtrend, stat.name='trend') # calculate richness (# taxa) by grid cell in each time period. for an unknown resion, the last column in the by list gets NAs, so padded with a dummy column here
 	richtrend <- richtrend[,-grep('dummy', names(richtrend))]
@@ -119,11 +123,48 @@ richtrend <- Hmisc::summarize(X=rich[,c('period', 'rich')], by=list(region=rich$
 	# examine
 	hist(richtrend$trend) # nicely centered around 0. perhaps a slightly longer tail to the left (negative)
 	
+	
+################
+## Plots
+################
+# plot maps of richness (all of North America)
+	colfun <- colorRamp(rev(brewer.pal(11, 'Spectral')))
+	periods <- sort(unique(rich$period))
+	quartz(width=7, height=5)
+	# pdf(width=7, height=5, file='figures/richness_proj_map.pdf')
+	for(i in 1:length(periods)){
+		par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
+		j = rich$period == periods[i]
+		plot(rich$lon[j], rich$lat[j], col=rgb(colfun(norm01(rich$rich[j])), maxColorValue=255), pch=16, cex=0.3, xlab='Longitude', ylab='Latitude', main=paste('Projected species richness', periods[i]))
+		legend('bottomleft', legend=round(seq(min(rich$rich[j]), max(rich$rich[j]), length.out=10),2), col=rgb(colfun(norm01(seq(min(rich$rich[j]), max(rich$rich[j]), length.out=10))), maxColorValue=255), pch=16, cex=0.8, title='Species', bty='n')
+	}
+	
+	dev.off()
+
+# plot maps of richness (by region)
+	colfun <- colorRamp(rev(brewer.pal(11, 'Spectral')))
+	regs <- sort(unique(rich$region))
+	periods <- sort(unique(rich$period))
+	cexs = c(0.7, 1.2, 0.5, 0.8, 0.5, 1.1, 1, 1.5, 0.5, 0.8, 1) # to adjust for each region
+	quartz(width=14, height=3)
+	# pdf(width=14, height=3, file='figures/richness_proj_map_byregion.pdf')
+	for(k in 1:length(regs)){
+		par(mfrow=c(1,length(periods)), mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
+		for(i in 1:length(periods)){
+			j = rich$period == periods[i] & rich$region == regs[k]
+			plot(rich$lon[j], rich$lat[j], col=rgb(colfun(norm01(rich$rich[j])), maxColorValue=255), pch=16, cex=cexs[k], xlab='Longitude', ylab='Latitude', main=paste(regs[k], periods[i]))
+			legend('bottomleft', legend=round(seq(min(rich$rich[j]), max(rich$rich[j]), length.out=10),2), col=rgb(colfun(norm01(seq(min(rich$rich[j]), max(rich$rich[j]), length.out=10))), maxColorValue=255), pch=16, cex=0.6, title='Species', bty='n')
+		}
+	}	
+	dev.off()
+
+	
+# plot map of richness trend
 	colfun <- colorRamp(brewer.pal(11, 'Spectral'))
 	quartz(width=7, height=5)
 	# pdf(width=7, height=5, file='figures/richness_proj_trend_map.pdf')
 	par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
-	plot(richtrend$lon, richtrend$lat, col=rgb(colfun(norm(richtrend$trend)), maxColorValue=255), pch=16, cex=0.5, xlab='Longitude', ylab='Latitude', main='Change in species richness')
-	legend('bottomleft', legend=round(seq(min(richtrend$trend), max(richtrend$trend), length.out=10),2), col=rgb(colfun(norm(seq(min(richtrend$trend), max(richtrend$trend), length.out=10))), maxColorValue=255), pch=16, cex=0.8, title='Species/year', bty='n')
-	
+	plot(richtrend$lon, richtrend$lat, col=rgb(colfun(norm01(richtrend$trend)), maxColorValue=255), pch=16, cex=0.5, xlab='Longitude', ylab='Latitude', main='Change in species richness')
+	legend('bottomleft', legend=round(seq(min(richtrend$trend), max(richtrend$trend), length.out=10),2), col=rgb(colfun(norm01(seq(min(richtrend$trend), max(richtrend$trend), length.out=10))), maxColorValue=255), pch=16, cex=0.8, title='Species/year', bty='n')
+
 	dev.off()
