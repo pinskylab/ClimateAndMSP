@@ -41,6 +41,21 @@ load(paste('output/modeldiag_', runtype, '.Rdata', sep='')) # model diagnostics
 projspp <- modeldiag$sppocean[modeldiag$auc.tt >= 0.75 & !is.na(modeldiag$auc.tt) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))] # from Elith et al., and deviance explained by temp must be > 5% for at least one model
 length(projspp) # number of species to project to
 
+	# look at species not selected
+	hist(modeldiag$auc.tt)
+	hist(modeldiag$auc)
+	hist(modeldiag$dev.pres - modeldiag$dev.pres.null); abline(v=0.05, col='red')
+	hist(modeldiag$dev.biomass - modeldiag$dev.biomass.null); abline(v=0.05, col='red')
+	notselected <- modeldiag[!(modeldiag$sppocean %in% projspp), c('sppocean', 'auc.tt', 'dev.pres', 'dev.pres.null', 'dev.biomass', 'dev.biomass.null')]
+		sum(notselected$auc.tt < 0.75, na.rm=TRUE)
+		with(notselected, sum((dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
+		with(notselected, sum(auc.tt < 0.75 & (dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
+
+			
+	# those that would be selected using auc instead of auc.tt
+	modeldiag$sppocean[modeldiag$auc.tt < 0.75 & modeldiag$auc >= 0.75 & !is.na(modeldiag$auc.tt) & !is.na(modeldiag$auc) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))]
+
+
 # find the files with these species for our chosen model fit
 files <- list.files(modfolder)
 files <- files[grepl(paste('_', runtype, '_', sep=''), files) & grepl(paste(gsub('/|\\(|\\)', '', projspp), collapse='|'), gsub('/|\\(|\\)', '', files))] # have to strip out parentheses and slashes from file and taxon names so that grep doesn't interpret them
