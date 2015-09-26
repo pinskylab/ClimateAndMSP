@@ -28,7 +28,7 @@ require(reshape2)
 names(clim)[names(clim)=='bottemp.clim.int'] = 'bottemp.proj_0' # "model" 0 is the climatology
 names(clim)[names(clim)=='surftemp.clim.int'] = 'surftemp.proj_0'
 
-clim2 = melt(clim[, !(names(clim) %in% c(paste('depthgrid', 1:13, sep=''), 'bottemp.clim', 'surftemp.clim', 'latgrid', 'longrid'))], id = c('region', 'season', 'lat', 'lon', 'depth', 'year')) # fast (a few sec)! drop bottemp.clim and surftemp.clim.
+clim2 = melt(clim[, !(names(clim) %in% c(paste('depthgrid', 1:13, sep=''), 'bottemp.clim', 'surftemp.clim', 'latgrid', 'longrid'))], id = c('region', 'lat', 'lon', 'depth', 'year')) # fast (a few sec)! drop bottemp.clim and surftemp.clim.
 	rm(clim)
 	newcols = strsplit(as.character(clim2$variable), split='_') # a few minutes
 	# newcols = colsplit(clim2$variable, names = c('variable', 'model'), pattern='_') # 10 min+. takes too long
@@ -70,8 +70,8 @@ save(delta2100long2, file='data/delta2100long2.RData') # slow
 # uses 80GB of RAM on Amphiprion
 # load delta2100long2.RData if needed. don't reload if already in memory, since very slow
 
-delta2100long3 = melt(delta2100long2, id = c('lon', 'lat', 'depth', 'season', 'year', 'region', 'model')) # melted version for manipulation
-	dim(delta2100long3) # 309,792,340 rows
+delta2100long3 = melt(delta2100long2, id = c('lon', 'lat', 'depth', 'year', 'region', 'model')) # melted version for manipulation
+	dim(delta2100long3) # X rows
 
 # identify the surface temperatures
 delta2100long3$surf = FALSE
@@ -90,8 +90,8 @@ delta2100long3$period[delta2100long3$year > 2020 & delta2100long3$year <= 2060] 
 delta2100long3$period[delta2100long3$year > 2060] <- 3
 
 # take mean SST by time period
-deltaSSTperiods = dcast(data=delta2100long3[delta2100long3$surf == TRUE,], region + lat + lon + season + period + model ~ variable, fun.aggregate = mean, na.rm=TRUE) # average SSTdeltas across all years in each period (before/after 2020 and 2060)
-	dim(deltaSSTperiods) # 354,588
+deltaSSTperiods = dcast(data=delta2100long3[delta2100long3$surf == TRUE,], region + lat + lon + period + model ~ variable, fun.aggregate = mean, na.rm=TRUE) # average SSTdeltas across all years in each period (before/after 2020 and 2060)
+	dim(deltaSSTperiods) # X rows
 	head(deltaSSTperiods)
 	sort(unique(deltaSSTperiods$model))
 	sort(unique(deltaSSTperiods$period))
@@ -110,31 +110,27 @@ save(deltaSSTperiods, file='data/deltaSSTperiods.RData') # fast
 load('data/climGrid.proj2long_10deginterp.RData') # loads clim2 (long format)
 load('data/deltaSSTperiods.RData') # average SST delta by time period for each grid cell. using all data from the climate models.
 
-# Plot maps of raw (un-interpolated) deltas in each region/season, across three time periods. Each region on a separate page
+# Plot maps of raw (un-interpolated) deltas in each region, across three time periods. Each region on a separate page
 
-		#SST
+	#SST
 	require(lattice)
 	source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
 	pdf(width=30, height=6, file=paste('figures/deltaSST_nointerp.pdf', sep=''))
 	regs = sort(unique(deltaSSTperiods$region))
-	seasonnames = c('winter', 'spring', 'summer', 'fall')
 	for(i in 1:length(regs)) {
 		print(i)
-		seasons = sort(unique(deltaSSTperiods$season[deltaSSTperiods$region == regs[i]]))
-		for(j in seasons){
-			p <- levelplot(delta ~ lon*lat|model*period, scales = list(x='free', y='free'), data=deltaSSTperiods[deltaSSTperiods$region == regs[i] & deltaSSTperiods$season == j,], col.regions=cols, par.strip.text=list(cex=0.5), strip=function(...,strip.levels) strip.default(..., strip.levels=TRUE), main=paste(regs[i], seasonnames[j]), panel = function(...){
-				panel.fill(col='light grey')
-				panel.levelplot(...)
-			})
-			plot(p, packet.panel=packet.panel.bycolumn) # need to do it this way in order to plot lattice across multiple pages
-		}
+		p <- levelplot(delta ~ lon*lat|model*period, scales = list(x='free', y='free'), data=deltaSSTperiods[deltaSSTperiods$region == regs[i],], col.regions=cols, par.strip.text=list(cex=0.5), strip=function(...,strip.levels) strip.default(..., strip.levels=TRUE), main=regs[i], panel = function(...){
+			panel.fill(col='light grey')
+			panel.levelplot(...)
+		})
+		plot(p, packet.panel=packet.panel.bycolumn) # need to do it this way in order to plot lattice across multiple pages
 	}
 
 	dev.off()
 
 
-# Plot maps of all model projections in a region/season, across three time periods. Each region on a separate page.
+# Plot maps of all model projections in a region, across three time periods. Each region on a separate page.
 	# uses clim2
 	# first summarize projections by time period
 	clim2$period <- NA 
@@ -144,51 +140,43 @@ load('data/deltaSSTperiods.RData') # average SST delta by time period for each g
 
 	clim2$variable[clim2$variable == 'bottemp.proj'] = 'bottemp' # now the projections are distinguished from the climatology by model (>0 vs. 0)
 	clim2$variable[clim2$variable == 'surftemp.proj'] = 'surftemp'	
-	clim2periods = dcast(data=clim2, region + lat + lon + season + period + model ~ variable, fun.aggregate = mean, na.rm=TRUE) # average across all years in each period (before/after 2020 and 2060)
+	clim2periods = dcast(data=clim2, region + lat + lon + period + model ~ variable, fun.aggregate = mean, na.rm=TRUE) # average across all years in each period (before/after 2020 and 2060)
 		head(clim2periods)
 		clim2periods$period[clim2periods$period == 1] = '2006-2020'
 		clim2periods$period[clim2periods$period == 2] = '2021-2060'
 		clim2periods$period[clim2periods$period == 3] = '2061-2100'
 
 
-		#BT
+	#BT
 	require(lattice)
 	source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
 	pdf(width=30, height=6, file=paste('figures/climBTproj_10deginterp.pdf', sep=''))
 	regs = sort(unique(clim2periods$region))
-	seasonnames = c('winter', 'spring', 'summer', 'fall')
 	for(i in 1:length(regs)) {
 		print(i)
-		seasons = sort(unique(clim2periods$season[clim2periods$region == regs[i]]))
-		for(j in seasons){
-			p <- levelplot(bottemp ~ lon*lat|model*period, scales = list(x='free', y='free'), data=clim2periods[clim2periods$region == regs[i] & clim2periods$season == j,], col.regions=cols, par.strip.text=list(cex=0.5), strip=function(...,strip.levels) strip.default(..., strip.levels=TRUE), main=paste(regs[i], seasonnames[j]), panel = function(...){
-				panel.fill(col='light grey')
-				panel.levelplot(...)
-			})
-			plot(p, packet.panel=packet.panel.bycolumn) # need to do it this way in order to plot lattice across multiple pages
-		}
+		p <- levelplot(bottemp ~ lon*lat|model*period, scales = list(x='free', y='free'), data=clim2periods[clim2periods$region == regs[i],], col.regions=cols, par.strip.text=list(cex=0.5), strip=function(...,strip.levels) strip.default(..., strip.levels=TRUE), main=regs[i], panel = function(...){
+			panel.fill(col='light grey')
+			panel.levelplot(...)
+		})
+		plot(p, packet.panel=packet.panel.bycolumn) # need to do it this way in order to plot lattice across multiple pages
 	}
 
 	dev.off()
 
-		#SST
+	#SST
 	require(lattice)
 	source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
 	pdf(width=30, height=6, file=paste('figures/climSSTproj_10deginterp.pdf', sep=''))
 	regs = sort(unique(clim2periods$region))
-	seasonnames = c('winter', 'spring', 'summer', 'fall')
 	for(i in 1:length(regs)) {
 		print(i)
-		seasons = sort(unique(clim2periods$season[clim2periods$region == regs[i]]))
-		for(j in seasons){
-			p <- levelplot(surftemp ~ lon*lat|model*period, scales = list(x='free', y='free'), data=clim2periods[clim2periods$region == regs[i] & clim2periods$season == j,], col.regions=cols, par.strip.text=list(cex=0.5), strip=function(...,strip.levels) strip.default(..., strip.levels=TRUE), main=paste(regs[i], seasonnames[j]), panel = function(...){
-				panel.fill(col='light grey')
-				panel.levelplot(...)
-			})
-			plot(p, packet.panel=packet.panel.bycolumn) # need to do it this way in order to plot lattice across multiple pages
-		}
+		p <- levelplot(surftemp ~ lon*lat|model*period, scales = list(x='free', y='free'), data=clim2periods[clim2periods$region == regs[i],], col.regions=cols, par.strip.text=list(cex=0.5), strip=function(...,strip.levels) strip.default(..., strip.levels=TRUE), main=regs[i], panel = function(...){
+			panel.fill(col='light grey')
+			panel.levelplot(...)
+		})
+		plot(p, packet.panel=packet.panel.bycolumn) # need to do it this way in order to plot lattice across multiple pages
 	}
 
 	dev.off()

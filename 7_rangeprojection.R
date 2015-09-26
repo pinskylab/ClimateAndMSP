@@ -30,6 +30,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 #runtype <- 'testseason'
 runtype <- 'testK6noSeas'
 
+
 #############################
 # Choose species to project #
 #############################
@@ -42,18 +43,18 @@ projspp <- modeldiag$sppocean[modeldiag$auc.tt >= 0.75 & !is.na(modeldiag$auc.tt
 length(projspp) # number of species to project to
 
 	# look at species not selected
-	hist(modeldiag$auc.tt)
-	hist(modeldiag$auc)
-	hist(modeldiag$dev.pres - modeldiag$dev.pres.null); abline(v=0.05, col='red')
-	hist(modeldiag$dev.biomass - modeldiag$dev.biomass.null); abline(v=0.05, col='red')
-	notselected <- modeldiag[!(modeldiag$sppocean %in% projspp), c('sppocean', 'auc.tt', 'dev.pres', 'dev.pres.null', 'dev.biomass', 'dev.biomass.null')]
-		sum(notselected$auc.tt < 0.75, na.rm=TRUE)
-		with(notselected, sum((dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
-		with(notselected, sum(auc.tt < 0.75 & (dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
-
-			
-	# those that would be selected using auc instead of auc.tt
-	modeldiag$sppocean[modeldiag$auc.tt < 0.75 & modeldiag$auc >= 0.75 & !is.na(modeldiag$auc.tt) & !is.na(modeldiag$auc) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))]
+#	hist(modeldiag$auc.tt)
+#	hist(modeldiag$auc)
+#	hist(modeldiag$dev.pres - modeldiag$dev.pres.null); abline(v=0.05, col='red')
+#	hist(modeldiag$dev.biomass - modeldiag$dev.biomass.null); abline(v=0.05, col='red')
+#	notselected <- modeldiag[!(modeldiag$sppocean %in% projspp), c('sppocean', 'auc.tt', 'dev.pres', 'dev.pres.null', 'dev.biomass', 'dev.biomass.null')]
+#		sum(notselected$auc.tt < 0.75, na.rm=TRUE)
+#		with(notselected, sum((dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
+#		with(notselected, sum(auc.tt < 0.75 & (dev.pres - dev.pres.null <= 0.05) & (dev.biomass - dev.biomass.null <= 0.05), na.rm=TRUE))
+#
+#			
+#	# those that would be selected using auc instead of auc.tt
+#	modeldiag$sppocean[modeldiag$auc.tt < 0.75 & modeldiag$auc >= 0.75 & !is.na(modeldiag$auc.tt) & !is.na(modeldiag$auc) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))]
 
 
 # find the files with these species for our chosen model fit
@@ -82,14 +83,6 @@ load(paste(climgridfolder, 'climGrid.proj2.RData', sep='')) # projected temperat
 clim <- clim[,!grepl('depthgrid', names(clim))] #  refer to GCM depth grids
 clim <- clim[,!grepl('bottemp.clim|surftemp.clim|delta|latgrid|longrid', names(clim))] #  the temp climatologies, deltas, and GCM lat/lon grids (1 degree)
 
-# fix season colum
-clim$season <- as.factor(c('wi', 'sp', 'su', 'fa')[clim$season]) # convert to same format we used for model fitting
-
-# change region column to combine NEUSSpring and NEUSFall
-# this is only OK to do because NEUSSpring and NEUSFall do not overlap at all (completely different seasons)
-clim$region[clim$region == 'NEFSC_NEUSSpring'] = 'NEFSC_NEUS'
-clim$region[clim$region == 'NEFSC_NEUSFall'] = 'NEFSC_NEUS'
-
 # add regionfact
 clim$region<- as.factor(clim$region)
 names(clim)[names(clim)=='region'] <- 'regionfact'
@@ -105,7 +98,7 @@ rugos <- read.csv('data/projectiongrid_latlons.1.16th_withRugosity_2015-05-06.cs
 	rugos$lon <- floor(rugos$lon16th/gridsize)*gridsize + gridsize/2
 
 clim <- merge(clim, rugos) # slow
-dim(clim) # 11,050,240 rows
+dim(clim) # X rows
 
 
 ############################################
@@ -134,21 +127,18 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 	# smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/resources/faq_e02.asp)
 	smear <- mean(exp(mods[['mygam2']]$residuals))
 
-	# get seasons from this model (all seasons since non-seasonal model)
-	myseasons <- c('wi', 'sp', 'su', 'fa')
-
 	# rows of clim to project to
-	inds <- clim$regionfact %in% names(avemeanbiomass) & clim$season %in% myseasons # for models with season or without
+	inds <- clim$regionfact %in% names(avemeanbiomass)
 
 	# Dataframe for this species' projections
-	thisproj <- clim[inds,c('regionfact', 'lat', 'lon', 'depth16th', 'year', 'season')] # dataframe to hold projections for this taxon
+	thisproj <- clim[inds,c('regionfact', 'lat', 'lon', 'depth16th', 'year')] # dataframe to hold projections for this taxon
 	for(i in 1:13) thisproj[[paste('wtcpue.proj_', i, sep='')]] <- NA 	# Add projected biomass density columns for each climate model
 
 
 	# Calculate predictions for 2020-2100 for each model
 	for(i in 1:13){ # this alone takes a long time
 		print(paste(fileindex, 'model', i))
-		nd <- data.frame(regionfact = clim$regionfact[inds], surftemp = clim[[paste('surftemp.proj_', i, sep='')]][inds], bottemp = clim[[paste('bottemp.proj_', i, sep='')]][inds], logrugosity = log(clim$rugosity[inds]+0.01), biomassmean = clim$biomassmean[inds], season = clim$season[inds], row.names=1:sum(inds))
+		nd <- data.frame(regionfact = clim$regionfact[inds], surftemp = clim[[paste('surftemp.proj_', i, sep='')]][inds], bottemp = clim[[paste('bottemp.proj_', i, sep='')]][inds], logrugosity = log(clim$rugosity[inds]+0.01), biomassmean = clim$biomassmean[inds], row.names=1:sum(inds))
 		preds1 <- predict.gam(mods$mygam1, newdata = nd, type='response')
 		preds2 <- exp(predict(mods$mygam2, newdata = nd, type='response'))
 		preds <- preds1*preds2*smear
@@ -162,7 +152,7 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 	}
 	
 	# summarize by 1/4 degree grid
-	summproj <- aggregate(thisproj[,grepl('wtcpue.proj', names(thisproj))], by=list(region=thisproj$region, lat=thisproj$lat, lon=thisproj$lon, year=thisproj$year, season=thisproj$season), FUN=mean)
+	summproj <- aggregate(thisproj[,grepl('wtcpue.proj', names(thisproj))], by=list(region=thisproj$region, lat=thisproj$lat, lon=thisproj$lon, year=thisproj$year), FUN=mean)
 	
 #	print(summary(summproj))
 #	print(dim(summproj))	

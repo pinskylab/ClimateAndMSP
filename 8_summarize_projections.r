@@ -15,7 +15,6 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 
 ##########################################################
 ## Calculate mean lat/depth and sum of biomass by year  ##
-## averages over seasons                                ##
 ##########################################################
 require(mgcv)
 require(Hmisc)
@@ -96,7 +95,6 @@ save(biomasssum, meanlat, meanlon, file = paste('data/meanlat,lon,biomass_', run
 
 ###########################################################
 ## Plot time-series of summarized spp biomass and ranges ##
-## averages over seasons                                 ##
 ###########################################################
 require(Hmisc)
 
@@ -239,7 +237,7 @@ files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, '_', 
 # set up dataframes
 # Don't know how many regions for each taxon, so can't pre-allocate the rows (but could guess high... might speed this up)
 # could also calc mean depth, but would need to pull from rugosity file
-biomassavemap <- data.frame(sppocean = character(0), region = character(0), period = character(0), season = numeric(0), lat = numeric(0), lon = numeric(0), wtcpue.proj = numeric(0))
+biomassavemap <- data.frame(sppocean = character(0), region = character(0), period = character(0), lat = numeric(0), lon = numeric(0), wtcpue.proj = numeric(0))
 
 options(warn=1) # print warnings as they occur
 
@@ -255,11 +253,11 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 	summproj <- merge(summproj, timeperiods)
 
 	# set up dataframe for this taxon
-	inds <- !duplicated(summproj[,c('region', 'lat', 'lon', 'season')]) # unique locations/seasons to record
-	mymap <- data.frame(sppocean = rep(mysppocean, sum(inds)*nt), region = rep(summproj$region[inds], nt), period = rep(sort(unique(timeperiods$period)), rep(sum(inds), nt)), season = rep(summproj$season[inds], nt), lat = rep(summproj$lat[inds], nt), lon = rep(summproj$lon[inds], nt), wtcpue.proj = NA)
+	inds <- !duplicated(summproj[,c('region', 'lat', 'lon')]) # unique locations to record
+	mymap <- data.frame(sppocean = rep(mysppocean, sum(inds)*nt), region = rep(summproj$region[inds], nt), period = rep(sort(unique(timeperiods$period)), rep(sum(inds), nt)), lat = rep(summproj$lat[inds], nt), lon = rep(summproj$lon[inds], nt), wtcpue.proj = NA)
 
-	mymap <- mymap[order(mymap$region, mymap$period, mymap$season, mymap$lat, mymap$lon),]
-	summproj <- summproj[order(summproj$region, summproj$year, summproj$season, summproj$lat, summproj$lon),]
+	mymap <- mymap[order(mymap$region, mymap$period, mymap$lat, mymap$lon),]
+	summproj <- summproj[order(summproj$region, summproj$year, summproj$lat, summproj$lon),]
 
 	# Summarize projections across all models within time periods
 	cols <- grep('wtcpue.proj', names(summproj))
@@ -267,10 +265,10 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 		inds <- summproj$period == periods[j]
 		inds2 <- mymap$period == periods[j]
 		temp <- apply(summproj[inds,cols], MARGIN=1, FUN=mean) # average across models
-		temp2 <- aggregate(list(wtcpue.proj = temp), by=list(region = summproj$region[inds], period = summproj$period[inds], season = summproj$season[inds], lat = summproj$lat[inds], lon = summproj$lon[inds]), FUN=mean, na.rm=TRUE)
-		temp2 <- temp2[order(temp2$region, temp2$period, temp2$season, temp2$lat, temp2$lon),]
+		temp2 <- aggregate(list(wtcpue.proj = temp), by=list(region = summproj$region[inds], period = summproj$period[inds], lat = summproj$lat[inds], lon = summproj$lon[inds]), FUN=mean, na.rm=TRUE)
+		temp2 <- temp2[order(temp2$region, temp2$period, temp2$lat, temp2$lon),]
 
-		if(all(temp2$region == mymap$region & temp2$period == mymap$period & temp2$season == mymap$season & temp2$lat == mymap$lat & temp2$lon == mymap$long)){
+		if(all(temp2$region == mymap$region & temp2$period == mymap$period & temp2$lat == mymap$lat & temp2$lon == mymap$long)){
 			mymap$wtcpue.proj[inds2] <- temp2$wtcpue.proj
 		} else {
 			warning(paste('rows do not match on j=', j))		
@@ -301,21 +299,21 @@ runtype <- 'testK6noSeas'
  	
 load(paste('data/biomassavemap_', runtype, '.RData', sep=''))
 	
-sppregseas <- biomassavemap[!duplicated(biomassavemap[,c('sppocean', 'region', 'season')]), c('sppocean', 'region', 'season')] # each spp/region combination to make maps for
-	sppregseas <- sppregseas[order(sppregseas$region, sppregseas$season, sppregseas$sppocean),]
-	nrow(sppregseas)
+sppreg <- biomassavemap[!duplicated(biomassavemap[,c('sppocean', 'region')]), c('sppocean', 'region')] # each spp/region combination to make maps for
+	sppreg <- sppreg[order(sppreg$region, sppreg$sppocean),]
+	nrow(sppreg)
 
-# Make a set of plots on separate pages, one for each spp/region/season combination
+# Make a set of plots on separate pages, one for each spp/region combination
 options(warn=1) # print warnings as they occur
 cols <- colorRampPalette(c('grey80', 'blue', 'purple', 'red1'), interpolate='linear')
 periods <- sort(unique(biomassavemap$period))
 
 pdf(width=10, height=3, file=paste('figures/biomass_proj_maps_', runtype, '.pdf', sep=''))
 
-for(i in 1:nrow(sppregseas)){
-	print(paste(i, 'of', nrow(sppregseas), Sys.time()))
-	inds <- biomassavemap$sppocean == sppregseas$sppocean[i] & biomassavemap$region == sppregseas$region[i]
-	maintitle <- paste(sppregseas$region[i], sppregseas$season[i], sppregseas$sppocean[i])
+for(i in 1:nrow(sppreg)){
+	print(paste(i, 'of', nrow(sppreg), Sys.time()))
+	inds <- biomassavemap$sppocean == sppreg$sppocean[i] & biomassavemap$region == sppreg$region[i]
+	maintitle <- paste(sppreg$region[i], sppreg$sppocean[i])
 
 	if(!all(is.na(biomassavemap$wtcpue.proj[inds]))){
 		rng <- c(0, 1.01*max(biomassavemap$wtcpue.proj[inds], na.rm=TRUE)) # slightly expanded to capture all values
