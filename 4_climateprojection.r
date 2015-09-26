@@ -101,7 +101,7 @@ for(i in 1:length(delta2100long)){ # for each climate model
 
 	# do the merge
 		print(dim(clim))
-	clim = merge(clim, delta2100long[[i]], by.x = c('region', 'latgrid', 'longrid', 'year', 'season', dgnm), by.y=c('region', 'lat', 'lon', 'year', 'season', 'depth'), all.x=TRUE) # this step takes many minutes each iteration
+	clim = merge(clim, delta2100long[[i]], by.x = c('region', 'latgrid', 'longrid', 'year', dgnm), by.y=c('region', 'lat', 'lon', 'year', 'depth'), all.x=TRUE) # this step takes many minutes each iteration
 		print(dim(clim))
 	dnm = paste('bottemp.delta_', i, sep='')
 	names(clim)[names(clim)=='delta'] = dnm
@@ -119,7 +119,7 @@ save(clim, file=paste(deltafolder, 'climGrid.proj_step2.RData', sep=''))
 # occurs because GCM topography is coarse
 # NOTE: This takes many hours (run overnight)
 options(warn=2) # turn warnings to errors
-clim = clim[order(clim$region, clim$lat, clim$lon, clim$depth, clim$year, clim$season),]
+clim = clim[order(clim$region, clim$lat, clim$lon, clim$depth, clim$year),]
 for(i in 1:length(delta2100long)){ # for each climate model
 	print(paste('Model', i))
 
@@ -137,17 +137,14 @@ for(i in 1:length(delta2100long)){ # for each climate model
 			temp$delta = NA
 			for(j in 1:length(missingyears)){ # add in the datapoints for each year if missing a year
 				print(paste('adding', missingyears[j]))
-				for(k in 1:4){ # for each season
-					temp$year = missingyears[j]
-					temp$season = k
-					full = rbind(full,temp)
-				}
+				temp$year = missingyears[j]
+				full = rbind(full,temp)
 			}
 			print(nrow(delta2100long[[i]]))
 			print(nrow(full))
 			print(nrow(full)/80) # should be an even number if equal numbers of lines per year
 		}
-		#full = full[order(full$region, full$lat, full$lon, full$depth, full$year, full$season),] # sort in same order as clim. slow and not needed?
+		#full = full[order(full$region, full$lat, full$lon, full$depth, full$year),] # sort in same order as clim. slow and not needed?
 
 		level1 = 0 # keep track of how often we had to go out to adjacent lat/lon to get a delta value
 
@@ -159,8 +156,8 @@ for(i in 1:length(delta2100long)){ # for each climate model
 			thislon = clim$longrid[missinds[k]]
 			thisdepth = clim[[dgnm]][missinds[k]]
 				#print(paste('k=', k, 'of', length(missinds), thisreg, thislat, thislon, thisdepth))
-			useclim = which(clim$region == thisreg & clim$latgrid == thislat & clim$longrid == thislon & clim[[dgnm]] == thisdepth) # get all rows in clim at this lat/lon/depth (across all years and seasons). These are the rows in clim to fill with delta values.
-			availinds2 = full$region == thisreg & full$lat == thislat & full$lon == thislon & full$season %in% clim$season[useclim]  # trim full (the climate model output) to focal region and lat/lon, and to the seasons we need
+			useclim = which(clim$region == thisreg & clim$latgrid == thislat & clim$longrid == thislon & clim[[dgnm]] == thisdepth) # get all rows in clim at this lat/lon/depth (across all years). These are the rows in clim to fill with delta values.
+			availinds2 = full$region == thisreg & full$lat == thislat & full$lon == thislon  # trim full (the climate model output) to focal region and lat/lon
 				# full[availinds2,]; thisdepth
 			if(!all(is.na(clim[[dnm]][useclim]))) stop('not all deltas are NA') # check that useclim's really are NAs to be filled
 			if(any(!is.na(full$delta[availinds2]))){ # first, try to use the closest depth at the same place (if some values are not NA
@@ -196,14 +193,14 @@ for(i in 1:length(delta2100long)){ # for each climate model
 			if(fill){
 				dists = pmax(1, gcd.hf(thislon, thislat, full$lon[availinds2][usefull], full$lat[availinds2][usefull])) # distances in km, but set 1km as a floor (so no zeros)
 
-#				filler = aggregate(list(delta = full$delta[availinds2][usefull]), by = list(year = full$year[availinds2][usefull], season = full$season[availinds2][usefull]), FUN=weighted.mean, na.rm=TRUE, w=1/dists) # summarize full deltas by year (average across cells available in each year/season), weighted by inverse distance
-				filler = summarize(cbind(full$delta[availinds2][usefull], 1/dists), by = list(year = full$year[availinds2][usefull], season = full$season[availinds2][usefull]), FUN=wgtmean, na.rm=TRUE, stat.name='delta')
-				rownames(filler) = paste(filler$year, filler$season) # make rows of filler easy to reference
-				filler2 = filler[paste(clim$year[useclim], clim$season[useclim]), ] # re-order and expand filler to match years/seasons of clim rows to fill
-				if(all(clim$year[useclim] == filler2$year & clim$season[useclim] == filler2$season)){
+#				filler = aggregate(list(delta = full$delta[availinds2][usefull]), by = list(year = full$year[availinds2][usefull]), FUN=weighted.mean, na.rm=TRUE, w=1/dists) # summarize full deltas by year (average across cells available in each year), weighted by inverse distance
+				filler = summarize(cbind(full$delta[availinds2][usefull], 1/dists), by = list(year = full$year[availinds2][usefull]), FUN=wgtmean, na.rm=TRUE, stat.name='delta')
+				rownames(filler) = filler$year # make rows of filler easy to reference
+				filler2 = filler[clim$year[useclim], ] # re-order and expand filler to match years of clim rows to fill
+				if(all(clim$year[useclim] == filler2$year)){
 					clim[[dnm]][useclim] = filler2$delta
 				} else {
-					stop(paste('clim and filler year or season not in the same order, k=', k)) # make sure that years and seasons line up perfectly before we do the assign	
+					stop(paste('clim and filler year not in the same order, k=', k)) # make sure that years line up perfectly before we do the assign	
 				}		
 			}			
 			if(k %% 100 == 0) cat(paste(k, ''))
@@ -248,8 +245,8 @@ for(i in 1:length(delta2100long)){ # for each climate model
 
 	# do the merge
 	print(dim(clim))
-	cols = c("lon", "lat", "delta", "region", "year", "season")
-	clim = merge(clim, delta2100long[[i]][surfindsb,cols], by.x = c('region', 'latgrid', 'longrid', 'year', 'season'), by.y=c('region', 'lat', 'lon', 'year', 'season'), all.x=TRUE)
+	cols = c("lon", "lat", "delta", "region", "year")
+	clim = merge(clim, delta2100long[[i]][surfindsb,cols], by.x = c('region', 'latgrid', 'longrid', 'year'), by.y=c('region', 'lat', 'lon', 'year'), all.x=TRUE)
 		print(dim(clim))
 	dnm = paste('surftemp.delta_', i, sep='')
 	names(clim)[names(clim)=='delta'] = dnm
@@ -268,18 +265,18 @@ save(clim, file=paste(deltafolder, 'climGrid.proj_step4.RData', sep=''))
 # occurs because GCM topography is coarse
 # NOTE: This takes 30 min or so
 options(warn=2) # turn warnings to errors
-clim = clim[order(clim$region, clim$lat, clim$lon, clim$depth, clim$year, clim$season),]
+clim = clim[order(clim$region, clim$lat, clim$lon, clim$depth, clim$year),]
 for(i in 1:length(delta2100long)){ # for each climate model
 	print(paste('Model', i))
 
 	dnm = paste('surftemp.delta_', i, sep='')
-	missinds = which(is.na(clim[[dnm]]) & clim$year == 2020) # ignore different years or seasons: we'll do them all together. Also do all points in the same latgrid/longrid together
+	missinds = which(is.na(clim[[dnm]]) & clim$year == 2020) # ignore different years: we'll do them all together. Also do all points in the same latgrid/longrid together
 	missinds = missinds[!duplicated(clim[missinds, c('region', 'latgrid', 'longrid')])] # only take unique latgrid/longrid/region, since all points that match on these criteria will be filled together
 
 	print(paste(length(missinds), 'missing for 2020'))
 	if(length(missinds)>0){
 		surfindsb = delta2100long[[i]]$depth == min(delta2100long[[i]]$depth) # get only the surface values
-		cols = c("lon", "lat", "delta", "region", "year", "season")
+		cols = c("lon", "lat", "delta", "region", "year")
 		full = delta2100long[[i]][surfindsb,cols] # only surface temperatures
 		if(!all(2020:2099 %in% unique(full$year))){ # make sure we have every year (we don't for some climate models), and add them if not
 			missingyears = (2020:2099)[!(2020:2099 %in% unique(full$year))]
@@ -287,17 +284,14 @@ for(i in 1:length(delta2100long)){ # for each climate model
 			temp$delta = NA
 			for(j in 1:length(missingyears)){ # add in the datapoints for each year if missing a year
 				print(paste('adding', missingyears[j]))
-				for(k in 1:4){ # for each season
-					temp$year = missingyears[j]
-					temp$season = k
-					full = rbind(full,temp)
-				}
+				temp$year = missingyears[j]
+				full = rbind(full,temp)
 			}
 			print(nrow(delta2100long[[i]]))
 			print(nrow(full))
 			print(nrow(full)/80) # should be an even number if equal numbers of lines per year
 		}
-		full = full[order(full$region, full$lat, full$lon, full$year, full$season),] # sort in same order as clim
+		full = full[order(full$region, full$lat, full$lon, full$year),] # sort in same order as clim
 
 		level1 = 0 # keep track of how far I had to go to fill in the missing values
 
@@ -307,8 +301,8 @@ for(i in 1:length(delta2100long)){ # for each climate model
 			thislat = clim$latgrid[missinds[k]]
 			thislon = clim$longrid[missinds[k]]
 				#print(paste('k=', k, thisreg, thislat, thislon))
-			useclim = which(clim$region == thisreg & clim$latgrid == thislat & clim$longrid == thislon) # get all rows in clim at this lat/lon/region (across all years and seasons). These are the rows in clim to fill with delta values.
-			availinds2 = full$region == thisreg & full$lat == thislat & full$lon == thislon & full$season %in% clim$season[useclim]  # trim full (the climate model output) to focal region and lat/lon, and to the seasons we need
+			useclim = which(clim$region == thisreg & clim$latgrid == thislat & clim$longrid == thislon) # get all rows in clim at this lat/lon/region (across all years). These are the rows in clim to fill with delta values.
+			availinds2 = full$region == thisreg & full$lat == thislat & full$lon == thislon  # trim full (the climate model output) to focal region and lat/lon
 				#full[availinds2,]
 			if(!all(is.na(clim[[dnm]][useclim]))) stop('not all deltas are NA') # check that useclim's really are NAs to be filled
 			if(any(!is.na(full$delta[availinds2]))){ # first, try to use values at the same place (if some values are not NA
@@ -334,13 +328,13 @@ for(i in 1:length(delta2100long)){ # for each climate model
 			if(fill){
 				dists = pmax(1, gcd.hf(thislon, thislat, full$lon[availinds2], full$lat[availinds2])) # distances in km, but set 1km as a floor (so no zeros)
 
-				filler = summarize(cbind(full$delta[availinds2], 1/dists), by = list(year = full$year[availinds2], season = full$season[availinds2]), FUN=wgtmean, na.rm=TRUE, stat.name='delta') # summarize full deltas by year (average across cells available in each year and weight by inverse distance)
-				rownames(filler) = paste(filler$year, filler$season) # make rows of filler easy to reference
-				filler2 = filler[paste(clim$year[useclim], clim$season[useclim]), ] # re-order and expand filler to match years/seasons of clim rows to fill
-				if(all(clim$year[useclim] == filler2$year & clim$season[useclim] == filler2$season)){
+				filler = summarize(cbind(full$delta[availinds2], 1/dists), by = list(year = full$year[availinds2]), FUN=wgtmean, na.rm=TRUE, stat.name='delta') # summarize full deltas by year (average across cells available in each year and weight by inverse distance)
+				rownames(filler) = filler$year # make rows of filler easy to reference
+				filler2 = filler[clim$year[useclim], ] # re-order and expand filler to match years of clim rows to fill
+				if(all(clim$year[useclim] == filler2$year)){
 					clim[[dnm]][useclim] = filler2$delta		
 				} else {
-					stop(paste('clim and filler year or season not in the same order, k=', k)) # make sure that years and seasons line up perfectly before we do the assign
+					stop(paste('clim and filler year not in the same order, k=', k)) # make sure that years line up perfectly before we do the assign
 				}
 			}
 			
@@ -355,9 +349,8 @@ for(i in 1:length(delta2100long)){ # for each climate model
 	# calculate surface temp projection
 	colnm = paste('surftemp.proj_', i, sep='')
 	clim[[colnm]] = clim[[dnm]] + clim$surftemp.clim.int
-	inds = clim$region != "DFO_Newfoundland_Fall" # only count non-Newfounland missing values
-	print(paste('still missing', sum(is.na(clim[[colnm]][inds])), 'on', colnm))
-	print(paste('years are', paste(sort(unique(clim$year[inds & is.na(clim[[colnm]])])), collapse=', '))) # should only be 2100
+	print(paste('still missing', sum(is.na(clim[[colnm]])), 'on', colnm))
+	print(paste('years are', paste(sort(unique(clim$year[is.na(clim[[colnm]])])), collapse=', '))) # should only be 2100
 }
 
 unique(clim$region)
