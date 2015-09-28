@@ -53,34 +53,33 @@ roundto = function(x,y){r = which.min(abs(x-y)); return(y[r])} # rounds x to nea
 load("data/trawl_allregionsforprojections_wSST_2015-06-02.RData") # loads dat to get base years for each region
 
 # Fix dat to match CMIP5 format
-	dat = dat[!is.na(dat$lat) & !is.na(dat$lon),] # remove NA lat/lon
-	dat$lon[dat$lon < 0] = dat$lon[dat$lon < 0] + 360 # fix lons to only positive to match climate data
+        dat = dat[!is.na(dat$lat) & !is.na(dat$lon),] # remove NA lat/lon
+        dat$lon[dat$lon < 0] = dat$lon[dat$lon < 0] + 360 # fix lons to only positive to match climate data
 
 # Get range of years, lats, and lons for each region. Use Jan 1960 as the base date (month 1)
-	dat$dates = chron(dates. = paste('01', dat$month, dat$year, sep='/'), format='d/m/y') # don't have day information in dat
-	baseyrs = aggregate(list(rng = dat$year), by=list(region = dat$region), FUN=range)
-	basedates = aggregate(list(min = dat$dates), by=list(region = dat$region), FUN=min)
-		basedates = merge(basedates, aggregate(list(max = dat$dates), by=list(region = dat$region), FUN=max))
-		basedates$minmo = (nyrs(basedates$min)-1960)*12+mo(basedates$min)-1 # months since Jan 1960
-		basedates$maxmo = (nyrs(basedates$max)-1960)*12+mo(basedates$max)-1
-	basemonths = aggregate(list(months = dat$month), by=list(region = dat$region), FUN=su) # list the months
-	baselats = aggregate(list(rng = dat$lat), by=list(region = dat$region), FUN=range)
-		baselats$rng = cbind(floor(baselats$rng[,1])+0.5, ceiling(baselats$rng[,2])-0.5) # round to nearest degree center
-	baselons = aggregate(list(rng = dat$lon), by=list(region = dat$region), FUN=range)
-		baselons$rng = cbind(floor(baselons$rng[,1])+0.5, ceiling(baselons$rng[,2])-0.5) # round to nearest degree center
-	basedepths = aggregate(list(rng = dat$depth), by=list(region = dat$region), FUN=range, na.rm=T)
-		basedepths$rng[,1] = 0 # to make sure I get all the way to the surface
-	regs = sort(unique(dat$region))
+        dat$dates = chron(dates. = paste('01', dat$month, dat$year, sep='/'), format='d/m/y') # don't have day information in dat
+        baseyrs = aggregate(list(rng = dat$year), by=list(region = dat$region), FUN=range)
+        basedates = aggregate(list(min = dat$dates), by=list(region = dat$region), FUN=min)
+                basedates = merge(basedates, aggregate(list(max = dat$dates), by=list(region = dat$region), FUN=max))
+                basedates$minmo = (nyrs(basedates$min)-1960)*12+mo(basedates$min)-1 # months since Jan 1960
+                basedates$maxmo = (nyrs(basedates$max)-1960)*12+mo(basedates$max)-1
+        basemonths = aggregate(list(months = dat$month), by=list(region = dat$region), FUN=su) # list the months
+        baselats = aggregate(list(rng = dat$lat), by=list(region = dat$region), FUN=range)
+                baselats$rng = cbind(floor(baselats$rng[,1])+0.5, ceiling(baselats$rng[,2])-0.5) # round to nearest degree center
+        baselons = aggregate(list(rng = dat$lon), by=list(region = dat$region), FUN=range)
+                baselons$rng = cbind(floor(baselons$rng[,1])+0.5, ceiling(baselons$rng[,2])-0.5) # round to nearest degree center
+        basedepths = aggregate(list(rng = dat$depth), by=list(region = dat$region), FUN=range, na.rm=T)
+                basedepths$rng[,1] = 0 # to make sure I get all the way to the surface
+        regs = sort(unique(dat$region))
 
-	rm(dat)
+        rm(dat)
 
-	# write out
-	save(basedates, file='output/basedates.RData')
-	save(basemonths, file='output/basemonths.RData')
-	save(baselats, file='output/baselats.RData')
-	save(baselons, file='output/baselons.RData')
-	save(basedepths, file='output/basedepths.RData')
-
+        # write out
+        save(basedates, file='output/basedates.RData')
+        save(basemonths, file='output/basemonths.RData')
+        save(baselats, file='output/baselats.RData')
+        save(baselons, file='output/baselons.RData')
+        save(basedepths, file='output/basedepths.RData')
 
 #################################
 ## Read netCDF files from IPCC ##
@@ -98,176 +97,173 @@ model = c('CNRM-CM5', 'IPSL-CM5A-MR', 'IPSL-CM5B-LR', 'HadGem2-CC', 'MPI-ESM-LR'
 
 # Read in, average, and write out each model's historical period for each region (average)
 for(j in 1:length(agency)){
-	file = paste('Froelicher_data/', agency[j], '/', model[j], '/historical/thetao_all_regrid_malin.nc', sep='')
-	print(paste(j, agency[j], model[j]))
-	n = nc_open(file) # Open the netCDF file
-	lats = ncvar_get(n, 'LAT')
-	lons = ncvar_get(n, 'LON')
-	depths = ncvar_get(n, 'LEV')
-	times = 1:552 # Jan 1960 to Dec 2005
-	if(model[j]=='HadGem2-CC') times = 1:551 # the exception, ends Nov 2005
+        file = paste('Froelicher_data/', agency[j], '/', model[j], '/historical/thetao_all_regrid_malin.nc', sep='')
+        print(paste(j, agency[j], model[j]))
+        n = nc_open(file) # Open the netCDF file
+        lats = ncvar_get(n, 'LAT')
+        lons = ncvar_get(n, 'LON')
+        depths = ncvar_get(n, 'LEV')
+        times = 1:552 # Jan 1960 to Dec 2005
+        if(model[j]=='HadGem2-CC') times = 1:551 # the exception, ends Nov 2005
 
-	# Variable to hold the climate data in the base time period for each region
-	basetemps = vector('list', length(regs))
-		names(basetemps) = regs
+        # Variable to hold the climate data in the base time period for each region
+        basetemps = vector('list', length(regs))
+                names(basetemps) = regs
 
-	# Loop through the regions
-	for(i in 1:length(regs)){
-		regtimes = basedates$minmo[i]:basedates$maxmo[i]
-		xtimes = intersect(times, regtimes) # the intersecting times
-		start = c(which.min(abs(lons - baselons$rng[i,1])), which.min(abs(lats - baselats$rng[i,1])), which.min(abs(depths - basedepths$rng[i,1])), xtimes[1]) # indices of the start (lon, lat, depth, time)
-		end = c(which.min(abs(lons - baselons$rng[i,2])), which.min(abs(lats - baselats$rng[i,2])), which.min(abs(depths - basedepths$rng[i,2])), xtimes[length(xtimes)]) # indices of the end
-		temp = ncvar_get(n, 'THETAO_REGRID', start = start, count=end - start+1) # a slice through time and space (lon, lat, depth, time)
-		theselons = ncvar_get(n, 'LON', start=start[1], count= end[1]-start[1]+1)
-		theselats = ncvar_get(n, 'LAT', start=start[2], count= end[2]-start[2]+1)
-		thesedepths = ncvar_get(n, 'LEV', start=start[3], count= end[3]-start[3]+1)
-			print(paste(round(min(thesedepths)), 'm', 1960+floor((xtimes[1]-1)/12), '/', jmo2mo(xtimes[1]), 1960+floor((xtimes[length(xtimes)]-1)/12), '/', jmo2mo(xtimes[length(xtimes)]))) # make sure I got the depth and date conversions right. 
-	
-		# trim to the appropriate months
-		motokeep <- unlist(basemonths$months[basemonths$region == regs[i]])
-		temp <- temp[,,,jmo2mo(xtimes) %in% motokeep]
-		xtimes <- xtimes[jmo2mo(xtimes) %in% motokeep]
-	
-		# Average across years within each lat/lon/depth
-		dim(temp)
-		temp2 = apply(temp, MARGIN=c(1,2,3), FUN=mean) 
-		print(dim(temp2))
+        # Loop through the regions
+        for(i in 1:length(regs)){
+                regtimes = basedates$minmo[i]:basedates$maxmo[i]
+                xtimes = intersect(times, regtimes) # the intersecting times
+                start = c(which.min(abs(lons - baselons$rng[i,1])), which.min(abs(lats - baselats$rng[i,1])), which.min(abs(depths - basedepths$rng[i,1])), xtimes[1]) # indices of the start (lon, lat, depth, time)
+                end = c(which.min(abs(lons - baselons$rng[i,2])), which.min(abs(lats - baselats$rng[i,2])), which.min(abs(depths - basedepths$rng[i,2])), xtimes[length(xtimes)]) # indices of the end
+                temp = ncvar_get(n, 'THETAO_REGRID', start = start, count=end - start+1) # a slice through time and space (lon, lat, depth, time)
+                theselons = ncvar_get(n, 'LON', start=start[1], count= end[1]-start[1]+1)
+                theselats = ncvar_get(n, 'LAT', start=start[2], count= end[2]-start[2]+1)
+                thesedepths = ncvar_get(n, 'LEV', start=start[3], count= end[3]-start[3]+1)
+                        print(paste(round(min(thesedepths)), 'm', 1960+floor((xtimes[1]-1)/12), '/', jmo2mo(xtimes[1]), 1960+floor((xtimes[length(xtimes)]-1)/12), '/', jmo2mo(xtimes[length(xtimes)]))) # make sure I got the depth and date conversions right. 
+        
+                # trim to the appropriate months
+                motokeep <- unlist(basemonths$months[basemonths$region == regs[i]])
+                temp <- temp[,,,jmo2mo(xtimes) %in% motokeep]
+                xtimes <- xtimes[jmo2mo(xtimes) %in% motokeep]
+        
+                # Average across years within each lat/lon/depth
+                dim(temp)
+                temp2 = apply(temp, MARGIN=c(1,2,3), FUN=mean) 
+                print(dim(temp2))
 
-		basetemps[[i]] = temp2
-		dimnames(basetemps[[i]]) = list(lon=theselons, lat=theselats, depth=thesedepths)
-	}
+                basetemps[[i]] = temp2
+                dimnames(basetemps[[i]]) = list(lon=theselons, lat=theselats, depth=thesedepths)
+        }
 
-	# Write out
-	outfile = paste('data/tempshist_', agency[j], '_', model[j], '.RData', sep='')
-	save(basetemps, file=outfile)
-	
-	# close
-	nc_close(n)
+        # Write out
+        outfile = paste('data/tempshist_', agency[j], '_', model[j], '.RData', sep='')
+        save(basetemps, file=outfile)
+        
+        # close
+        nc_close(n)
 }
-
 
 # Read in and write out each model's 2006-2100 period RCP8.5 (by year and season)
 
 for(j in 1:length(agency)){ # very slow because of apply() down below.
-	print(paste(j, agency[j], model[j], Sys.time()))
-	file = paste('Froelicher_data/', agency[j], '/', model[j], '/rcp85/thetao_all_regrid_malin.nc', sep='')
-	n = nc_open(file) # Open the netCDF file
-	lats = ncvar_get(n, 'LAT')
-	lons = ncvar_get(n, 'LON')
-	depths = ncvar_get(n, 'LEV')
-	startmonth = 1; startyear = 2006
-	if(model[j]=='HadGem2-CC'){	startmonth = 12; startyear = 2005} # HadGEM2-CC model is different for RCP8.5 (see readme.txt), starts Dec 2005
-	times = 1:length(ncvar_get(n, 'TIME')) # time, measured in months since the start month/year for this model
+        print(paste(j, agency[j], model[j], Sys.time()))
+        file = paste('Froelicher_data/', agency[j], '/', model[j], '/rcp85/thetao_all_regrid_malin.nc', sep='')
+        n = nc_open(file) # Open the netCDF file
+        lats = ncvar_get(n, 'LAT')
+        lons = ncvar_get(n, 'LON')
+        depths = ncvar_get(n, 'LEV')
+        startmonth = 1; startyear = 2006
+        if(model[j]=='HadGem2-CC'){     startmonth = 12; startyear = 2005} # HadGEM2-CC model is different for RCP8.5 (see readme.txt), starts Dec 2005
+        times = 1:length(ncvar_get(n, 'TIME')) # time, measured in months since the start month/year for this model
 
-	# Variable to hold the climate data in the base time period for each region
-	temps2100 = vector('list', length(regs))
-		names(temps2100) = regs
+        # Variable to hold the climate data in the base time period for each region
+        temps2100 = vector('list', length(regs))
+                names(temps2100) = regs
 
-	# times to extract for each model: Jan 2006 to Dec 2100 = 1140 months. measured in months since the model's start month/year
-	keeptimes = seq(from=(2006-startyear)*12+1-startmonth+1, length.out=1140) # time, measured in months since model's start month/year
-	xtimes = intersect(times, keeptimes) # the intersecting times
-	if(keeptimes[1] != xtimes[1]) stop(paste('j=',j, 'did not start in January'))
+        # times to extract for each model: Jan 2006 to Dec 2100 = 1140 months. measured in months since the model's start month/year
+        keeptimes = seq(from=(2006-startyear)*12+1-startmonth+1, length.out=1140) # time, measured in months since model's start month/year
+        xtimes = intersect(times, keeptimes) # the intersecting times
+        if(keeptimes[1] != xtimes[1]) stop(paste('j=',j, 'did not start in January'))
 
-	# Loop through the regions
-	for(i in 1:length(regs)){
-		start = c(which.min(abs(lons - baselons$rng[i,1])), which.min(abs(lats - baselats$rng[i,1])), which.min(abs(depths - basedepths$rng[i,1])), xtimes[1]) # indices of the start (lon, lat, depth, time)
-		end = c(which.min(abs(lons - baselons$rng[i,2])), which.min(abs(lats - baselats$rng[i,2])), which.min(abs(depths - basedepths$rng[i,2])), xtimes[length(xtimes)]) # indices of the end
+        # Loop through the regions
+        for(i in 1:length(regs)){
+                start = c(which.min(abs(lons - baselons$rng[i,1])), which.min(abs(lats - baselats$rng[i,1])), which.min(abs(depths - basedepths$rng[i,1])), xtimes[1]) # indices of the start (lon, lat, depth, time)
+                end = c(which.min(abs(lons - baselons$rng[i,2])), which.min(abs(lats - baselats$rng[i,2])), which.min(abs(depths - basedepths$rng[i,2])), xtimes[length(xtimes)]) # indices of the end
 
-		temp = ncvar_get(n, 'THETAO_REGRID', start = start, count=end - start+1) # a slice of time: dims are lon, lat, depth, time
-		theselons = ncvar_get(n, 'LON', start=start[1], count= end[1]-start[1]+1)
-		theselats = ncvar_get(n, 'LAT', start=start[2], count= end[2]-start[2]+1)
-		thesedepths = ncvar_get(n, 'LEV', start=start[3], count= end[3]-start[3]+1)
+                temp = ncvar_get(n, 'THETAO_REGRID', start = start, count=end - start+1) # a slice of time: dims are lon, lat, depth, time
+                theselons = ncvar_get(n, 'LON', start=start[1], count= end[1]-start[1]+1)
+                theselats = ncvar_get(n, 'LAT', start=start[2], count= end[2]-start[2]+1)
+                thesedepths = ncvar_get(n, 'LEV', start=start[3], count= end[3]-start[3]+1)
 
-		# trim to the appropriate months
-		motokeep <- unlist(basemonths$months[basemonths$region == regs[i]])
-		temp <- temp[,,,jmo2mo(xtimes) %in% motokeep]
-		thesextimes <- xtimes[jmo2mo(xtimes) %in% motokeep]
+                # trim to the appropriate months
+                motokeep <- unlist(basemonths$months[basemonths$region == regs[i]])
+                temp <- temp[,,,jmo2mo(xtimes) %in% motokeep]
+                thesextimes <- xtimes[jmo2mo(xtimes) %in% motokeep]
 
-		# reshape so that month and year are in separate dimensions
-		dim(temp)
-		temp2 = array(temp, dim=c(dim(temp)[1:3], length(motokeep), ceiling(length(thesextimes)/length(motokeep)))) # lon, lat, depth, month, year
-		if(length(temp2) > length(temp)) temp2[(length(temp)+1):length(temp2)] <- NA # if needed, fill in extra values in temp2 with NAs (R otherwise recycles the values in temp)
-		dim(temp2)
+                # reshape so that month and year are in separate dimensions
+                dim(temp)
+                temp2 = array(temp, dim=c(dim(temp)[1:3], length(motokeep), ceiling(length(thesextimes)/length(motokeep)))) # lon, lat, depth, month, year
+                if(length(temp2) > length(temp)) temp2[(length(temp)+1):length(temp2)] <- NA # if needed, fill in extra values in temp2 with NAs (R otherwise recycles the values in temp)
+                dim(temp2)
 
-		# Average across months within each lat/lon/depth/year
-		dim(temp2)
-		temp3 = apply(temp2, MARGIN=c(1,2,3,5), FUN=mean)
-		print(dim(temp3))
+                # Average across months within each lat/lon/depth/year
+                dim(temp2)
+                temp3 = apply(temp2, MARGIN=c(1,2,3,5), FUN=mean)
+                print(dim(temp3))
 
-		temps2100[[i]] = temp3
-		dimnames(temps2100[[i]]) = list(lon=theselons, lat=theselats, depth=thesedepths,yr = 2006:(2005+ceiling(length(thesextimes)/length(motokeep))))
-	}
+                temps2100[[i]] = temp3
+                dimnames(temps2100[[i]]) = list(lon=theselons, lat=theselats, depth=thesedepths,yr = 2006:(2005+ceiling(length(thesextimes)/length(motokeep))))
+        }
 
-	# Write out
-	outfile = paste('data/tempsRCP85_2006-2100_', agency[j], '_', model[j], '.RData', sep='')
-	save(temps2100, file=outfile)
+        # Write out
+        outfile = paste('data/tempsRCP85_2006-2100_', agency[j], '_', model[j], '.RData', sep='')
+        save(temps2100, file=outfile)
 
-	# close
-	nc_close(n)
+        # close
+        nc_close(n)
 }
 
 
 # Read in, average, and write out each model's control run drift (as degrees per year)
 
 for(j in 1:length(agency)){
-	file = paste('Froelicher_data/', agency[j], '/', model[j], '/piControl/thetao_all_regrid_malin.nc', sep='')
-	print(paste(agency[j], model[j]))
-	n = nc_open(file) # Open the netCDF file
-	lats = ncvar_get(n, 'LAT')
-	lons = ncvar_get(n, 'LON')
-	depths = ncvar_get(n, 'LEV')
-	startmonth = 1; startyear = 2006; seasonlist = c(1,1,1,2,2,2,3,3,3,4,4,4) # seasons Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec
-	if(model[j]=='HadGem2-CC'){	 # HadGEM2-CC model is different for RCP8.5 (see readme.txt), starts Dec 2005
-		startmonth = 12; startyear = 2005
-		seasonlist = c(4,1,1,1,2,2,2,3,3,3,4,4)
-	}
-	times = 1:length(ncvar_get(n, 'TIME')) # time, measured in months since the start month/year for this model
+        file = paste('Froelicher_data/', agency[j], '/', model[j], '/piControl/thetao_all_regrid_malin.nc', sep='')
+        print(paste(agency[j], model[j]))
+        n = nc_open(file) # Open the netCDF file
+        lats = ncvar_get(n, 'LAT')
+        lons = ncvar_get(n, 'LON')
+        depths = ncvar_get(n, 'LEV')
+        startmonth = 1; startyear = 2006; seasonlist = c(1,1,1,2,2,2,3,3,3,4,4,4) # seasons Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec
+        if(model[j]=='HadGem2-CC'){      # HadGEM2-CC model is different for RCP8.5 (see readme.txt), starts Dec 2005
+                startmonth = 12; startyear = 2005
+                seasonlist = c(4,1,1,1,2,2,2,3,3,3,4,4)
+        }
+        times = 1:length(ncvar_get(n, 'TIME')) # time, measured in months since the start month/year for this model
 
-	# Variable to hold the smoothed climate data for the control runs (linear regression)
-	tempscontrol = vector('list', length(regs))
-		names(tempscontrol) = regs
+        # Variable to hold the smoothed climate data for the control runs (linear regression)
+        tempscontrol = vector('list', length(regs))
+                names(tempscontrol) = regs
 
-	# Loop through the regions
-	for(i in 1:length(regs)){
-		start = c(which.min(abs(lons - baselons$rng[i,1])), which.min(abs(lats - baselats$rng[i,1])), which.min(abs(depths - basedepths$rng[i,1])), 1) # indices of the start (lon, lat, depth, time)
-		end = c(which.min(abs(lons - baselons$rng[i,2])), which.min(abs(lats - baselats$rng[i,2])), which.min(abs(depths - basedepths$rng[i,2])), start[4]-2) # indices of the end
+        # Loop through the regions
+        for(i in 1:length(regs)){
+                start = c(which.min(abs(lons - baselons$rng[i,1])), which.min(abs(lats - baselats$rng[i,1])), which.min(abs(depths - basedepths$rng[i,1])), 1) # indices of the start (lon, lat, depth, time)
+                end = c(which.min(abs(lons - baselons$rng[i,2])), which.min(abs(lats - baselats$rng[i,2])), which.min(abs(depths - basedepths$rng[i,2])), start[4]-2) # indices of the end
 
-		temp = ncvar_get(n, 'THETAO_REGRID', start = start, count=end - start+1) # a slice of time
-		theselons = ncvar_get(n, 'LON', start=start[1], count= end[1]-start[1]+1)
-		theselats = ncvar_get(n, 'LAT', start=start[2], count= end[2]-start[2]+1)
-		thesedepths = ncvar_get(n, 'LEV', start=start[3], count= end[3]-start[3]+1)
+                temp = ncvar_get(n, 'THETAO_REGRID', start = start, count=end - start+1) # a slice of time
+                theselons = ncvar_get(n, 'LON', start=start[1], count= end[1]-start[1]+1)
+                theselats = ncvar_get(n, 'LAT', start=start[2], count= end[2]-start[2]+1)
+                thesedepths = ncvar_get(n, 'LEV', start=start[3], count= end[3]-start[3]+1)
 
-		# trim to the appropriate months
-		motokeep <- unlist(basemonths$months[basemonths$region == regs[i]])
-		temp <- temp[,,,jmo2mo(xtimes) %in% motokeep]
-		thesextimes <- xtimes[jmo2mo(xtimes) %in% motokeep]
+                # trim to the appropriate months
+                motokeep <- unlist(basemonths$months[basemonths$region == regs[i]])
+                temp <- temp[,,,jmo2mo(xtimes) %in% motokeep]
+                thesextimes <- xtimes[jmo2mo(xtimes) %in% motokeep]
 
-		# reshape so that month and year are in separate dimensions
-		dim(temp)
-		temp2 = array(temp, dim=c(dim(temp)[1:3], length(motokeep), ceiling(length(thesextimes)/length(motokeep)))) # lon, lat, depth, month, year
-		if(length(temp2) > length(temp)) temp2[(length(temp)+1):length(temp2)] <- NA # if needed, fill in extra values in temp2 with NAs (R otherwise recycles the values in temp)
-		dim(temp2)
+                # reshape so that month and year are in separate dimensions
+                dim(temp)
+                temp2 = array(temp, dim=c(dim(temp)[1:3], length(motokeep), ceiling(length(thesextimes)/length(motokeep)))) # lon, lat, depth, month, year
+                if(length(temp2) > length(temp)) temp2[(length(temp)+1):length(temp2)] <- NA # if needed, fill in extra values in temp2 with NAs (R otherwise recycles the values in temp)
+                dim(temp2)
 
-		# Take slope of temperature across years within each lat/lon/depth
-		dim(temp2)
-		temp3 = apply(temp2, MARGIN=c(1,2,3), FUN=linearb, yr=rep(1:dim(temp2)[5], each=length(motokeep)))
-		print(dim(temp3))
-	
-		tempscontrol[[i]] = temp3
-		dimnames(tempscontrol[[i]]) = list(lon=theselons, lat=theselats, depth=thesedepths)
-	}
+                # Take slope of temperature across years within each lat/lon/depth
+                dim(temp2)
+                temp3 = apply(temp2, MARGIN=c(1,2,3), FUN=linearb, yr=rep(1:dim(temp2)[5], each=length(motokeep)))
+                print(dim(temp3))
+        
+                tempscontrol[[i]] = temp3
+                dimnames(tempscontrol[[i]]) = list(lon=theselons, lat=theselats, depth=thesedepths)
+        }
 
-	# Write out
-	outfile = paste('data/tempscontrol_', agency[j], '_', model[j], '.RData', sep='')
-	save(tempscontrol, file=outfile)
+        # Write out
+        outfile = paste('data/tempscontrol_', agency[j], '_', model[j], '.RData', sep='')
+        save(tempscontrol, file=outfile)
 
-	# close
-	nc_close(n)
+        # close
+        nc_close(n)
 }
 
 # next: could read in rcp45 runs for 2006-2100
-
-
 
 
 #####################################
@@ -332,6 +328,7 @@ regs = names(temps2100l[[1]])
 	# write out
 	save(delta.raw2100, file='data/delta.raw2100.Rdata')
 
+# load('data/delta.raw2100.Rdata')
 
 		# Plot raw deltas for each model in each region (averaged across all depths and lon/lats)
 		require(RColorBrewer)
@@ -346,7 +343,7 @@ regs = names(temps2100l[[1]])
 			print(regs[i])
 			plot(1,1, col='white', xlim=xlims, ylim=ylims, xlab='Year', ylab='Delta (°C)', main=names(delta.raw2100[[1]])[i])
 			for(j in 1:length(delta.raw2100)){ # for each model
-				y = apply(delta.raw2100[[j]][[i]], MARGIN=5, FUN=mean, na.rm=TRUE) # mean by year within region across all lon/lat/depth
+				y = apply(delta.raw2100[[j]][[i]], MARGIN=4, FUN=mean, na.rm=TRUE) # mean by year within region across all lon/lat/depth
 				x = (2006:2100)[1:length(y)]
 				lines(x, y, col=cols[j]) # for 2006-2100
 			}
@@ -403,7 +400,7 @@ regs = names(temps2100l[[1]])
 			baseyear = mean(c(nyrs(basedates$min[j]), nyrs(basedates$max[j])))
 			a = tempscontroll[[i]][[j]]
 			dim(a) = c(dim(a), 1) # add a year dimension
-			a = a[,,,rep(1,dim(temps2100l[[i]][[j]])[5])] # expand a to match dimensions of temps2100l	(80 years)
+			a = a[,,,rep(1,dim(temps2100l[[i]][[j]])[4])] # expand a to match dimensions of temps2100l	(80 years)
 			a = aaply(a, .margins=c(1,2,3), .fun= function(x){return(x*((2006:2100)-baseyear))}) # multiply degC/yr by years to get degC of drift
 			delta2100[[i]][[j]] = delta.raw2100[[i]][[j]] - a
 		}
@@ -429,7 +426,7 @@ regs = names(temps2100l[[1]])
 	for(i in 1:length(delta2100[[1]])){ # for each region
 		plot(1,1, col='white', xlim=xlims, ylim=ylims, xlab='Year', ylab='Delta (°C)', main=names(delta2100[[1]])[i])
 		for(j in 1:length(delta2100)){ # for each model
-			y = apply(delta2100[[j]][[i]], MARGIN=5, FUN=mean, na.rm=TRUE)
+			y = apply(delta2100[[j]][[i]], MARGIN=4, FUN=mean, na.rm=TRUE)
 			x = as.numeric(names(y))
 			lines(x, y, col=cols[j]) # for 2006-2100
 		}
