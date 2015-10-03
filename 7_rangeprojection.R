@@ -64,14 +64,14 @@ length(files) # should match length of projspp
 
 ## Remove spp from planned projections IF the projection file already exists (OPTIONAL). 
 # If this step is skipped, the existing files will be overwritten.
-donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
-donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles))
-if(length(donespp)>0){
-	files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
-	projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
-}
-length(files)
-length(projspp)
+#donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
+#donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles))
+#if(length(donespp)>0){
+#	files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
+#	projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
+#}
+#length(files)
+#length(projspp)
 
 
 #################################
@@ -98,7 +98,7 @@ rugos <- read.csv('data/projectiongrid_latlons.1.16th_withRugosity_2015-05-06.cs
 	rugos$lon <- floor(rugos$lon16th/gridsize)*gridsize + gridsize/2
 
 clim <- merge(clim, rugos) # slow
-dim(clim) # X rows
+dim(clim) # 9623120 rows
 
 
 ############################################
@@ -128,17 +128,26 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 	smear <- mean(exp(mods[['mygam2']]$residuals))
 
 	# rows of clim to project to
-	inds <- clim$regionfact %in% names(avemeanbiomass)
+	regstoproj <- names(avemeanbiomass)
+	if(any(names(avemeanbiomass) == 'NEFSC_NEUS')){
+		regstoproj <- c(regstoproj, 'NEFSC_NEUSSpring', 'NEFSC_NEUSFall') # add spring and fall surveys (how they are marked in the climatology) to the list. The models are fit to all NEUS data and don't distinguish seasons.
+	}
+	inds <- clim$regionfact %in% regstoproj
 
 	# Dataframe for this species' projections
 	thisproj <- clim[inds,c('regionfact', 'lat', 'lon', 'depth16th', 'year')] # dataframe to hold projections for this taxon
 	for(i in 1:13) thisproj[[paste('wtcpue.proj_', i, sep='')]] <- NA 	# Add projected biomass density columns for each climate model
 
+	# Adjust region names for NEUS
+	clim$regiontoproj <- as.character(clim$regionfact)
+	if(any(regstoproj %in% 'NEFSC_NEUS')){
+		clim$regiontoproj[clim$regiontoproj %in% c('NEFSC_NEUSSpring', 'NEFSC_NEUSFall')] <- 'NEFSC_NEUS'
+	}
 
 	# Calculate predictions for 2020-2100 for each model
 	for(i in 1:13){ # this alone takes a long time
 		print(paste(fileindex, 'model', i))
-		nd <- data.frame(regionfact = clim$regionfact[inds], surftemp = clim[[paste('surftemp.proj_', i, sep='')]][inds], bottemp = clim[[paste('bottemp.proj_', i, sep='')]][inds], logrugosity = log(clim$rugosity[inds]+0.01), biomassmean = clim$biomassmean[inds], row.names=1:sum(inds))
+		nd <- data.frame(regionfact = clim$regiontoproj[inds], surftemp = clim[[paste('surftemp.proj_', i, sep='')]][inds], bottemp = clim[[paste('bottemp.proj_', i, sep='')]][inds], logrugosity = log(clim$rugosity[inds]+0.01), biomassmean = clim$biomassmean[inds], row.names=1:sum(inds))
 		preds1 <- predict.gam(mods$mygam1, newdata = nd, type='response')
 		preds2 <- exp(predict(mods$mygam2, newdata = nd, type='response'))
 		preds <- preds1*preds2*smear
@@ -152,12 +161,12 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 	}
 	
 	# summarize by 1/4 degree grid
-	summproj <- aggregate(thisproj[,grepl('wtcpue.proj', names(thisproj))], by=list(region=thisproj$region, lat=thisproj$lat, lon=thisproj$lon, year=thisproj$year), FUN=mean)
+	summproj <- aggregate(thisproj[,grepl('wtcpue.proj', names(thisproj))], by=list(region=thisproj$regionfact, lat=thisproj$lat, lon=thisproj$lon, year=thisproj$year), FUN=mean)
 	
 #	print(summary(summproj))
 #	print(dim(summproj))	
 
-	thisprojspp <- gsub('/', '', thisprojspp) # would mess up saving the file
+	thisprojspp <- gsub('/', '', thisprojspp) # would mess up saving the file if the species name had /
 	save(summproj, file=paste(projfolder, '/summproj_', runtype, '_', thisprojspp, '.Rdata', sep='')) # write out the projections (15MB file)
 }
 

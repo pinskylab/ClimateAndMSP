@@ -16,7 +16,7 @@ if(Sys.info()["user"] == "lauren"){
 #################
 ### Load data ###	
 #################
-load('data/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.
+#load('data/trawl_allregionsforprojections_2015-02-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.
 load('data/trawl_allregionsforprojections_wSST_2015-06-02.RData') # load dat data.frame. Has all trawl observations from all regions. wtcpue has the standardized biomass estimates. They are standardized within regions, but not across regions.
 
 source("CSquareCode.r") #taken from VMStools in googlecode
