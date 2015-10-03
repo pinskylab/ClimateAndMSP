@@ -12,6 +12,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 ######################
 # useful functions 
 ######################
+require(Hmisc)
 
 deg2rad <- function(deg) return(deg*pi/180)
 
@@ -37,7 +38,6 @@ roundto = function(x,y){r = which.min(abs(x-y)); return(y[r])}
 ####################################################
 ## Add deltas to climatology (run this overnight) ##
 ####################################################
-require(Hmisc)
 
 # Load data needed to run
 load(paste(deltafolder, 'delta2100long.RData', sep='')) # loads delta2100long. slow (1.6G) 
@@ -196,7 +196,7 @@ for(i in 1:length(delta2100long)){ # for each climate model
 #				filler = aggregate(list(delta = full$delta[availinds2][usefull]), by = list(year = full$year[availinds2][usefull]), FUN=weighted.mean, na.rm=TRUE, w=1/dists) # summarize full deltas by year (average across cells available in each year), weighted by inverse distance
 				filler = summarize(cbind(full$delta[availinds2][usefull], 1/dists), by = list(year = full$year[availinds2][usefull]), FUN=wgtmean, na.rm=TRUE, stat.name='delta')
 				rownames(filler) = filler$year # make rows of filler easy to reference
-				filler2 = filler[clim$year[useclim], ] # re-order and expand filler to match years of clim rows to fill
+				filler2 = filler[as.character(clim$year[useclim]), ] # re-order and expand filler to match years of clim rows to fill
 				if(all(clim$year[useclim] == filler2$year)){
 					clim[[dnm]][useclim] = filler2$delta
 				} else {
@@ -330,7 +330,7 @@ for(i in 1:length(delta2100long)){ # for each climate model
 
 				filler = summarize(cbind(full$delta[availinds2], 1/dists), by = list(year = full$year[availinds2]), FUN=wgtmean, na.rm=TRUE, stat.name='delta') # summarize full deltas by year (average across cells available in each year and weight by inverse distance)
 				rownames(filler) = filler$year # make rows of filler easy to reference
-				filler2 = filler[clim$year[useclim], ] # re-order and expand filler to match years of clim rows to fill
+				filler2 = filler[as.character(clim$year[useclim]), ] # re-order and expand filler to match years of clim rows to fill
 				if(all(clim$year[useclim] == filler2$year)){
 					clim[[dnm]][useclim] = filler2$delta		
 				} else {
