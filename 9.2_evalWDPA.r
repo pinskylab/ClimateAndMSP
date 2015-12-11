@@ -32,6 +32,21 @@ calcrichtrendmids <- function(x){
 	return(mod$coefficients[2])
 }
 
+# turnover metrics
+# for use with Hmisc::summarize() but doesn't work for some reason
+# expects region in column 1, lat (2), lon (3), time period in column 4, spp in col 5, pres in col 6
+# only present species included
+turnover <- function(x){
+	pers <- sort(unique(x[,4]))
+	if(length(pers) != 2) stop(paste('expecting 2 time periods:', unique(x[,1]), unique(x[,2]), unique(x[,3]), paste(unique(x[,4], collapse=','))))
+	initcomm <- x[x[,4] == pers[1] & x[,6]==TRUE,5]
+	finalcomm <- x[x[,4] == pers[2] & x[,6]==TRUE,5]
+	
+	a <- length(intersect(initcomm, finalcomm)) # number of shared species
+	lost <- length(setdiff(initcomm, finalcomm)) # number of species lost
+	gained <- length(setdiff(finalcomm, initcomm))
+	return(c(nstart=length(initcomm), nend=length(finalcomm), nlost=lost, ngained=gained, flost=lost/length(initcomm), fgained=gained/length(initcomm), beta_sor=2*a/(2*a+gained+lost)))
+}
 
 ###########################################################
 ## Calculate species richness change within PAs
@@ -125,6 +140,97 @@ richtrend <- merge(richtrend, rich[rich$period=='2081-2100',c('region', 'lat', '
 richtrend$richchange = (richtrend$rich2081_2100 - richtrend$rich2006_2020)/richtrend$rich2006_2020
 richtrend$richlogRR = log10(richtrend$rich2081_2100/richtrend$rich2006_2020)
 	
+	
+###########################################################
+## Calculate community turnover within PAs
+###########################################################
+
+load('data/turn.RData') # loads turnover data.frame: sorenson similiarty by grid cell by time period (ensemble mean)
+wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
+
+# any overlapping richness projections? different regions, same grid cell
+# average across regions
+sum(duplicated(turn[,c('lat', 'lon')])) # yes: 1374
+numdup <- aggregate(list(n = turn$region), by=list(lat=turn$lat, lon=turn$lon), FUN=length)
+	sum(numdup$n>1) # 1265, which means the aggregate worked
+	sum(numdup$n>2) # 109 triples or more... why?
+numdupreg <- aggregate(list(nreg = turn$region), by=list(lat=turn$lat, lon=turn$lon), FUN=lu)
+	numdupreg <- merge(numdupreg, numdup)
+	sum(numdupreg$n>1 & numdupreg$nreg==1) # 0: no duplications within a region
+	sum(numdupreg$n>1 & numdupreg$nreg>=2) # 1265: all duplications involve 2+ regions
+	sum(numdupreg$n>1 & numdupreg$nreg>=3) # 109: some duplications involve 3 regions... why?
+	
+turnave <- aggregate(list(beta_sor = turn$beta_sor, fgained=turn$fgained, flost=turn$flost), by=list(lat=turn$lat, lon=turn$lon), FUN=mean) # take the average across regions
+	dim(turnave)
+
+# convert wdpa lon to + to match grid
+wdpa$lon[wdpa$lon < 0] = wdpa$lon[wdpa$lon < 0] + 360
+
+# merge turnover with WDPA
+	dim(wdpa)
+	length(unique(wdpa$wdpapolyID)) # 625 PAs
+
+wdpaturn <- merge(wdpa, turnave, all.x=TRUE)
+	dim(wdpaturn)
+	length(unique(wdpaturn$wdpapolyID)) # 625 PAs
+
+	# examine the merge
+	sum(is.na(wdpaturn$beta_sor)) # 228 values missing
+	sum(is.na(wdpaturn$flost)) # 228 values missing
+	sum(is.na(wdpaturn$fgained)) # 228 values missing
+	wdpaturn[is.na(wdpaturn$beta_sor), c('lat', 'lon', 'country', 'sub_loc', 'beta_sor')] # seem to be outside the richness projection. not sure why they were in the intersection with the climate grid
+	
+	# remove missing values
+	wdpaturn <- wdpaturn[!is.na(wdpaturn$beta_sor),]
+	
+# average turnover within each PA and period
+# important when PAs cross multiple grid cells
+wdpaturnave1 <- Hmisc::summarize(wdpaturn[,c('beta_sor', 'prop_grid')], by=llist(wdpapolyID=wdpaturn$wdpapolyID), FUN=wmean, stat.name='beta_sor')
+	dim(wdpaturnave1)
+	length(unique(wdpaturnave1$wdpapolyID)) # 586 PAs (lost a few)
+wdpaturnave2 <- Hmisc::summarize(wdpaturn[,c('fgained', 'prop_grid')], by=llist(wdpapolyID=wdpaturn$wdpapolyID), FUN=wmean, stat.name='fgained')
+	dim(wdpaturnave2)
+	length(unique(wdpaturnave2$wdpapolyID)) # 586 PAs (lost a few)
+wdpaturnave3 <- Hmisc::summarize(wdpaturn[,c('flost', 'prop_grid')], by=llist(wdpapolyID=wdpaturn$wdpapolyID), FUN=wmean, stat.name='flost')
+	dim(wdpaturnave3)
+	length(unique(wdpaturnave3$wdpapolyID)) # 586 PAs (lost a few)
+wdpaturnave <- merge(wdpaturnave1, wdpaturnave2)
+wdpaturnave <- merge(wdpaturnave, wdpaturnave3)
+wdpaturnave <- merge(wdpaturnave, wdpa[!duplicated(wdpa$wdpapolyID),]) # merge in other data
+	dim(wdpaturnave) # 586
+	
+	# examine MLPA MPAs
+	wdpaturnave[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game",] # all rows
+	summary(wdpaturnave$beta_sor[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Sorenson similarity
+	summary(wdpaturnave$flost[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Fraction species lost
+	summary(wdpaturnave$fgained[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Fraction species gained
+
+##############################################
+# Calculate turnover within MPA networks
+##############################################
+load('data/presmap.RData')
+wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
+
+# pick a MPA network
+grids <- wdpa[wdpa$sub_loc=='US-CA' & wdpa$mang_auth=="California Department of Fish and Game", c('lat', 'lon')] #MLPA
+	dim(grids)
+
+# select initial and final timeperiod for these grids
+thesespp <- presmap[paste(presmap$lat, presmap$lon) %in% paste(grids$lat, grids$lon) & presmap$period %in% c('2006-2020', '2081-2100'),]
+thesespp <- thesespp[thesespp$pres,] # trim to present spp
+	dim(thesespp) # 4858
+	sort(unique(thesespp$region))
+#	thesespp <- thesespp[thesespp$region == 'AFSC_WCTri',] # trim to one region
+	thesespp <- thesespp[thesespp$region == 'NWFSC_WCAnn',] # trim to one region
+	dim(thesespp) # 4858
+	
+# trim to unique species in each period
+thesespp <- thesespp[!duplicated(thesespp[,c('sppocean', 'period')]),]
+	dim(thesespp) # 180
+
+# evaluate turnover
+turnover(thesespp[,c('region', 'lat', 'lon', 'period', 'sppocean', 'pres')])
+
 ################
 # Evaluate change
 ################
