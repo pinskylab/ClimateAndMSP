@@ -225,13 +225,15 @@ wmean <- function(x){ # values in col 1, weights in col 2
 
 ## choose which run and time periods to use
 #runtype <- 'test'
-runtype <- 'testK6noSeas'
+#runtype <- 'testK6noSeas'; projtype <- ''
+runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
+
 timeperiods <- data.frame(year = 2006:2100, period = c(rep('2006-2020', 15), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20)))
 periods <- sort(unique(timeperiods$period))
 nt <- length(unique(periods))
 
 # list all projections from this run
-files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, '_', sep=''))
+files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, projtype, '_', sep=''))
 
 
 # set up dataframes
@@ -246,7 +248,7 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 	# load data for this species
 	load(paste(projfolder, '/', files[i], sep='')) # load summproj for this taxon
 	myregions <- sort(unique(summproj$region))
-	mysppocean <- gsub('.Rdata', '', gsub(paste('summproj_', runtype, '_', sep=''), '', files[i]))
+	mysppocean <- gsub('.Rdata', '', gsub(paste('summproj_', runtype, projtype, '_', sep=''), '', files[i]))
 
 	print(paste(i, 'of', length(files), mysppocean, paste(myregions, collapse=', '), Sys.time()))
 
@@ -284,20 +286,22 @@ dim(biomassavemap)
 
 
 ### Save meanpos and biomasssum
-save(biomassavemap, file = paste('data/biomassavemap_', runtype, '.RData', sep=''))
+save(biomassavemap, file = paste('data/biomassavemap_', runtype, projtype, '.RData', sep=''))
 
 
 ################################################################
 ## Plot ensemble mean maps of spp projections by 20-year block
+## each region separately
 ################################################################
 require(lattice)
 require(gridExtra)
 
 # which run type to use
 #runtype <- 'test' 
-runtype <- 'testK6noSeas'
- 	
-load(paste('data/biomassavemap_', runtype, '.RData', sep=''))
+#runtype <- 'testK6noSeas'; projtype <- ''
+runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
+
+load(paste('data/biomassavemap_', runtype, projtype, '.RData', sep=''))
 	
 sppreg <- biomassavemap[!duplicated(biomassavemap[,c('sppocean', 'region')]), c('sppocean', 'region')] # each spp/region combination to make maps for
 	sppreg <- sppreg[order(sppreg$region, sppreg$sppocean),]
@@ -308,7 +312,7 @@ options(warn=1) # print warnings as they occur
 cols <- colorRampPalette(c('grey80', 'blue', 'purple', 'red1'), interpolate='linear')
 periods <- sort(unique(biomassavemap$period))
 
-pdf(width=10, height=3, file=paste('figures/biomass_proj_maps_', runtype, '.pdf', sep=''))
+pdf(width=10, height=3, file=paste('figures/biomass_proj_maps_', runtype, projtype, '.pdf', sep=''))
 
 for(i in 1:nrow(sppreg)){
 	print(paste(i, 'of', nrow(sppreg), Sys.time()))
@@ -321,6 +325,66 @@ for(i in 1:nrow(sppreg)){
 		thisplot <- levelplot(wtcpue.proj ~ lon*lat|period, data=biomassavemap[inds,], at=seq(rng[1], rng[2], length.out=20), colorkey=list(axis.text=list(cex=0.5)), col.regions=cols(100), main=list(label=maintitle, cex=1), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), scales=list(cex=0.5), layout = c(length(periods), 1)) # observed averaged biomass
 
 		grid.arrange(thisplot) # plot on one page
+	}	
+}
+
+dev.off()
+
+
+################################################################
+## Plot ensemble mean maps of spp projections by 20-year block
+## all regions together (by ocean)
+################################################################
+require(lattice)
+require(gridExtra)
+
+
+# which run type to use
+#runtype <- 'test' 
+#runtype <- 'testK6noSeas'; projtype <- ''
+runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
+
+# whether to plot observations
+plotobs <- TRUE
+
+if(plotobs){
+	load('data/dat_selectedspp.Rdata') # load dat data.frame. Has all trawl observations from all regions. wtcpue
+	dat$lon[dat$lon<0] <- dat$lon[dat$lon<0] + 360 # reformat to match projections
+}
+
+load(paste('data/biomassavemap_', runtype, projtype, '.RData', sep=''))
+	
+spps <- sort(unique(biomassavemap$sppocean)) # each spp to make maps for
+	length(spps)
+
+# Make a set of ocean-scale plots on separate pages, one for each spp
+options(warn=1) # print warnings as they occur
+cols <- colorRampPalette(c('grey80', 'blue', 'purple', 'red1'), interpolate='linear')
+periods <- sort(unique(biomassavemap$period))
+
+pdf(width=10, height=3, file=paste('figures/biomass_proj_mapscontinent_', runtype, projtype, '.pdf', sep=''))
+#quartz(width=10, height=3)
+
+for(i in 1:length(spps)){
+	print(paste(i, 'of', length(spps), Sys.time()))
+	inds <- biomassavemap$sppocean == spps[i]
+	maintitle <- spps[i]
+
+	if(!all(is.na(biomassavemap$wtcpue.proj[inds]))){
+		rng <- c(0, 1.01*max(biomassavemap$wtcpue.proj[inds], na.rm=TRUE)) # slightly expanded to capture all values
+
+		thisplot <- levelplot(wtcpue.proj ~ lon*lat|period, data=biomassavemap[inds,], at=seq(rng[1], rng[2], length.out=20), colorkey=list(axis.text=list(cex=0.5)), col.regions=cols(100), main=list(label=maintitle, cex=1), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), scales=list(cex=0.5), layout = c(length(periods), 1)) # projected averaged biomass
+
+		if(plotobs){
+			obsinds <- dat$sppocean == spps[i] & dat$wtcpue > 0 # select where present
+			latrng <- range(biomassavemap$lat[inds], na.rm=TRUE)
+			lonrng <- range(biomassavemap$lon[inds], na.rm=TRUE)
+			obsplot <- xyplot(lat ~ lon, data=dat[obsinds,], xlim=lonrng, ylim=latrng, main='Observations', pch=16, cex=0.2, scales=list(cex=0.5), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), par.settings=list(layout.widths=list(right.padding=-3))) # plot of presences
+			grid.arrange(obsplot, thisplot, nrow=1, widths=c(1.2,length(periods))) # plot on one page with observations
+		
+		} else {
+			grid.arrange(thisplot) # plot on one page without observations
+		}
 	}	
 }
 

@@ -19,7 +19,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	projfolder = 'CEmodels_proj'
 	modfolder = 'CEmodels'
 	climgridfolder <- 'data/'
-	numcorestouse <- 12
+	numcorestouse <- 4
 	}
 # could add code for Lauren's working directory here
 
@@ -29,6 +29,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 #runtype <- 'test'
 #runtype <- 'testseason'
 runtype <- 'testK6noSeas'
+stayinregion <- FALSE
 
 
 #############################
@@ -108,40 +109,63 @@ dim(clim) # 9623120 rows
 options(warn=1) # print warnings as they occur
 
 # VERY slow
-doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtype){ 
+doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtype, stayinregion=TRUE){ 
+	# the stayinregion flag determines whether or not we project species outside of the regions in which they were observed historically (and to which models were fit)
+
+	# clear variables
 	mod <- avemeanbiomass <- NULL
+	
+	# load model fits (mod and avemeanbiomass)
 	fileindex <- which(grepl(gsub('/|\\(|\\)', '', thisprojspp), gsub('/|\\(|\\)', '', files)))
 	print(paste(fileindex, thisprojspp, Sys.time()))
 
 	load(paste(modfolder, '/', files[fileindex], sep='')) # loads mod and avemeanbiomass
 
-	# modify the GAMs to remove the regionfact term?
-	# or set all regions within the ocean of this taxon to a region name in the model? (to 'trick' the model)
-	# this would allow us to project outside the regions for which we had data
-	# for now, we don't do this
-
-	# add mean biomass by region
-	clim$biomassmean <- 0
-	clim$biomassmean[clim$regionfact %in% names(avemeanbiomass)] <- avemeanbiomass[as.character(clim$regionfact[clim$regionfact %in% names(avemeanbiomass)])] # use region to pull the correct mean biomass values
+	if(stayinregion){ # if we don't allow species to move into new regions, then we can use the average observed biomass for each region
+		# add mean biomass by region
+		clim$biomassmean <- 0
+		clim$biomassmean[clim$regionfact %in% names(avemeanbiomass)] <- avemeanbiomass[as.character(clim$regionfact[clim$regionfact %in% names(avemeanbiomass)])] # use region to pull the correct mean biomass values
+	}
+	if(!stayinregion){ #else, add a standard mean biomass across all regions
+		clim$biomassmean <- avemeanbiomass[1]
+	}
 
 	# smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/resources/faq_e02.asp)
 	smear <- mean(exp(mods[['mygam2']]$residuals))
 
 	# rows of clim to project to
 	regstoproj <- names(avemeanbiomass)
-	if(any(names(avemeanbiomass) == 'NEFSC_NEUS')){
+	if(any(regstoproj == 'NEFSC_NEUS')){
 		regstoproj <- c(regstoproj, 'NEFSC_NEUSSpring', 'NEFSC_NEUSFall') # add spring and fall surveys (how they are marked in the climatology) to the list. The models are fit to all NEUS data and don't distinguish seasons.
 	}
-	inds <- clim$regionfact %in% regstoproj
+	if(stayinregion){ # only project to regions in which this species had a climate envelope fit
+		inds <- clim$regionfact %in% regstoproj
+	}
+	if(!stayinregion){ # project to all regions in the same ocean (Atlantic or Pacific)
+		if(any(regstoproj %in% c("DFO_NewfoundlandFall", "DFO_NewfoundlandSpring", "DFO_ScotianShelf", "DFO_SoGulf", "NEFSC_NEUSFall", "NEFSC_NEUSSpring", "SEFSC_GOMex"))){ # Atlantic
+			regstoproj <- c("DFO_NewfoundlandFall", "DFO_NewfoundlandSpring", "DFO_ScotianShelf", "DFO_SoGulf", "NEFSC_NEUSFall", "NEFSC_NEUSSpring", "SEFSC_GOMex")
+		}
+		if(any(regstoproj %in% c("AFSC_Aleutians", "AFSC_EBS", "AFSC_GOA", "AFSC_WCTri", "NWFSC_WCAnn"))){ # Pacific
+			regstoproj <- c("AFSC_Aleutians", "AFSC_EBS", "AFSC_GOA", "AFSC_WCTri", "NWFSC_WCAnn")
+		}
+		inds <- clim$regionfact %in% regstoproj
+	}
+	
 
 	# Dataframe for this species' projections
 	thisproj <- clim[inds,c('regionfact', 'lat', 'lon', 'depth16th', 'year')] # dataframe to hold projections for this taxon
 	for(i in 1:13) thisproj[[paste('wtcpue.proj_', i, sep='')]] <- NA 	# Add projected biomass density columns for each climate model
 
-	# Adjust region names for NEUS
-	clim$regiontoproj <- as.character(clim$regionfact)
-	if(any(regstoproj %in% 'NEFSC_NEUS')){
-		clim$regiontoproj[clim$regiontoproj %in% c('NEFSC_NEUSSpring', 'NEFSC_NEUSFall')] <- 'NEFSC_NEUS'
+	# Add region factor to use in model during projection
+	if(stayinregion){
+		clim$regiontoproj <- as.character(clim$regionfact)
+		# Adjust region names for NEUS
+		if(any(regstoproj %in% 'NEFSC_NEUS')){
+			clim$regiontoproj[clim$regiontoproj %in% c('NEFSC_NEUSSpring', 'NEFSC_NEUSFall')] <- 'NEFSC_NEUS'
+		}
+	}
+	if(!stayinregion){ 
+		clim$regiontoproj <- names(avemeanbiomass)[1] # pick the first region to which this species was fit
 	}
 
 	# Calculate predictions for 2020-2100 for each model
@@ -167,9 +191,11 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 #	print(dim(summproj))	
 
 	thisprojspp <- gsub('/', '', thisprojspp) # would mess up saving the file if the species name had /
-	save(summproj, file=paste(projfolder, '/summproj_', runtype, '_', thisprojspp, '.Rdata', sep='')) # write out the projections (15MB file)
+	outfile <- paste(projfolder, '/summproj_', runtype, '_', thisprojspp, '.Rdata', sep='')
+	if(!stayinregion) outfile <- paste(projfolder, '/summproj_', runtype, '_xreg_', thisprojspp, '.Rdata', sep='') # append xreg to projections if species could be projected out of their observed regions
+	save(summproj, file=outfile) # write out the projections (15MB file)
 }
 
-result <- mclapply(X= projspp, FUN=doprojection, files=files, clim=clim, projfolder=projfolder, modfolder=modfolder, runtype=runtype, mc.cores=numcorestouse) # spawn out to multiple cores. errors will be stored in results
+result <- mclapply(X= projspp, FUN=doprojection, files=files, clim=clim, projfolder=projfolder, modfolder=modfolder, runtype=runtype, stayinregion=stayinregion, mc.cores=numcorestouse) # spawn out to multiple cores. errors will be stored in results
 
 print(result)
