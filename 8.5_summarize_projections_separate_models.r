@@ -8,15 +8,33 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
 	projfolder <- 'CEmodels_proj'
 	modfolder <- 'CEmodels'
+	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages (chron and ncdf4)
 	}
 # could add code for Lauren's working directory here
 
+###################
+## Flags
+###################
 
-############################################################
-## Summarize distributions by two-decade periods
-## Keep each model distinct (don't average across models)
-############################################################
-require(mgcv)
+## choose which runs to use
+## runtype refers to how the Species Distribution Models (SDMs) were fit
+## projtype refers to how the SDM projections were done
+#runtype <- 'test'; projtype=''
+#runtype <- 'testK6noSeas'; projtype=''
+runtype <- 'testK6noSeas'; projtype='_xreg'
+
+## choose the time periods
+timeperiods <- data.frame(year = 2006:2100, period = c(rep('2006-2020', 15), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20)))
+periods <- sort(unique(timeperiods$period))
+nt <- length(unique(periods))
+
+nm <- 13 # number of climate models
+
+
+#############
+## Functions
+#############
+#require(mgcv)
 require(Hmisc)
 
 # weighted mean function to use with summarize()
@@ -26,16 +44,14 @@ wmean <- function(x){ # values in col 1, weights in col 2
 }
 
 
-## choose which run and time periods to use
-#runtype <- 'test'
-runtype <- 'testK6noSeas'
-timeperiods <- data.frame(year = 2006:2100, period = c(rep('2006-2020', 15), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20)))
-periods <- sort(unique(timeperiods$period))
-nt <- length(unique(periods))
-nm <- 13 # number of climate models
+
+############################################################
+## Summarize distributions by two-decade periods
+## Keep each model distinct (don't average across models)
+############################################################
 
 # list all projections from this run
-files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, '_', sep=''))
+files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, projtype, '_', sep=''))
 
 
 # set up dataframes
@@ -93,4 +109,4 @@ dim(biomassavemapbymod)
 
 
 ### Save the biomass maps by model
-save(biomassavemapbymod, file = paste('data/biomassavemapbymod_', runtype, '.RData', sep=''))
+save(biomassavemapbymod, file = paste('data/biomassavemapbymod_', runtype, projtype, '.RData', sep=''))

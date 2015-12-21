@@ -8,31 +8,49 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
 	projfolder <- 'CEmodels_proj'
 	modfolder <- 'CEmodels'
+	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages (chron and ncdf4)
 	}
 # could add code for Lauren's working directory here
 
 
+#######################
+## Script-wide flags ##
+#######################
+
+## choose which run and time periods to use
+#runtype <- 'test'
+#runtype <- 'testK6noSeas'; projtype <- ''
+runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
+
+# whether to plot observations next to projections in the maps
+plotobs <- TRUE
+
+
+###########################
+## Script-wide functions ##
+###########################
+#require(mgcv)
+require(Hmisc)
+require(lattice)
+require(gridExtra)
+
+# weighted mean function for summarize()
+wmean <- function(x){
+	i <- !is.na(x[,1]) & !is.na(x[,2])
+	if(sum(i) == 0) return(NA)
+	else return(weighted.mean(x[i,1], x[i,2]))
+}
+
 
 ##########################################################
 ## Calculate mean lat/depth and sum of biomass by year  ##
+## within each region                                   ##
 ##########################################################
-require(mgcv)
-require(Hmisc)
-
-## choose which run to use
-#runtype <- 'testseason'
-runtype <- 'testK6noSeas'
 
 # list all projections from this run
-files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, '_', sep=''))
+files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, projtype, '_', sep=''))
 
-# weighted mean function to use with summarize()
-wmean <- function(x){ # values in col 1, weights in col 2
-	inds <- !is.na(x[,1]) & !is.na(x[,2])
-	return(weighted.mean(x[inds,1], x[inds,2])) 
-}
-
-# save predicted positions for lat, lon, and depth
+# list to save predicted positions for lat, lon, and depth
 meanpos <- list(0)
 
 
@@ -54,7 +72,7 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 	# load data for this species
 	load(paste(projfolder, '/', files[i], sep='')) # load summproj for this taxon
 	myregions <- sort(unique(summproj$region))
-	mysppocean <- gsub('.Rdata', '', gsub(paste('summproj_', runtype, '_', sep=''), '', files[i]))
+	mysppocean <- gsub('.Rdata', '', gsub(paste('summproj_', runtype, projtype, '_', sep=''), '', files[i])) # strip sppocean out of file name
 
 	print(paste(i, 'of', length(files), mysppocean, paste(myregions, collapse=', '), Sys.time()))
 
@@ -88,34 +106,26 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 
 
 ### Save meanpos and biomasssum
-save(biomasssum, meanlat, meanlon, file = paste('data/meanlat,lon,biomass_', runtype, '.RData', sep=''))
+save(biomasssum, meanlat, meanlon, file = paste('data/meanlat,lon,biomass_', runtype, projtype, '.RData', sep=''))
 
 
 
 
-###########################################################
-## Plot time-series of summarized spp biomass and ranges ##
-###########################################################
-require(Hmisc)
-
-wmean <- function(x){
-	i <- !is.na(x[,1]) & !is.na(x[,2])
-	if(sum(i) == 0) return(NA)
-	else return(weighted.mean(x[i,1], x[i,2])) # weighted mean function for summarize()
-}
-
-#runtype <- 'testseason'
-runtype <- 'testK6noSeas'
+#############################################################
+## Plot time-series of summarized spp biomass and ranges   ##
+## within each region                                      ##
+## use common biomass y-axis if projtype=='_xreg'          ##
+#############################################################
 
 ## load the data
-load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomasssum, meanlat, meanlon: projected biomass by year for each taxon in each region
+load(paste('data/meanlat,lon,biomass_', runtype, projtype, '.RData', sep='')) # biomasssum, meanlat, meanlon: projected biomass by year for each taxon in each region
 
 ## plots of change in biomass
 	sppregions <- sort(unique(paste(biomasssum$region, biomasssum$sppocean)))
 	length(sppregions)
 
 	# quartz(width=10, height=8)
-	pdf(file=paste('figures/biomasssum_proj_', runtype, '.pdf', sep=''), width=10, height=8)
+	pdf(file=paste('figures/biomasssum_proj_', runtype, projtype, '.pdf', sep=''), width=10, height=8)
 	par(mfrow = c(6,6), mai=c(0.3, 0.3, 0.2, 0.05), cex.main=0.7, cex.axis=0.8, omi=c(0,0.2,0.1,0), mgp=c(2.8, 0.7, 0), font.main=3)
 
 	rc <- 1 # row counter
@@ -133,13 +143,19 @@ load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomasssum
 		if(cc == 7){ cc <- 1; rc <- rc + 1}
 		if(rc == 7){ cc <- 1; rc <- 1}
 	
-		if(i>1){ if(thisreg != oldreg){  # switch to a new page when I get to a new region
+		if(i>1){
+			 if(thisreg != oldreg){  # switch to a new page when we get to a new region
 				par(mfrow = c(6,6), mai=c(0.3, 0.3, 0.2, 0.05), cex.main=0.7, cex.axis=0.8, omi=c(0,0.2,0.1,0), mgp=c(2.8, 0.7, 0), font.main=3)
 				rc <- 1; cc <- 1
-		}}
+			}
+		}
 		
 		# ylims
 		ylims <- c(0, max(biomasssum[inds, grep('summwtcpue', names(biomasssum))], na.rm=TRUE)) # will warn if all values are NA
+		if(projtype=='_xreg'){
+			inds2 <- biomasssum$sppocean == thisspp # if cross-regional, then look across all regions to set y-axis
+			ylims <- c(0, max(biomasssum[inds2, grep('summwtcpue', names(biomasssum))], na.rm=TRUE)) # will warn if all values are NA
+		}
 		if(is.infinite(ylims[2])) ylims <- c(0,1)
 
 		# plot data for each GCM
@@ -164,7 +180,7 @@ load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomasssum
 	length(sppregions)
 
 	# quartz(width=10, height=8)
-	pdf(file=paste('figures/meanlat_proj_', runtype, '.pdf', sep=''), width=10, height=8)
+	pdf(file=paste('figures/meanlat_proj_', runtype, projtype, '.pdf', sep=''), width=10, height=8)
 	par(mfrow = c(6,6), mai=c(0.3, 0.3, 0.2, 0.05), cex.main=0.7, cex.axis=0.8, omi=c(0,0.2,0.1,0), mgp=c(2.8, 0.7, 0), font.main=3)
 
 	rc <- 1 # row counter
@@ -213,20 +229,7 @@ load(paste('data/meanlat,lon,biomass_', runtype, '.RData', sep='')) # biomasssum
 ###################################################
 ## Summarize distributions by two-decade periods
 ###################################################
-require(mgcv)
-require(Hmisc)
 
-# weighted mean function to use with summarize()
-wmean <- function(x){ # values in col 1, weights in col 2
-	inds <- !is.na(x[,1]) & !is.na(x[,2])
-	return(weighted.mean(x[inds,1], x[inds,2])) 
-}
-
-
-## choose which run and time periods to use
-#runtype <- 'test'
-#runtype <- 'testK6noSeas'; projtype <- ''
-runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
 
 timeperiods <- data.frame(year = 2006:2100, period = c(rep('2006-2020', 15), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20)))
 periods <- sort(unique(timeperiods$period))
@@ -293,13 +296,6 @@ save(biomassavemap, file = paste('data/biomassavemap_', runtype, projtype, '.RDa
 ## Plot ensemble mean maps of spp projections by 20-year block
 ## each region separately
 ################################################################
-require(lattice)
-require(gridExtra)
-
-# which run type to use
-#runtype <- 'test' 
-#runtype <- 'testK6noSeas'; projtype <- ''
-runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
 
 load(paste('data/biomassavemap_', runtype, projtype, '.RData', sep=''))
 	
@@ -321,6 +317,10 @@ for(i in 1:nrow(sppreg)){
 
 	if(!all(is.na(biomassavemap$wtcpue.proj[inds]))){
 		rng <- c(0, 1.01*max(biomassavemap$wtcpue.proj[inds], na.rm=TRUE)) # slightly expanded to capture all values
+		if(projtype=='_xreg'){
+			inds2 <- biomassavemap$sppocean == sppreg$sppocean[i] # use all regions if projections were cross-region
+			rng <- c(0, 1.01*max(biomassavemap$wtcpue.proj[inds2], na.rm=TRUE)) # slightly expanded to capture all values
+		}
 
 		thisplot <- levelplot(wtcpue.proj ~ lon*lat|period, data=biomassavemap[inds,], at=seq(rng[1], rng[2], length.out=20), colorkey=list(axis.text=list(cex=0.5)), col.regions=cols(100), main=list(label=maintitle, cex=1), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), scales=list(cex=0.5), layout = c(length(periods), 1)) # observed averaged biomass
 
@@ -335,17 +335,6 @@ dev.off()
 ## Plot ensemble mean maps of spp projections by 20-year block
 ## all regions together (by ocean)
 ################################################################
-require(lattice)
-require(gridExtra)
-
-
-# which run type to use
-#runtype <- 'test' 
-#runtype <- 'testK6noSeas'; projtype <- ''
-runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
-
-# whether to plot observations
-plotobs <- TRUE
 
 if(plotobs){
 	load('data/dat_selectedspp.Rdata') # load dat data.frame. Has all trawl observations from all regions. wtcpue
