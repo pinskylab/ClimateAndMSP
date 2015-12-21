@@ -6,6 +6,7 @@ if(Sys.info()["nodename"] == "pinsky-macbookair"){
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
 	deltafolder <- 'data/'
+	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages (chron and ncdf4)
 	}
 # could add code for Lauren's working directory here
 
@@ -40,9 +41,22 @@ roundto = function(x,y){r = which.min(abs(x-y)); return(y[r])}
 ####################################################
 
 # Load data needed to run
-load(paste(deltafolder, 'delta2100long.RData', sep='')) # loads delta2100long. slow (1.6G) 
-#load('Output/delta2100_2014-11-22.RData') # slow (1.2G) # loads delta2100
 clim = read.csv('data/climGrid.csv', row.names=1, stringsAsFactors=FALSE); type='Grid' # the gridded climatology
+
+# Choose which RCP to process
+#rcp <- 85
+rcp <- 45
+
+if(rcp==85){
+	load(paste(deltafolder, 'delta2100rcp85long.RData', sep='')) # loads delta2100rcp85long. slow (378M) 
+	delta2100long <- delta2100rcp85long # script is written to operate on delta2100long
+	rm(delta2100rcp85long)
+}
+if(rcp==45){
+	load(paste(deltafolder, 'delta2100rcp45long.RData', sep='')) # loads delta2100rcp45long. slow (378M) 
+	delta2100long <- delta2100rcp45long # script is written to operate on delta2100long
+	rm(delta2100rcp45long)
+}
 
 regs = sort(unique(clim$region))
 
@@ -78,9 +92,9 @@ for(i in (min(clim$year)+1):max(delta2100long[[1]]$year)){
 }
 dim(clim)
 
-clim_old2 = clim # save a copy in case the next step goes awry
+# save a temporary copy in case the next step goes awry
+clim_old2 = clim 
 save(clim, file=paste(deltafolder, 'climGrid.proj_step1.RData', sep=''))
-
 # load(paste(deltafolder, 'climGrid.proj_step1.RData', sep=''))
 
 # merge in the bottemp deltas from delta2100long (~10 min)
@@ -109,9 +123,9 @@ for(i in 1:length(delta2100long)){ # for each climate model
 }	
 names(clim)
 
-clim_old3 = clim # save a copy in case the next step goes awry
+# save a temporary copy in case the next step goes awry
+clim_old3 = clim 
 save(clim, file=paste(deltafolder, 'climGrid.proj_step2.RData', sep=''))
-
 # load(paste(deltafolder, 'climGrid.proj_step2.RData', sep=''))
 
 # calculate future bottemp by adding delta to climatology
@@ -131,8 +145,8 @@ for(i in 1:length(delta2100long)){ # for each climate model
 	print(paste(length(missinds), 'missing for 2020'))
 	if(length(missinds)>0){
 		full = delta2100long[[i]] # copy of this model output so that we can add missing years
-		if(!all(2020:2099 %in% unique(full$year))){ # make sure we have every year (we don't for some climate models). we need all years (even if NA) in order to merge seemlessly into clim
-			missingyears = setdiff(2020:2099, full$year)
+		if(!all(2020:2100 %in% unique(full$year))){ # make sure we have every year (we don't for some climate models). we need all years (even if NA) in order to merge seemlessly into clim
+			missingyears = setdiff(2020:2100, full$year)
 			temp = full[!duplicated(full[,c('lon', 'lat', 'depth', 'region')]),]
 			temp$delta = NA
 			for(j in 1:length(missingyears)){ # add in the datapoints for each year if missing a year
@@ -149,7 +163,7 @@ for(i in 1:length(delta2100long)){ # for each climate model
 		level1 = 0 # keep track of how often we had to go out to adjacent lat/lon to get a delta value
 
 		for(k in 1:length(missinds)){ # for each missing delta value in clim
-			print(k)
+			if(k %% 100 == 0) print(k)
 			fill = FALSE # indicator for whether to fill this missing delta value
 			thisreg = clim$region[missinds[k]]
 			thislat = clim$latgrid[missinds[k]]
@@ -220,10 +234,9 @@ for(i in 1:length(delta2100long)){ # for each climate model
 
 unique(clim$region)
 
-# write out clim with projections
-clim_old4 = clim # save a copy in case the next step goes awry
+# save a temporary copy in case the next step goes awry
+clim_old4 = clim 
 save(clim, file=paste(deltafolder, 'climGrid.proj_step3.RData', sep=''))
-
 # load(paste(deltafolder, 'climGrid.proj_step3.RData', sep=''))
 
 # merge in the surftemp deltas from delta2100long
@@ -254,9 +267,9 @@ for(i in 1:length(delta2100long)){ # for each climate model
 }	
 names(clim)
 
-clim_old4 = clim # save a copy in case the next step goes awry
+# save a temporary copy in case the next step goes awry
+clim_old4 = clim 
 save(clim, file=paste(deltafolder, 'climGrid.proj_step4.RData', sep=''))
-
 # load(paste(deltafolder, 'climGrid.proj_step4.RData', sep=''))
 
 
@@ -278,8 +291,8 @@ for(i in 1:length(delta2100long)){ # for each climate model
 		surfindsb = delta2100long[[i]]$depth == min(delta2100long[[i]]$depth) # get only the surface values
 		cols = c("lon", "lat", "delta", "region", "year")
 		full = delta2100long[[i]][surfindsb,cols] # only surface temperatures
-		if(!all(2020:2099 %in% unique(full$year))){ # make sure we have every year (we don't for some climate models), and add them if not
-			missingyears = (2020:2099)[!(2020:2099 %in% unique(full$year))]
+		if(!all(2020:2100 %in% unique(full$year))){ # make sure we have every year (we don't for some climate models), and add them if not
+			missingyears = (2020:2100)[!(2020:2100 %in% unique(full$year))]
 			temp = full[!duplicated(full[,c('lon', 'lat', 'region')]),]
 			temp$delta = NA
 			for(j in 1:length(missingyears)){ # add in the datapoints for each year if missing a year
@@ -356,7 +369,6 @@ for(i in 1:length(delta2100long)){ # for each climate model
 unique(clim$region)
 
 # write out clim dataframe with projections
-	# write.csv(clim, file=paste('Output/clim', type, '.proj2_', Sys.Date(), '.csv', sep=''))
-	save(clim, file=paste(deltafolder, 'clim', type, '.proj2.RData', sep=''))
+	save(clim, file=paste(deltafolder, 'clim', type, '_rcp', rcp, '.proj2.RData', sep=''))
 
 

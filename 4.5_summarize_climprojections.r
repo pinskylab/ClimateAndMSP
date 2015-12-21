@@ -1,12 +1,6 @@
 # basic summary statistics and plots of the BT and SST projections
 
-# Read in temperature fields and models, then make range projections
 # This could probably be sped up by switching from data.frames to data.tables
-
-require(mgcv)
-require(Hmisc)
-require(parallel) # for multi-core calculations
-
 
 ## Set working directory
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
@@ -18,13 +12,30 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 # could add code for Lauren's working directory here
 
 
+##########
+## Flags
+##########
+#rcp <- 85
+rcp <- 45
+
+$$###########
+## Functions
+#############
+#require(mgcv) # not needed?
+# require(Hmisc) # not needed?
+#require(parallel) # for multi-core calculations: Not needed?
+require(reshape2)
+require(lattice)
+source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
+
+
+
 ########################
 ## Prep projection data
 ########################
-load('data/climGrid.proj2.RData') # loads clim
+load(paste('data/climGrid_', rcp, '.proj2.RData', sep='')) # loads clim
 
 # reshape clim to long format
-require(reshape2)
 names(clim)[names(clim)=='bottemp.clim.int'] = 'bottemp.proj_0' # "model" 0 is the climatology
 names(clim)[names(clim)=='surftemp.clim.int'] = 'surftemp.proj_0'
 
@@ -40,7 +51,7 @@ clim2 = melt(clim[, !(names(clim) %in% c(paste('depthgrid', 1:13, sep=''), 'bott
 
 	clim2 = clim2[!(clim2$model == 0 & clim2$year > 2006),] # remove climatology entries for all years after 2006. they are just duplicates and not needed in this long format
 
-	save(clim2, file='data/climGrid.proj2long_10deginterp.RData') # slow
+	save(clim2, file=paste('data/climGrid.proj2long_10deginterp_', rcp, '.RData') # slow
 
 	rm(newcols, newcols2, var1, var2)
 
@@ -48,8 +59,7 @@ clim2 = melt(clim[, !(names(clim) %in% c(paste('depthgrid', 1:13, sep=''), 'bott
 ## Prep delta data
 ## Run this on Amphiprion, takes 60G RAM
 ###########################################
-require(reshape2)
-load('data/delta2100long.RData') # slow (1.3G)
+load(paste('data/delta2100long_', rcp, '.RData', sep='')) # slow (1.3G)
 
 	# reshape into one long dataframe
 delta2100long[[1]]$model = 1
@@ -61,7 +71,7 @@ for(i in 2:length(delta2100long)){ # takes 10 min or so on Amphiprion
 	delta2100long2 = rbind(delta2100long2, delta2100long[[i]])
 }
 
-save(delta2100long2, file='data/delta2100long2.RData') # slow
+save(delta2100long2, file=paste('data/delta2100long2_', rcp, '.RData', sep='')) # slow
 
 
 ###########################################
@@ -99,7 +109,7 @@ deltaSSTperiods = dcast(data=delta2100long3[delta2100long3$surf == TRUE,], regio
 	deltaSSTperiods$period[deltaSSTperiods$period == 2] = '2021-2060'
 	deltaSSTperiods$period[deltaSSTperiods$period == 3] = '2061-2100'
 
-save(deltaSSTperiods, file='data/deltaSSTperiods.RData') # fast
+save(deltaSSTperiods, file=paste('data/deltaSSTperiods_', rcp, '.RData', sep='')) # fast
 
 ## DO THE SAME FOR BT?
 
@@ -107,16 +117,14 @@ save(deltaSSTperiods, file='data/deltaSSTperiods.RData') # fast
 ###################################
 ## Plots                       ####
 ###################################
-load('data/climGrid.proj2long_10deginterp.RData') # loads clim2 (long format)
-load('data/deltaSSTperiods.RData') # average SST delta by time period for each grid cell. using all data from the climate models.
+load(paste('data/climGrid.proj2long_10deginterp_', rcp, '.RData', sep='')) # loads clim2 (long format)
+load(paste('data/deltaSSTperiods_', rcp, '.RData', sep='')) # average SST delta by time period for each grid cell. using all data from the climate models.
 
 # Plot maps of raw (un-interpolated) deltas in each region, across three time periods. Each region on a separate page
 
 	#SST
-	require(lattice)
-	source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
-	pdf(width=30, height=6, file=paste('figures/deltaSST_nointerp.pdf', sep=''))
+	pdf(width=30, height=6, file=paste('figures/deltaSST_nointerp_', rcp, '.pdf', sep=''))
 	regs = sort(unique(deltaSSTperiods$region))
 	for(i in 1:length(regs)) {
 		print(i)
@@ -148,10 +156,8 @@ load('data/deltaSSTperiods.RData') # average SST delta by time period for each g
 
 
 	#BT
-	require(lattice)
-	source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
-	pdf(width=30, height=6, file=paste('figures/climBTproj_10deginterp.pdf', sep=''))
+	pdf(width=30, height=6, file=paste('figures/climBTproj_10deginterp_', rcp, '.pdf', sep=''))
 	regs = sort(unique(clim2periods$region))
 	for(i in 1:length(regs)) {
 		print(i)
@@ -165,10 +171,8 @@ load('data/deltaSSTperiods.RData') # average SST delta by time period for each g
 	dev.off()
 
 	#SST
-	require(lattice)
-	source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
-	pdf(width=30, height=6, file=paste('figures/climSSTproj_10deginterp.pdf', sep=''))
+	pdf(width=30, height=6, file=paste('figures/climSSTproj_10deginterp_', rcp, '.pdf', sep=''))
 	regs = sort(unique(clim2periods$region))
 	for(i in 1:length(regs)) {
 		print(i)
