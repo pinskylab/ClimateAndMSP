@@ -1,11 +1,6 @@
 # Read in temperature fields and models, then make range projections
 # This could probably be sped up by switching from data.frames to data.tables
 
-require(mgcv)
-require(Hmisc)
-require(parallel) # for multi-core calculations
-
-
 ## Set working directory
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
@@ -20,15 +15,26 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	modfolder = 'CEmodels'
 	climgridfolder <- 'data/'
 	numcorestouse <- 4
+	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
 	}
 # could add code for Lauren's working directory here
+
+###################
+## Load libraries
+###################
+
+require(mgcv)
+require(Hmisc)
+require(parallel) # for multi-core calculations
+
 
 ##############################
 # Choose the model fit to use
 ##############################
 #runtype <- 'test'
 #runtype <- 'testseason'
-runtype <- 'testK6noSeas'
+#runtype <- 'testK6noSeas'
+runtype <- 'fitallreg'
 stayinregion <- FALSE
 
 
@@ -113,21 +119,21 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 	# the stayinregion flag determines whether or not we project species outside of the regions in which they were observed historically (and to which models were fit)
 
 	# clear variables
-	mod <- avemeanbiomass <- NULL
+	mods <- avemeanbiomass <- NULL
 	
 	# load model fits (mod and avemeanbiomass)
 	fileindex <- which(grepl(gsub('/|\\(|\\)', '', thisprojspp), gsub('/|\\(|\\)', '', files)))
 	print(paste(fileindex, thisprojspp, Sys.time()))
 
-	load(paste(modfolder, '/', files[fileindex], sep='')) # loads mod and avemeanbiomass
+	load(paste(modfolder, '/', files[fileindex], sep='')) # loads mods and avemeanbiomass
 
 	if(stayinregion){ # if we don't allow species to move into new regions, then we can use the average observed biomass for each region
 		# add mean biomass by region
 		clim$biomassmean <- 0
 		clim$biomassmean[clim$regionfact %in% names(avemeanbiomass)] <- avemeanbiomass[as.character(clim$regionfact[clim$regionfact %in% names(avemeanbiomass)])] # use region to pull the correct mean biomass values
 	}
-	if(!stayinregion){ #else, add a standard mean biomass across all regions
-		clim$biomassmean <- avemeanbiomass[1]
+	if(!stayinregion){ #else, add a standard mean biomass across all regions (only choose from non-zero options)
+		clim$biomassmean <- avemeanbiomass[avemeanbiomass>0][1]
 	}
 
 	# smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/resources/faq_e02.asp)
@@ -165,7 +171,7 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 		}
 	}
 	if(!stayinregion){ 
-		clim$regiontoproj <- names(avemeanbiomass)[1] # pick the first region to which this species was fit
+		clim$regiontoproj <- names(avemeanbiomass)[avemeanbiomass>0][1] # pick the first non-zero region to which this model was fit. hopefully this is the same as one of the region factors in the model... (but there's probably a better way to check)
 	}
 
 	# Calculate predictions for 2020-2100 for each model
@@ -185,7 +191,7 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 	}
 	
 	# summarize by 1/4 degree grid
-	summproj <- aggregate(thisproj[,grepl('wtcpue.proj', names(thisproj))], by=list(region=thisproj$regionfact, lat=thisproj$lat, lon=thisproj$lon, year=thisproj$year), FUN=mean)
+	summproj <- aggregate(thisproj[,grepl('wtcpue.proj', names(thisproj))], by=list(region=thisproj$regionfact, lat=thisproj$lat, lon=thisproj$lon, year=thisproj$year), FUN=mean) # also slow
 	
 #	print(summary(summproj))
 #	print(dim(summproj))	

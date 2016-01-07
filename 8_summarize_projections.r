@@ -20,7 +20,8 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 ## choose which run and time periods to use
 #runtype <- 'test'
 #runtype <- 'testK6noSeas'; projtype <- ''
-runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
+#runtype <- 'testK6noSeas'; projtype <- '_xreg' # with cross-region projections
+runtype <- 'fitallreg'; projtype <- '_xreg' # with cross-region projections
 
 # whether to plot observations next to projections in the maps
 plotobs <- TRUE

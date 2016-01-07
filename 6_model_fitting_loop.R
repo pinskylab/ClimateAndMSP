@@ -1,12 +1,16 @@
 ## Set working directories
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
+	modfolder <- '../CEmodels/'
 	}
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
+	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
+	modfolder <- 'CEmodels/'
 	}
 if(Sys.info()["user"] == "lauren"){
 	setwd('~/backup/NatCap/proj_ranges/')
+	modfolder <- 'output/CEmodels/'
 }
 
 
@@ -15,15 +19,15 @@ if(Sys.info()["user"] == "lauren"){
 # Loop through species and fit models.
 library(mgcv);library(ROCR)
 
-runname <- "testK6noSeas"
+runname <- "fitallreg" # use all regions in each fit that are from the same ocean
 
 
 load("data/dat_selectedspp.Rdata")
 	dat$logwtcpue <- log(dat$wtcpue)
 	dat$survey <- dat$region #keeps NEFSC as two separate surveys in "survey"
 	dat$surveyfact <-as.factor(dat$survey)
-	dat$region[dat$region %in% c("NEFSC_NEUSFall","NEFSC_NEUSSpring")] <- "NEFSC_NEUS"
-	dat$regionfact <- as.factor(dat$region) #NEFSC as one region in "region"
+	dat$region[dat$region %in% c("NEFSC_NEUSFall","NEFSC_NEUSSpring")] <- "NEFSC_NEUS" #NEFSC as one region in "region"
+	dat$regionfact <- as.factor(dat$region) # the version ot use for model fitting
 	# if using season
 	dat$season <- as.factor(c(rep('wi', 3), rep('sp', 3), rep('su', 3), rep('fa', 3))[dat$month])
 	dat$regseas <- as.factor(paste(dat$region,dat$season,sep="_"))
@@ -51,13 +55,14 @@ modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=
 ######################
 
 #Open pdf to print figures 
-pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_",runname,".pdf",sep=""),width=6,height=6)
+pdf(file=paste("figures/CEmodelGAMsmooths/GAMs_",runname,".pdf",sep=""),width=8,height=6)
 
 options(warn=1) # print warnings as they occur
 allwarnings = NULL
 print(paste(length(allspp), 'models to fit'))
 
 for(i in 1:length(allspp)){ 
+#for(i in c(18,22,25,27,28)){ # for testing on trouble species
 	fittrain = TRUE
 	mygam1tt <- mygam2tt <- mygam1 <- mygam2 <- preds <- preds1 <- preds2 <- predstt <- preds1tt <- preds2tt <- NULL
 
@@ -65,27 +70,20 @@ for(i in 1:length(allspp)){
 	print(paste(i,sp, Sys.time()))
 
 	mydat<-dat[dat$sppocean==sp,] 
+	mydat$logwtcpue[is.infinite(mydat$logwtcpue)] <- NA
 	myregions<-unique(mydat$region)
 	myhauls<-unique(mydat$haulid)
 	myseasons<-unique(mydat$season)
+	myocean <- unique(mydat$ocean)
 
-	##############################################################
-	# Test whether we have enough data in each region and season #
-	##############################################################
 
-	# check each region
-	ninds<-table(mydat$region[mydat$presfit & complete.cases(mydat[,c("bottemp","surftemp", "rugosity","presfit")])]) # number of presences per region with complete data (inc. surftemp)
-	myregions <- names(ninds)[ninds >= 10] # require at least 10 presences with complete data to keep a region
-	mydat <- mydat[mydat$region %in% myregions,]
 
 
 	####################################################
 	# Add records for when there was a haul but no fish
 	####################################################
-	# Only expand catches (pad with zeros) in regions where the species has previously been caught.
-
-	# without season
-	zs<-dat[!(dat$haulid %in% myhauls) & dat$region %in% myregions,] #extract haulids where this species is missing, but only from regions where this species has at least one record.
+	# without season. expand to all regions in the same ocean.
+	zs<-dat[!(dat$haulid %in% myhauls) & dat$ocean %in% myocean,] #extract haulids where this species is missing
 
 	matchpos<-match(unique(zs$haulid),zs$haulid) # Extract one record of each haulid
 	zeros<-zs[matchpos,]
@@ -95,6 +93,7 @@ for(i in 1:length(allspp)){
 	zeros$sppnew<-mydat$sppnew[1]
 	zeros$sppocean<-mydat$sppocean[1] #may need to add "ocean"
 	zeros$wtcpue<-0
+	zeros$logwtcpue <- NA
 	zeros$presfit<-FALSE
 
 	mydatw0<-rbind(mydat,zeros) #combine positive hauls with zero hauls
@@ -115,34 +114,69 @@ for(i in 1:length(allspp)){
 	}
 	spdata<-merge(mydatw0,avecatchyrreg)
 	
+	#Also save average biomassmean for each region (across all years) to use in later predictions.
+	avemeanbiomass<-apply(ave.catch.wt,2,mean,na.rm=T)
 
 	####################################################
 	# Trim data to complete cases
 	####################################################
 
-	spdata<-spdata[complete.cases(spdata[,c("surftemp","bottemp","rugosity","presfit")]),] 
+	spdata<-spdata[complete.cases(spdata[,c("surftemp","bottemp","rugosity","presfit")]),]
+	spdata <- droplevels(spdata)
+
+
+	##############################################
+	# Set up data in regions with no presences
+	##############################################
+	spdata$logwtcpue.pad <- spdata$logwtcpue # has some zeros changed to -18 to allow abundance model fitting
+	spdata$presfit.pad <- spdata$presfit # has some FALSE changed to TRUE to allow abundance model fitting
+
+
+	npres <- table(spdata$regionfact[spdata$presfit])
+	if(any(npres < 1)){
+		mywarn <- paste('Zero presences for', i, sp, 'in', paste(names(npres)[npres<1], collapse=', '), 'so adding some as -23 (1e-10) to allow abundance model fitting')
+		allwarnings <- c(allwarnings, mywarn)
+		warning(mywarn)
+		regstofill <- names(npres)[as.numeric(npres) == 0]
+
+		spdata$regionfact[spdata$region %in% regstofill] <- names(npres)[which.max(npres)] # in regions with no observations, replace the region ID with that from a region with observations. this prevents a low region coefficient from explaining the zero observations.
+
+		# if a region has no presences
+		# pick some absences and force them to low abundance presences for abundance model fitting
+		for(j in 1:length(regstofill)){
+			theseinds <- spdata$region == regstofill[j]
+			fake0s <- sample(which(theseinds), size = round(0.1 * sum(theseinds)))
+			spdata$logwtcpue.pad[fake0s] <- -23
+			spdata$presfit.pad[fake0s] <- TRUE
+			print(paste(regstofill[j], ': Added', length(fake0s), 'fake zeros'))
+		}
+	}
+	
+	spdata <- droplevels(spdata)
+
 
 	####################################################
 	#Set up data for training and testing to evaluate performance
 	####################################################
 
-	#Subset training and testing data by year (use first 80% from each region to predict last 20% in each region)
+	#Subset training and testing data by year (use first 80% to predict last 20%)
 	spdata<-spdata[order(spdata$year,spdata$month),]
 
 	# indices for both pres and abs
-	ninds<-table(spdata$region) # number of entries per region
+	ninds<-table(spdata$regionfact) # number of entries per region (regions as set up for fitting)
 	traininds <- NULL; testinds <- NULL
 	for(j in 1:length(ninds)){ # loop through each region to get first 80% and last 20%
-		traininds <- c(traininds, which(spdata$region == names(ninds)[j])[1:round(ninds[j]*0.8)])
-		testinds <- c(testinds, which(spdata$region == names(ninds)[j])[(round(ninds[j]*0.8)+1):ninds[j]])
+		traininds <- c(traininds, which(as.character(spdata$regionfact) == names(ninds)[j])[1:round(ninds[j]*0.8)])
+		testinds <- c(testinds, which(as.character(spdata$regionfact) == names(ninds)[j])[(round(ninds[j]*0.8)+1):ninds[j]])
 	}
 	
-	# indices for only where present (for the abundance model)
-	trainindsp <- intersect(traininds, which(spdata$presfit))
-	testindsp <- intersect(testinds, which(spdata$presfit))
+	# indices for only where present (for the abundance model), including fake zeros
+	trainindsp <- intersect(traininds, which(spdata$presfit.pad))
+	testindsp <- intersect(testinds, which(spdata$presfit.pad))
 
+	# warn if too few presences overall
 	if(length(trainindsp)<2){
-		mywarn <- paste('Only', length(trainindsp), 'presence values in testing dataset for', i, sp)
+		mywarn <- paste('Only', length(trainindsp), 'presence values in training dataset for', i, sp)
 		allwarnings <- c(allwarnings, mywarn)
 		warning(mywarn)
 	}
@@ -152,23 +186,23 @@ for(i in 1:length(allspp)){
 		warning(mywarn)
 	}
 
-	# test if we have enough presences in testing and training sets (at least one per region)
-	nprestrain <- table(spdata$region[trainindsp])
-	nprestest <- table(spdata$region[testindsp])
+	# test if we have enough presences in testing and training sets (at least one per region as set up for model fitting)
+	nprestrain <- table(spdata$regionfact[trainindsp])
+	nprestest <- table(spdata$regionfact[testindsp])
 	if(any(nprestrain < 1)){
-		mywarn <- paste('Zero training presences for', i, sp, 'in', names(nprestrain)[nprestrain<1])
+		mywarn <- paste('Zero training presences for', i, sp, 'in', paste(names(nprestrain)[nprestrain<1], collapse=', '))
 		allwarnings <- c(allwarnings, mywarn)
 		warning(mywarn)
+		regstofill <- names(nprestrain)[as.numeric(nprestrain) == 0]
 	}
 	if(any(nprestest < 1)){
-		mywarn <- paste('Zero testing presences for', i, sp, 'in', names(nprestest)[nprestest<1])
+		mywarn <- paste('Zero testing presences for', i, sp, 'in', paste(names(nprestest)[nprestest<1], collapse=', '))
 		allwarnings <- c(allwarnings, mywarn)
 		warning(mywarn)
 	}
 	
 	# make sure we have at least 6 unique levels for each variable (necessary to fit gam with 4 knots)
 	# look at training presence indices, since the most constraining (for mygam2tt)
-	# this doesn't test by season... and so wont' catch a season with very few datapoints
 	levs <- apply(spdata[trainindsp,c('bottemp', 'surftemp', 'logrugosity', 'biomassmean')], 2, FUN=function(x) length(unique(x)))
 	if(any(levs < 6)){
 		mywarn <- paste("Not enough (>=6) unique levels in training presence set for", i, sp, ". Won't fit training models")
@@ -182,18 +216,19 @@ for(i in 1:length(allspp)){
 	# Figure out which model formula given data
 	####################################################
 
-	# without season
 	#Default models. Leave out region factor if necessary
-	if(length(myregions)==1){
-			mypresmod<-formula(presfit ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+s(biomassmean,k=4))
-			myabunmod<-formula(logwtcpue ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+s(biomassmean,k=4))
-			mynullpresmod<-formula(presfit ~ s(logrugosity,k=4)+s(biomassmean,k=4)) #Null model w/o temp
-			mynullabunmod<-formula(logwtcpue ~ s(logrugosity,k=4)+s(biomassmean,k=4)) #Null model w/o temp
+	# since fitallreg, using all regions in an ocean
+	# note that biomassmean is now linear (not smoothed)
+	if(length(levels(spdata$regionfact))==1){
+			mypresmod<-formula(presfit ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+biomassmean)
+			myabunmod<-formula(logwtcpue.pad ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+biomassmean)
+			mynullpresmod<-formula(presfit ~ s(logrugosity,k=4)+biomassmean) #Null model w/o temp
+			mynullabunmod<-formula(logwtcpue.pad ~ s(logrugosity,k=4)+biomassmean) #Null model w/o temp
 	} else {
-			mypresmod<-formula(presfit ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-			myabunmod<-formula(logwtcpue ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1)
-			mynullpresmod<-formula(presfit ~ s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1) #Null model w/o temp
-			mynullabunmod<-formula(logwtcpue ~ s(logrugosity,k=4)+regionfact+s(biomassmean,k=4)-1) #Null model w/o temp
+			mypresmod<-formula(presfit ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+regionfact+biomassmean-1)
+			myabunmod<-formula(logwtcpue.pad ~ s(bottemp,k=6)+s(surftemp,k=6)+s(logrugosity,k=4)+regionfact+biomassmean-1)
+			mynullpresmod<-formula(presfit ~ s(logrugosity,k=4)+regionfact+biomassmean-1) #Null model w/o temp
+			mynullabunmod<-formula(logwtcpue.pad ~ s(logrugosity,k=4)+regionfact+biomassmean-1) #Null model w/o temp
 	}
 
 
@@ -222,9 +257,9 @@ for(i in 1:length(allspp)){
 
 	try2 <- tryCatch({
 		mygam1<-gam(mypresmod,family="binomial",data=spdata)
-		mygam2<-gam(myabunmod,data=spdata[spdata$presfit,]) # only fit where spp is present
+		mygam2<-gam(myabunmod,data=spdata[spdata$presfit.pad,]) # only fit where spp is present
 		mygam1null<-gam(mynullpresmod,family="binomial",data=spdata)
-		mygam2null<-gam(mynullabunmod,data=spdata[spdata$presfit,]) # only fit where spp is present
+		mygam2null<-gam(mynullabunmod,data=spdata[spdata$presfit.pad,]) # only fit where spp is present
 	
 	}, error = function(e) {
 		mywarn <- paste('Error in gam fitting for', i, sp, ':', e)
@@ -238,8 +273,8 @@ for(i in 1:length(allspp)){
 	####################################################
 	
 	#Should write out to PDF
-	plot(mygam1,pages=1,scale=0);mtext(paste(sp,"presence"),outer=T,line=-2)
-	plot(mygam2,pages=1,scale=0);mtext(paste(sp,"abundance"),outer=T,line=-2)
+	plot(mygam1,pages=1,scale=0,all.terms=TRUE);mtext(paste(sp,"presence"),outer=T,line=-2)
+	plot(mygam2,pages=1,scale=0,all.terms=TRUE);mtext(paste(sp,"abundance"),outer=T,line=-2)
 
 
 	####################################################
@@ -331,9 +366,6 @@ for(i in 1:length(allspp)){
 	modeldiag$r2.pres.1deg[i]<-presr2
 	modeldiag$r2.abun.1deg[i]<-abunr2
 
-	#Also save average biomassmean for each region (across all years) to use in later predictions.
-	avemeanbiomass<-apply(ave.catch.wt,2,mean,na.rm=T) #ave.catch.wt from far above
-
 	####################################################
 	#### Save models for later projections
 	####################################################
@@ -342,15 +374,7 @@ for(i in 1:length(allspp)){
 	
 	sp <- gsub('/', '', sp) # would mess up saving the file
 	
-	if(Sys.info()["nodename"] == "pinsky-macbookair"){
-		save(mods, avemeanbiomass, myregions, file=paste('../CEmodels/CEmods_',runname, '_', sp, '.RData', sep='')) # ~4mb file
-	}
-	if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-		save(mods, avemeanbiomass, myregions, file=paste('CEmodels/CEmods_',runname, '_', sp, '.RData', sep=''))
-	}
-	if(Sys.info()["user"] == "lauren"){
-		save(mods, avemeanbiomass, myregions, file=paste('output/CEmodels/CEmods_',runname, '_', sp, '.RData', sep=''))
-	}
+	save(mods, avemeanbiomass, myregions, file=paste(modfolder, 'CEmods_',runname, '_', sp, '.RData', sep='')) # ~4mb file
 
 	#think about figures to output - thermal response curves? spatial prediction by 1 deg square?
 	#think about other data to save - number of pres/abs by region (?) 
