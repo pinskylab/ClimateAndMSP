@@ -378,9 +378,13 @@ for(i in 1:length(allspp)){
 
 	#think about figures to output - thermal response curves? spatial prediction by 1 deg square?
 	#think about other data to save - number of pres/abs by region (?) 
+
+	# write these files each time through the loop so that we can watch progress
+	save(modeldiag,file=paste("output/modeldiag_",runname,".Rdata",sep=""))
+	write.csv(modeldiag, file=paste("output/modeldiag_",runname,".csv",sep=""))
+
+	write.csv(allwarnings, file=paste('output/warnings_', runname, '.csv', sep=''))
+
 }
 dev.off()
-save(modeldiag,file=paste("output/modeldiag_",runname,".Rdata",sep=""))
-write.csv(modeldiag, file=paste("output/modeldiag_",runname,".csv",sep=""))
 
-write.csv(allwarnings, file=paste('output/warnings_', runname, '.csv', sep=''))

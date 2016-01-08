@@ -24,6 +24,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 runtype <- 'fitallreg'; projtype <- '_xreg' # with cross-region projections
 
 # whether to plot observations next to projections in the maps
+#plotobs <- FALSE
 plotobs <- TRUE
 
 
@@ -343,6 +344,11 @@ if(plotobs){
 }
 
 load(paste('data/biomassavemap_', runtype, projtype, '.RData', sep=''))
+
+# drop WCAnn, since it overlaps with the WCTri
+#biomassavemap <- biomassavemap[biomassavemap$region != 'NWFSC_WCAnn',]
+biomassavemap <- biomassavemap[biomassavemap$region != 'AFSC_WCTri',]
+biomassavemap <- droplevels(biomassavemap)
 	
 spps <- sort(unique(biomassavemap$sppocean)) # each spp to make maps for
 	length(spps)
@@ -357,18 +363,31 @@ pdf(width=10, height=3, file=paste('figures/biomass_proj_mapscontinent_', runtyp
 
 for(i in 1:length(spps)){
 	print(paste(i, 'of', length(spps), Sys.time()))
-	inds <- biomassavemap$sppocean == spps[i]
 	maintitle <- spps[i]
 
-	if(!all(is.na(biomassavemap$wtcpue.proj[inds]))){
-		rng <- c(0, 1.01*max(biomassavemap$wtcpue.proj[inds], na.rm=TRUE)) # slightly expanded to capture all values
+	inds <- biomassavemap$sppocean == spps[i]
+	mydat <- biomassavemap[inds,c('lat', 'lon', 'period', 'wtcpue.proj')]
 
-		thisplot <- levelplot(wtcpue.proj ~ lon*lat|period, data=biomassavemap[inds,], at=seq(rng[1], rng[2], length.out=20), colorkey=list(axis.text=list(cex=0.5)), col.regions=cols(100), main=list(label=maintitle, cex=1), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), scales=list(cex=0.5), layout = c(length(periods), 1)) # projected averaged biomass
+	# expand with NAs
+	zs <- expand.grid(list(lat=seq(min(mydat$lat), max(mydat$lat), by=0.25), lon=seq(min(mydat$lon), max(mydat$lon), by=0.25), period=sort(unique(mydat$period))))
+	matches <- paste(zs$lat, zs$lon) %in% paste(mydat$lat, mydat$lon) # find rows that match mydat
+	zs <- zs[!matches,] # remove the matching rows
+	zs$wtcpue.proj <- NA
+	mydat <- rbind(mydat,zs)
+		# then fill wtcpue.proj with 0 or NA
+		# then rbind onto mydat
+		
+		
+
+	if(!all(is.na(mydat$wtcpue.proj))){
+		rng <- c(0, 1.01*max(mydat$wtcpue.proj, na.rm=TRUE)) # slightly expanded to capture all values
+
+		thisplot <- levelplot(wtcpue.proj ~ lon*lat|period, data=mydat, at=seq(rng[1], rng[2], length.out=20), colorkey=list(axis.text=list(cex=0.5)), col.regions=cols(100), main=list(label=maintitle, cex=1), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), scales=list(cex=0.5), layout = c(length(periods), 1)) # projected averaged biomass
 
 		if(plotobs){
 			obsinds <- dat$sppocean == spps[i] & dat$wtcpue > 0 # select where present
-			latrng <- range(biomassavemap$lat[inds], na.rm=TRUE)
-			lonrng <- range(biomassavemap$lon[inds], na.rm=TRUE)
+			latrng <- range(mydat$lat, na.rm=TRUE)
+			lonrng <- range(mydat$lon, na.rm=TRUE)
 			obsplot <- xyplot(lat ~ lon, data=dat[obsinds,], xlim=lonrng, ylim=latrng, main='Observations', pch=16, cex=0.2, scales=list(cex=0.5), ylab=list(label='lat', cex=0.5), xlab=list(label='lon', cex=0.5), par.settings=list(layout.widths=list(right.padding=-3))) # plot of presences
 			grid.arrange(obsplot, thisplot, nrow=1, widths=c(1.2,length(periods))) # plot on one page with observations
 		

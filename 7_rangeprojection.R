@@ -47,7 +47,9 @@ load(paste('output/modeldiag_', runtype, '.Rdata', sep='')) # model diagnostics
 
 #With additional criteria: ***
 projspp <- modeldiag$sppocean[modeldiag$auc.tt >= 0.75 & !is.na(modeldiag$auc.tt) & ((modeldiag$dev.pres - modeldiag$dev.pres.null > 0.05) | (modeldiag$dev.biomass - modeldiag$dev.biomass.null > 0.05))] # from Elith et al., and deviance explained by temp must be > 5% for at least one model
-length(projspp) # number of species to project to
+
+print(paste(sum(!is.na(modeldiag$sppocean)), 'models fit'))
+print(paste(length(projspp), 'models to project')) # number of species to project to
 
 	# look at species not selected
 #	hist(modeldiag$auc.tt)
@@ -70,43 +72,52 @@ files <- files[grepl(paste('_', runtype, '_', sep=''), files) & grepl(paste(gsub
 length(files) # should match length of projspp
 
 ## Remove spp from planned projections IF the projection file already exists (OPTIONAL). 
-# If this step is skipped, the existing files will be overwritten.
-#donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
-#donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles))
-#if(length(donespp)>0){
-#	files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
-#	projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
-#}
-#length(files)
-#length(projspp)
+#If this step is skipped, the existing files will be overwritten.
+donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
+donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles))
+if(length(donespp)>0){
+files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
+projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
+}
+length(files)
+length(projspp)
 
 
 #################################
 # Prep environmental data
 #################################
-load(paste(climgridfolder, 'climGrid.proj2.RData', sep='')) # projected temperature for each year ("clim")
+if(!file.exists(paste(climgridfolder, 'climGrid.proj2_wrugos.RData', sep=''))){
+	print('climGrid with rugosity does not exist. Making it.')
+	
+	load(paste(climgridfolder, 'climGrid.proj2.RData', sep='')) # projected temperature for each year ("clim")
 
-# drop unneeded columns
-clim <- clim[,!grepl('depthgrid', names(clim))] #  refer to GCM depth grids
-clim <- clim[,!grepl('bottemp.clim|surftemp.clim|delta|latgrid|longrid', names(clim))] #  the temp climatologies, deltas, and GCM lat/lon grids (1 degree)
+	# drop unneeded columns
+	clim <- clim[,!grepl('depthgrid', names(clim))] #  refer to GCM depth grids
+	clim <- clim[,!grepl('bottemp.clim|surftemp.clim|delta|latgrid|longrid', names(clim))] #  the temp climatologies, deltas, and GCM lat/lon grids (1 degree)
 
-# add regionfact
-clim$region<- as.factor(clim$region)
-names(clim)[names(clim)=='region'] <- 'regionfact'
+	# add regionfact
+	clim$region<- as.factor(clim$region)
+	names(clim)[names(clim)=='region'] <- 'regionfact'
 
-# add logrugosity
-rugos <- read.csv('data/projectiongrid_latlons.1.16th_withRugosity_2015-05-06.csv')
-	names(rugos)[names(rugos) == 'lon'] <- 'lon16th'
-	names(rugos)[names(rugos) == 'lat'] <- 'lat16th'
-	names(rugos)[names(rugos) == 'depth'] <- 'depth16th'
+	# add logrugosity
+	rugos <- read.csv('data/projectiongrid_latlons.1.16th_withRugosity_2015-05-06.csv')
+		names(rugos)[names(rugos) == 'lon'] <- 'lon16th'
+		names(rugos)[names(rugos) == 'lat'] <- 'lat16th'
+		names(rugos)[names(rugos) == 'depth'] <- 'depth16th'
 
-	gridsize=0.25 # size of grid of the climate data, in degrees
-	rugos$lat <- floor(rugos$lat16th/gridsize)*gridsize + gridsize/2 # round to nearest grid center
-	rugos$lon <- floor(rugos$lon16th/gridsize)*gridsize + gridsize/2
+		gridsize=0.25 # size of grid of the climate data, in degrees
+		rugos$lat <- floor(rugos$lat16th/gridsize)*gridsize + gridsize/2 # round to nearest grid center
+		rugos$lon <- floor(rugos$lon16th/gridsize)*gridsize + gridsize/2
 
-clim <- merge(clim, rugos) # slow
-dim(clim) # 9623120 rows
-
+	clim <- merge(clim, rugos) # slow
+	dim(clim) # 9623120 rows
+	
+	save(clim, file=paste(climgridfolder, 'climGrid.proj2_wrugos.RData', sep=''))
+	
+} else {
+	print('climGrid with rugosity exists. Loading it')
+	load(paste(climgridfolder, 'climGrid.proj2_wrugos.RData', sep=''))
+}
 
 ############################################
 ## Project GAMS onto annual climate data  ##
