@@ -27,15 +27,16 @@ climgrid <- read.csv('data/climGrid.csv', row.names=1)
 #	plot(land) # takes too long
 
 # label by area of interest regions
-climgrid$AOI <- 'northamerica'
-#climgrid$AOI <- NA
-#climgrid$AOI[climgrid$region %in% c('AFSC_Aleutians', 'AFSC_EBS', 'AFSC_GOA')] <- 'Alaska'
+#climgrid$AOI <- 'northamerica'
+climgrid$AOI <- NA
+climgrid$AOI[climgrid$region %in% c('AFSC_Aleutians', 'AFSC_EBS', 'AFSC_GOA')] <- 'Alaska'
 #climgrid$AOI[climgrid$region %in% c('AFSC_Aleutians')] <- 'Alaska_Aleutians'
 #climgrid$AOI[climgrid$region %in% c('AFSC_Aleutians') & climgrid$lon > 183] <- 'Alaska_Aleutians_east'
 #climgrid$AOI[climgrid$region %in% c('AFSC_Aleutians') & climgrid$lon >= 177 & climgrid$lon <= 183] <- 'Alaska_Aleutians_middle'
 #climgrid$AOI[climgrid$region %in% c('AFSC_Aleutians') & climgrid$lon < 177] <- 'Alaska_Aleutians_west'
 #climgrid$AOI[climgrid$region %in% c('AFSC_EBS')] <- 'Alaska_EBS'
 #climgrid$AOI[climgrid$region %in% c('AFSC_GOA')] <- 'Alaska_GOA'
+climgrid$AOI[climgrid$region %in% c('AFSC_WCTri', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'DFO_NewfoundlandFall', 'DFO_NewfoundlandSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSFall', 'NEFSC_NEUSSpring')] <- 'notAlaska'
 #climgrid$AOI[climgrid$region %in% c('AFSC_WCTri', 'NWFSC_WCAnn', )] <- 'WestCoast'
 #climgrid$AOI[climgrid$region %in% c()] <- 'GoMex'
 #climgrid$AOI[climgrid$region %in% c('DFO_NewfoundlandFall', 'DFO_NewfoundlandSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSFall', 'NEFSC_NEUSSpring')] <- 'Northeast'
@@ -69,19 +70,19 @@ gridSP.b <- gBuffer(gridSP.p, width=100000, byid=TRUE) # 100km
 pid <- sapply(slot(gridSP.b, "polygons"), function(x) slot(x, "ID"))
 gridSPD <- SpatialPolygonsDataFrame(gridSP.b, data.frame(region=pid, row.names=pid))
 
-# split Alaska along 180deg longitude
-maskPS <- as.PolySet(data.frame(PID=rep(c(1,2),c(4,4)), POS=rep(1:4, 2), X=c(150, 150, 180, 180, 180, 180, 220, 220), Y=c(45, 70, 70, 45, 45, 70, 70, 45)), projection='LL')
+# split Alaska along 179 and 181deg longitude (3 pieces)
+maskPS <- as.PolySet(data.frame(PID=rep(c(1:3),rep(4,3)), POS=rep(1:4, 3), X=rep(c(150,179,181,220), c(2,4,4,2)), Y=rep(c(45,65,45,65,45,65,45), c(1,2,2,2,2,2,1))), projection='LL')
 mask <- PolySet2SpatialPolygons(maskPS)
 mask.t <- spTransform(mask, proj4string(gridSPD))
-	#plot(mask.t, col=1:2)
+	#plot(mask.t, col=1:length(mask.t))
 	plot(gridSP.b, lwd=0.2, axes=TRUE, col=1:4)
 	plot(mask.t, add=TRUE)
 gridSPAK <- gIntersection(gridSPD[grep('Alaska', gridSPD$region),], mask.t, byid=TRUE)
-	plot(gridSPAK, col=1:2)
+	plot(gridSPAK, col=1:length(gridSPAK))
 
 	# convert Alaska to spatialpolygonsdataframe for writing
 	pid <- sapply(slot(gridSPAK, "polygons"), function(x) slot(x, "ID"))
-	regs <- c('Alaska_west', 'Alaska_east')
+	regs <- c('Alaska_west', 'Alaska_middle', 'Alaska_east')
 	gridSPDAK <- SpatialPolygonsDataFrame(gridSPAK, data.frame(region=regs, row.names=pid))
 
 # write out each region as a separate shapefile
