@@ -8,6 +8,7 @@ if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	}
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
+	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages (chron and ncdf4)
 	}
 # could add code for Lauren's working directory here
 
@@ -18,7 +19,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 #rcp <- 85
 rcp <- 45
 
-$$###########
+###########
 ## Functions
 #############
 #require(mgcv) # not needed?
@@ -33,7 +34,7 @@ source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
 ########################
 ## Prep projection data
 ########################
-load(paste('data/climGrid_', rcp, '.proj2.RData', sep='')) # loads clim
+load(paste('data/climGrid_rcp', rcp, '.proj2.RData', sep='')) # loads clim
 
 # reshape clim to long format
 names(clim)[names(clim)=='bottemp.clim.int'] = 'bottemp.proj_0' # "model" 0 is the climatology
@@ -46,12 +47,12 @@ clim2 = melt(clim[, !(names(clim) %in% c(paste('depthgrid', 1:13, sep=''), 'bott
 	newcols2 = unlist(newcols)
 	var1 = newcols2[seq(1,length(newcols2), by=2)]
 	var2 = newcols2[seq(2,length(newcols2), by=2)]
-	clim2$variable = var1 # slow
-	clim2$model = as.numeric(var2) # slow
+	clim2$variable = var1
+	clim2$model = as.numeric(var2)
 
 	clim2 = clim2[!(clim2$model == 0 & clim2$year > 2006),] # remove climatology entries for all years after 2006. they are just duplicates and not needed in this long format
 
-	save(clim2, file=paste('data/climGrid.proj2long_10deginterp_', rcp, '.RData') # slow
+	save(clim2, file=paste('data/climGrid_rcp', rcp, '.proj2long_10deginterp.RData', sep='')) # slow
 
 	rm(newcols, newcols2, var1, var2)
 
@@ -59,19 +60,28 @@ clim2 = melt(clim[, !(names(clim) %in% c(paste('depthgrid', 1:13, sep=''), 'bott
 ## Prep delta data
 ## Run this on Amphiprion, takes 60G RAM
 ###########################################
-load(paste('data/delta2100long_', rcp, '.RData', sep='')) # slow (1.3G)
+load(paste('data/delta2100rcp', rcp, 'long.RData', sep='')) # slow (378M)
 
-	# reshape into one long dataframe
+if(rcp==45){
+	delta2100long <- delta2100rcp45long
+	rm(delta2100rcp45long)
+}
+if(rcp==85){
+	delta2100long <- delta2100rcp85long
+	rm(delta2100rcp85long)
+}
+
+# reshape into one long dataframe
 delta2100long[[1]]$model = 1
 delta2100long2 = delta2100long[[1]]
 
-for(i in 2:length(delta2100long)){ # takes 10 min or so on Amphiprion
+for(i in 2:length(delta2100long)){ # takes 3 min or so on Amphiprion
 	print(paste(i, Sys.time()))
 	delta2100long[[i]]$model = i
 	delta2100long2 = rbind(delta2100long2, delta2100long[[i]])
 }
 
-save(delta2100long2, file=paste('data/delta2100long2_', rcp, '.RData', sep='')) # slow
+save(delta2100long2, file=paste('data/delta2100rcp', rcp, 'long2.RData', sep='')) # slow
 
 
 ###########################################
@@ -81,7 +91,7 @@ save(delta2100long2, file=paste('data/delta2100long2_', rcp, '.RData', sep='')) 
 # load delta2100long2.RData if needed. don't reload if already in memory, since very slow
 
 delta2100long3 = melt(delta2100long2, id = c('lon', 'lat', 'depth', 'year', 'region', 'model')) # melted version for manipulation
-	dim(delta2100long3) # X rows
+	dim(delta2100long3) # 77393980 rows
 
 # identify the surface temperatures
 delta2100long3$surf = FALSE
@@ -101,7 +111,7 @@ delta2100long3$period[delta2100long3$year > 2060] <- 3
 
 # take mean SST by time period
 deltaSSTperiods = dcast(data=delta2100long3[delta2100long3$surf == TRUE,], region + lat + lon + period + model ~ variable, fun.aggregate = mean, na.rm=TRUE) # average SSTdeltas across all years in each period (before/after 2020 and 2060)
-	dim(deltaSSTperiods) # X rows
+	dim(deltaSSTperiods) # 88647 rows
 	head(deltaSSTperiods)
 	sort(unique(deltaSSTperiods$model))
 	sort(unique(deltaSSTperiods$period))
@@ -109,7 +119,7 @@ deltaSSTperiods = dcast(data=delta2100long3[delta2100long3$surf == TRUE,], regio
 	deltaSSTperiods$period[deltaSSTperiods$period == 2] = '2021-2060'
 	deltaSSTperiods$period[deltaSSTperiods$period == 3] = '2061-2100'
 
-save(deltaSSTperiods, file=paste('data/deltaSSTperiods_', rcp, '.RData', sep='')) # fast
+save(deltaSSTperiods, file=paste('data/deltaSSTperiods_rcp', rcp, '.RData', sep='')) # fast
 
 ## DO THE SAME FOR BT?
 
@@ -117,14 +127,14 @@ save(deltaSSTperiods, file=paste('data/deltaSSTperiods_', rcp, '.RData', sep='')
 ###################################
 ## Plots                       ####
 ###################################
-load(paste('data/climGrid.proj2long_10deginterp_', rcp, '.RData', sep='')) # loads clim2 (long format)
-load(paste('data/deltaSSTperiods_', rcp, '.RData', sep='')) # average SST delta by time period for each grid cell. using all data from the climate models.
+load(paste('data/climGrid_rcp', rcp, '.proj2long_10deginterp.RData', sep='')) # loads clim2 (long format)
+load(paste('data/deltaSSTperiods_rcp', rcp, '.RData', sep='')) # average SST delta by time period for each grid cell. using all data from the climate models.
 
 # Plot maps of raw (un-interpolated) deltas in each region, across three time periods. Each region on a separate page
 
 	#SST
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
-	pdf(width=30, height=6, file=paste('figures/deltaSST_nointerp_', rcp, '.pdf', sep=''))
+	pdf(width=30, height=6, file=paste('figures/deltaSST_nointerp_rcp', rcp, '.pdf', sep=''))
 	regs = sort(unique(deltaSSTperiods$region))
 	for(i in 1:length(regs)) {
 		print(i)
@@ -157,7 +167,8 @@ load(paste('data/deltaSSTperiods_', rcp, '.RData', sep='')) # average SST delta 
 
 	#BT
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
-	pdf(width=30, height=6, file=paste('figures/climBTproj_10deginterp_', rcp, '.pdf', sep=''))
+	print(figfile <- paste('figures/climBTproj_10deginterp_rcp', rcp, '.pdf', sep=''))
+	pdf(width=30, height=6, file=figfile)
 	regs = sort(unique(clim2periods$region))
 	for(i in 1:length(regs)) {
 		print(i)
@@ -172,7 +183,8 @@ load(paste('data/deltaSSTperiods_', rcp, '.RData', sep='')) # average SST delta 
 
 	#SST
 	cols = colorRampPalette(colors = c('blue', 'white', 'red'))
-	pdf(width=30, height=6, file=paste('figures/climSSTproj_10deginterp_', rcp, '.pdf', sep=''))
+	print(figfile <- paste('figures/climSSTproj_10deginterp_rcp', rcp, '.pdf', sep=''))
+	pdf(width=30, height=6, file=figfile)
 	regs = sort(unique(clim2periods$region))
 	for(i in 1:length(regs)) {
 		print(i)

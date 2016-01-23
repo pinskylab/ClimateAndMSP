@@ -14,7 +14,7 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	projfolder = 'CEmodels_proj'
 	modfolder = 'CEmodels'
 	climgridfolder <- 'data/'
-	numcorestouse <- 4
+	numcorestouse <- 12
 	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
 	}
 # could add code for Lauren's working directory here
@@ -28,9 +28,12 @@ require(Hmisc)
 require(parallel) # for multi-core calculations
 
 
-##############################
-# Choose the model fit to use
-##############################
+###############################################
+# Choose the model fit and other flags to use
+###############################################
+rcp <- 85
+#rcp <- 45
+
 #runtype <- 'test'
 #runtype <- 'testseason'
 #runtype <- 'testK6noSeas'
@@ -73,11 +76,18 @@ length(files) # should match length of projspp
 
 ## Remove spp from planned projections IF the projection file already exists (OPTIONAL). 
 #If this step is skipped, the existing files will be overwritten.
-donefiles <- list.files(projfolder, pattern=runtype) # models I made earlier
-donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles))
+if(stayinregion) donefiles <- list.files(projfolder, pattern=paste(runtype, '_rcp', rcp, sep='')) # models made earlier
+if(!stayinregion) donefiles <- list.files(projfolder, pattern=paste(runtype, '_xreg_rcp', rcp, sep='')) # models made earlier
+
+# trim out prefix and suffix
+donespp <- gsub(paste('summproj_', runtype, '_', sep=''), '', gsub('.Rdata', '', donefiles)) 
+if(!stayinregion) donespp <- gsub('xreg_', '', donespp)
+donespp <- gsub(paste('rcp', rcp, '_', sep=''), '', donespp)
+
+# remove spp that we've already projected
 if(length(donespp)>0){
-files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
-projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
+	files <- files[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', files))] # remove any models that we made earlier
+	projspp <- projspp[!grepl(paste(gsub('/|\\(|\\)', '', donespp), collapse='|'), gsub('/|\\(|\\)', '', projspp))]
 }
 length(files)
 length(projspp)
@@ -86,10 +96,10 @@ length(projspp)
 #################################
 # Prep environmental data
 #################################
-if(!file.exists(paste(climgridfolder, 'climGrid.proj2_wrugos.RData', sep=''))){
-	print('climGrid with rugosity does not exist. Making it.')
+if(!file.exists(paste(climgridfolder, 'climGrid_rcp', rcp, '.proj2_wrugos.RData', sep=''))){
+	print(paste('climGrid with rugosity does not exist for RCP', rcp, '. Making it.', sep=''))
 	
-	load(paste(climgridfolder, 'climGrid.proj2.RData', sep='')) # projected temperature for each year ("clim")
+	load(paste(climgridfolder, 'climGrid_rcp', rcp, '.proj2.RData', sep='')) # projected temperature for each year ("clim")
 
 	# drop unneeded columns
 	clim <- clim[,!grepl('depthgrid', names(clim))] #  refer to GCM depth grids
@@ -112,11 +122,11 @@ if(!file.exists(paste(climgridfolder, 'climGrid.proj2_wrugos.RData', sep=''))){
 	clim <- merge(clim, rugos) # slow
 	dim(clim) # 9623120 rows
 	
-	save(clim, file=paste(climgridfolder, 'climGrid.proj2_wrugos.RData', sep=''))
+	save(clim, file=paste(climgridfolder, 'climGrid_rcp', rcp, '.proj2_wrugos.RData', sep=''))
 	
 } else {
 	print('climGrid with rugosity exists. Loading it')
-	load(paste(climgridfolder, 'climGrid.proj2_wrugos.RData', sep=''))
+	load(paste(climgridfolder, 'climGrid_rcp', rcp, '.proj2_wrugos.RData', sep=''))
 }
 
 ############################################
@@ -124,6 +134,8 @@ if(!file.exists(paste(climgridfolder, 'climGrid.proj2_wrugos.RData', sep=''))){
 ############################################
 	
 options(warn=1) # print warnings as they occur
+
+# thisprojspp <- projspp[1]
 
 # VERY slow
 doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtype, stayinregion=TRUE){ 
@@ -138,13 +150,16 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 
 	load(paste(modfolder, '/', files[fileindex], sep='')) # loads mods and avemeanbiomass
 
+	fitregions <- gsub('regionfact', '', grep('regionfact', names(coef(mods$mygam1)), value=TRUE)) # regions included in the model fit (if more than one region fit)
+	if(length(fitregions)==0) fitregions <- names(avemeanbiomass)[which.max(avemeanbiomass)] # else, if only one region fit (and no regionfact term included), then use avemeanbiomass to pull out the name of that one region
+
 	if(stayinregion){ # if we don't allow species to move into new regions, then we can use the average observed biomass for each region
 		# add mean biomass by region
 		clim$biomassmean <- 0
 		clim$biomassmean[clim$regionfact %in% names(avemeanbiomass)] <- avemeanbiomass[as.character(clim$regionfact[clim$regionfact %in% names(avemeanbiomass)])] # use region to pull the correct mean biomass values
 	}
-	if(!stayinregion){ #else, add a standard mean biomass across all regions (only choose from non-zero options)
-		clim$biomassmean <- avemeanbiomass[avemeanbiomass>0][1]
+	if(!stayinregion){ #else, add a standard mean biomass across all regions (use region with highest mean biomass that was in the model fit)
+		clim$biomassmean <- max(avemeanbiomass[fitregions])
 	}
 
 	# smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/resources/faq_e02.asp)
@@ -182,7 +197,7 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 		}
 	}
 	if(!stayinregion){ 
-		clim$regiontoproj <- names(avemeanbiomass)[avemeanbiomass>0][1] # pick the first non-zero region to which this model was fit. hopefully this is the same as one of the region factors in the model... (but there's probably a better way to check)
+		clim$regiontoproj <- fitregions[which.max(avemeanbiomass[fitregions])] # pick the region with the highest biomass. this ensures that it had at least some presences, and so would have been in the model fit
 	}
 
 	# Calculate predictions for 2020-2100 for each model
@@ -208,8 +223,8 @@ doprojection <- function(thisprojspp, files, clim, projfolder, modfolder, runtyp
 #	print(dim(summproj))	
 
 	thisprojspp <- gsub('/', '', thisprojspp) # would mess up saving the file if the species name had /
-	outfile <- paste(projfolder, '/summproj_', runtype, '_', thisprojspp, '.Rdata', sep='')
-	if(!stayinregion) outfile <- paste(projfolder, '/summproj_', runtype, '_xreg_', thisprojspp, '.Rdata', sep='') # append xreg to projections if species could be projected out of their observed regions
+	outfile <- paste(projfolder, '/summproj_', runtype, '_rcp', rcp, '_', thisprojspp, '.Rdata', sep='')
+	if(!stayinregion) outfile <- paste(projfolder, '/summproj_', runtype, '_xreg_rcp', rcp, '_', thisprojspp, '.Rdata', sep='') # append xreg to projections if species could be projected out of their observed regions
 	save(summproj, file=outfile) # write out the projections (15MB file)
 }
 
