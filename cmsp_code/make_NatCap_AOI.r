@@ -59,7 +59,7 @@ gridSP.m <- unionSpatialPolygons(gridSP, climgrid$AOI)
 #	plot(gridSP.m, axes=TRUE, ylim=c(40,70), xlim=c(-170,-60)) # doesn't work
 	
 # project into meters using Lambert Conformal Conic
-gridSP.p <- spTransform(gridSP.m, CRS('+proj=lcc +lat_1=32 +lat_2=44 +lat_0=40 +lon_0=-96'))
+gridSP.p <- spTransform(gridSP.m, CRS('+proj=lcc +lat_1=32 +lat_2=44 +lat_0=40 +lon_0=-96 +datum=WGS84'))
 	plot(gridSP.p, lwd=0.2, axes=TRUE, col=1:4)
 
 # buffer
