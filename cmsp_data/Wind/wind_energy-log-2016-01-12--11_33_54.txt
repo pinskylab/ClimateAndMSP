@@ -1,0 +1,98 @@
+Arguments:
+aoi_uri                    C:\InVEST_3_2_0_x86\WindEnergy\input\New_England_US_Aoi.shp
+bathymetry_uri             C:\InVEST_3_2_0_x86\Base_Data\Marine\DEMs\global_dem\hdr.adf
+global_wind_parameters_uri C:\InVEST_3_2_0_x86\WindEnergy\input\global_wind_energy_parameters.csv
+land_polygon_uri           C:\InVEST_3_2_0_x86\Base_Data\Marine\Land\global_polygon.shp
+max_depth                  60
+max_distance               200000
+min_depth                  3
+min_distance               0
+number_of_turbines         80
+suffix                     test
+turbine_parameters_uri     C:/InVEST_3_2_0_x86/WindEnergy/input/5_0_turbine.csv
+valuation_container        False
+wind_data_uri              C:/InVEST_3_2_0_x86/WindEnergy/input/Global_EEZ_WEBPAR_90pct_100ms.bin
+workspace_dir              C:\Users\mpinsky\Documents\NatCap\Wind
+
+
+01/12/2016 11:33:54  root               INFO     Logging will be saved to wind_energy-log-2016-01-12--11_33_54.txt
+01/12/2016 11:33:54  root               DEBUG    Loaded the model from invest_natcap.wind_energy.wind_energy
+01/12/2016 11:33:54  root               INFO     Executing the loaded model
+01/12/2016 11:33:54  root               INFO     Running model version development
+01/12/2016 11:33:54  root               INFO     Running InVEST version "3.2.0"
+01/12/2016 11:33:54  root               INFO     Python architecture: ('32bit', 'WindowsPE')
+01/12/2016 11:33:54  root               INFO     Disk space remaining for workspace: 2.39 GB
+01/12/2016 11:33:55  root               INFO     Pointing temporary directory at the workspace at C:\Users\mpinsky\Documents\NatCap\Wind
+01/12/2016 11:33:55  root               INFO     Updating os.environ["TMP"]=C:\Users\mpinsky\AppData\Local\Temp to C:\Users\mpinsky\Documents\NatCap\Wind
+01/12/2016 11:33:55  root               INFO     Updating os.environ["TEMP"]=C:\Users\mpinsky\AppData\Local\Temp to C:\Users\mpinsky\Documents\NatCap\Wind
+01/12/2016 11:33:55  root               INFO     Setting os.environ["TMPDIR"]=C:\Users\mpinsky\Documents\NatCap\Wind
+01/12/2016 11:33:55  root               INFO     Setting tempfile.tempdir to C:\Users\mpinsky\Documents\NatCap\Wind\tmp
+01/12/2016 11:33:55  root               INFO     Starting wind_energy
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    Starting the Wind Energy Model
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    Biophysical Turbine Parameters: {'loss_parameter': '.05', 'turbines_per_circuit': '6', 'rotor_diameter_factor': '7', 'exponent_power_curve': '2', 'rotor_diameter': '116', 'cut_out_wspd': '30.0', 'turbine_rated_pwr': '5.0', 'air_density': '1.225', 'rated_wspd': '12.5', 'cut_in_wspd': '3.0', 'hub_height': '90', 'air_density_coefficient': '1.194e-4'}
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    hub_height : 90
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    SCALE_key : Ram-090m
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy INFO     Reading in Wind Data
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    Entering read_wind_data
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    Leaving read_wind_data
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy INFO     AOI Provided
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy INFO     Create point shapefile from wind data
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    Entering wind_data_to_point_shape
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    Creating new datasource
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    field_list : ['Ram-090m', 'LATI', 'K-010m', 'LONG']
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    Creating fields for the datasource
+01/12/2016 11:33:55  invest_natcap.wind_energy.wind_energy DEBUG    Entering iteration to create and set the features
+01/12/2016 11:33:58  invest_natcap.wind_energy.wind_energy DEBUG    Leaving wind_data_to_point_shape
+01/12/2016 11:33:58  invest_natcap.wind_energy.wind_energy DEBUG    Clip and project wind points to AOI
+01/12/2016 11:33:58  invest_natcap.wind_energy.wind_energy DEBUG    Entering clip_and_reproject_shapefile
+01/12/2016 11:33:58  invest_natcap.wind_energy.wind_energy DEBUG    Clipping datasource
+01/12/2016 11:33:58  invest_natcap.wind_energy.wind_energy DEBUG    Entering clip_datasource
+01/12/2016 11:33:58  invest_natcap.wind_energy.wind_energy DEBUG    Creating new datasource
+01/12/2016 11:33:58  invest_natcap.wind_energy.wind_energy DEBUG    Creating new fields
+01/12/2016 11:33:58  invest_natcap.wind_energy.wind_energy DEBUG    Starting iteration over geometries
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Leaving clip_datasource
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Reprojecting datasource
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Leaving clip_and_reproject_maps
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Clip and project bathymetry to AOI
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Entering clip_and_reproject_raster
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Clipping dataset
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Reprojecting dataset
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Leaving clip_and_reproject_dataset
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy INFO     Handling distance parameters
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Clip and project land poly to AOI
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Entering clip_and_reproject_shapefile
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Clipping datasource
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Entering clip_datasource
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Creating new datasource
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Creating new fields
+01/12/2016 11:34:06  invest_natcap.wind_energy.wind_energy DEBUG    Starting iteration over geometries
+01/12/2016 11:35:10  invest_natcap.wind_energy.wind_energy DEBUG    Leaving clip_datasource
+01/12/2016 11:35:10  invest_natcap.wind_energy.wind_energy DEBUG    Reprojecting datasource
+01/12/2016 11:35:10  invest_natcap.wind_energy.wind_energy DEBUG    Leaving clip_and_reproject_maps
+01/12/2016 11:35:10  invest_natcap.wind_energy.wind_energy DEBUG    Create Raster From AOI
+01/12/2016 11:35:10  invest_natcap.wind_energy.wind_energy DEBUG    Rasterize AOI onto raster
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy DEBUG    Rasterize Land Polygon onto raster
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Generate Distance Mask
+01/12/2016 11:35:11  geoprocessing_cython INFO     Distance Transform Phase 1
+01/12/2016 11:35:11  geoprocessing_cython INFO     Distance Transform Phase 2
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Creating Depth Mask
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy DEBUG    scale/shape index : 0:2
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy DEBUG    Creating Harvest and Density Fields
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy DEBUG    Entering Density and Harvest Calculations for each point
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Create Density Raster
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Create Harvested Raster
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Vectorize Density Points
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Vectorize Harvested Points
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Mask out depth and [distance] areas from Density raster
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Mask out depth and [distance] areas from Harvested raster
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Creating Example Farm Polygon
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy DEBUG    Entering create_wind_farm_box
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy INFO     Wind Energy Biophysical Model Complete
+01/12/2016 11:35:11  invest_natcap.wind_energy.wind_energy DEBUG    Valuation Not Selected
+01/12/2016 11:35:11  root               INFO     Opening file explorer to workspace directory
+01/12/2016 11:35:11  root               INFO     Using windows explorer to view files
+01/12/2016 11:35:12  root               INFO     Disk space free: 2.38 GB
+01/12/2016 11:35:12  root               INFO     Elapsed time: 1m 16.65s
+01/12/2016 11:35:12  root               INFO     Finished.
+01/12/2016 11:35:12  root               INFO     Elapsed time: 1m 17.63s
+01/12/2016 11:35:12  root               INFO     Operations completed successfully

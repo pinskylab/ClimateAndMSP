@@ -36,10 +36,10 @@ climgrid$AOI[climgrid$region %in% c('AFSC_Aleutians', 'AFSC_EBS', 'AFSC_GOA')] <
 #climgrid$AOI[climgrid$region %in% c('AFSC_Aleutians') & climgrid$lon < 177] <- 'Alaska_Aleutians_west'
 #climgrid$AOI[climgrid$region %in% c('AFSC_EBS')] <- 'Alaska_EBS'
 #climgrid$AOI[climgrid$region %in% c('AFSC_GOA')] <- 'Alaska_GOA'
-climgrid$AOI[climgrid$region %in% c('AFSC_WCTri', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'DFO_NewfoundlandFall', 'DFO_NewfoundlandSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSFall', 'NEFSC_NEUSSpring')] <- 'notAlaska'
-#climgrid$AOI[climgrid$region %in% c('AFSC_WCTri', 'NWFSC_WCAnn', )] <- 'WestCoast'
-#climgrid$AOI[climgrid$region %in% c()] <- 'GoMex'
-#climgrid$AOI[climgrid$region %in% c('DFO_NewfoundlandFall', 'DFO_NewfoundlandSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSFall', 'NEFSC_NEUSSpring')] <- 'Northeast'
+#climgrid$AOI[climgrid$region %in% c('AFSC_WCTri', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'DFO_NewfoundlandFall', 'DFO_NewfoundlandSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSFall', 'NEFSC_NEUSSpring')] <- 'notAlaska'
+climgrid$AOI[climgrid$region %in% c('AFSC_WCTri', 'NWFSC_WCAnn')] <- 'WestCoast'
+climgrid$AOI[climgrid$region %in% c('SEFSC_GOMex')] <- 'GoMex'
+climgrid$AOI[climgrid$region %in% c('DFO_NewfoundlandFall', 'DFO_NewfoundlandSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSFall', 'NEFSC_NEUSSpring')] <- 'Northeast'
 sum(is.na(climgrid$AOI))
 sort(unique(climgrid$AOI))
 
@@ -71,7 +71,7 @@ pid <- sapply(slot(gridSP.b, "polygons"), function(x) slot(x, "ID"))
 gridSPD <- SpatialPolygonsDataFrame(gridSP.b, data.frame(region=pid, row.names=pid))
 
 # split Alaska along 179 and 181deg longitude (3 pieces)
-maskPS <- as.PolySet(data.frame(PID=rep(c(1:3),rep(4,3)), POS=rep(1:4, 3), X=rep(c(150,179,181,220), c(2,4,4,2)), Y=rep(c(45,65,45,65,45,65,45), c(1,2,2,2,2,2,1))), projection='LL')
+maskPS <- as.PolySet(data.frame(PID=rep(c(1:3),rep(4,3)), POS=rep(1:4, 3), X=rep(c(150,179.99,180.01,230), c(2,4,4,2)), Y=rep(c(45,65,45,65,45,65,45), c(1,2,2,2,2,2,1))), projection='LL')
 mask <- PolySet2SpatialPolygons(maskPS)
 mask.t <- spTransform(mask, proj4string(gridSPD))
 	#plot(mask.t, col=1:length(mask.t))
@@ -91,6 +91,11 @@ notAK <- grep('Alaska', gridSPD$region, invert=TRUE)
 for(i in notAK){ # for all except Alaska
 	writeOGR(gridSPD[i,], "./cmsp_data/", paste('AOI', gridSPD$region[i], sep='_'), driver="ESRI Shapefile", overwrite_layer=TRUE) # write the .prj file as part of the shapefile
 }
+
+# use this if using 'notAlaska' region
+#i <- which(gridSPD$region=='notAlaska')
+#writeOGR(gridSPD[i,], "./cmsp_data/", paste('AOI', gridSPD$region[i], sep='_'), driver="ESRI Shapefile", overwrite_layer=TRUE) # write the .prj file as part of the shapefile
+
 for(i in 1:length(gridSPDAK)){ # for Alaska
 	writeOGR(gridSPDAK[i,], "./cmsp_data/", paste('AOI', gridSPDAK$region[i], sep='_'), driver="ESRI Shapefile", overwrite_layer=TRUE) # write the .prj file as part of the shapefile
 }
