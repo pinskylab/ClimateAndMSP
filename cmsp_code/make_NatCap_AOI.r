@@ -1,4 +1,5 @@
 # Make a shapefile of our Areas of Interest, for use in the NatCap's InVest software
+# Also make a csv of lat/lon for landing points and grid connection points
 
 ## Set working directories
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
@@ -19,9 +20,9 @@ require(PBSmapping)
 require(rgeos) # for gBuffer
 
 
-##############################
-## Read in and process data
-##############################
+##############################################################
+## Read in and process data to create Areas of Interest (AOI)
+##############################################################
 climgrid <- read.csv('data/climGrid.csv', row.names=1)
 #land <- readOGR(dsn='cmsp_data/', layer='global_polygon') # global land layer from NatCap
 #	plot(land) # takes too long
@@ -99,3 +100,8 @@ for(i in notAK){ # for all except Alaska
 for(i in 1:length(gridSPDAK)){ # for Alaska
 	writeOGR(gridSPDAK[i,], "./cmsp_data/", paste('AOI', gridSPDAK$region[i], sep='_'), driver="ESRI Shapefile", overwrite_layer=TRUE) # write the .prj file as part of the shapefile
 }
+
+
+#######################################
+## Make land and grid connection points
+#######################################
