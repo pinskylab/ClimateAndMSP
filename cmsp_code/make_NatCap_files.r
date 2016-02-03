@@ -4,6 +4,7 @@
 ## Set working directories
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
+	natcapfolder <- '../NatCap'
 	}
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
@@ -105,3 +106,79 @@ for(i in 1:length(gridSPDAK)){ # for Alaska
 #######################################
 ## Make land and grid connection points
 #######################################
+# set parameters
+crs <- CRS('+proj=lcc +lat_1=32 +lat_2=44 +lat_0=40 +lon_0=-96 +datum=WGS84')
+crslatlong = CRS("+init=epsg:4326")
+
+# read in files
+coastlines <- readOGR(dsn=natcapfolder, layer='NAmainland_lines') # global coast layer from NatCap
+#	plot(coastlines)
+towns <- readOGR(dsn=paste(natcapfolder, 'ne_10m_populated_places', sep='/'), layer='ne_10m_populated_places') # global coast layer from NatCap
+#	plot(towns, pch=16, cex=0.2)
+	# plot(towns, pch=16, cex=0.2, add=TRUE) # to add to coastlines plot
+
+# calculate coastline length
+ln <- SpatialLinesLengths(coastlines, longlat=TRUE) # returns answer in km
+	ln
+	
+# trim towns to those >1000 people
+towns1000 <- towns[which(towns@data$POP_MAX >= 1000),]
+	length(towns) # 7343
+	length(towns1000) # 6933
+	
+# convert shps to planar coordinates for spatial sampling
+coastlines.p <- spTransform(coastlines, CRSobj=crs)
+	plot(coastlines.p, lwd=0.2, axes=TRUE)
+towns.p <- spTransform(towns1000, CRSobj=crs)
+#	plot(towns.p, pch=16) # odd plot: some towns seem to have extreme coordinats
+	plot(towns.p, pch=16, cex=0.5, add=TRUE) # but plots on top of NA well
+
+# trim town to those <20km from the NA coast
+nearcoast <- gWithinDistance(coastlines.p, towns.p, byid=TRUE, dist=50*1000) # slow (a few min). units in meters (50km)
+	sum(nearcoast) # 337
+	points(towns.p[which(nearcoast),], col='red', pch=16, cex=1)	
+
+towns.nearcoast <- towns.p[which(nearcoast),]
+
+
+# add points along the coastline. 1 every km
+landpts <- spsample(coastlines.p, type='regular', n=round(ln))
+	plot(coastlines.p, lwd=0.2, axes=TRUE)
+	points(landpts, col='red', pch=16, cex=0.2)	
+	
+	plot(coastlines.p, lwd=0.2, axes=TRUE, ylim=c(0, 6e5), xlim=c(-2.4e6, -2e6)) # zoom in on CA coast
+	points(landpts, col='red', pch=16, cex=0.2)	
+
+# find nearest landpt to each town
+landdist <- gDistance(landpts, towns.nearcoast, byid=TRUE) # takes a couple minutes. rows are towns. cols are landpts
+
+# project back to latlong in order to make a table for NatCap
+landpts.ll <- spTransform(landpts, crslatlong)
+towns.nearcoast.ll <- spTransform(towns.nearcoast, crslatlong)
+
+# make output table of town and nearest landing point locations
+towns.coords <- coordinates(towns.nearcoast.ll)
+land.coords <- coordinates(landpts.ll)
+
+n <- numeric(nrow(landdist))
+outgrid <- data.frame(ID=1:nrow(landdist), LAT=towns.coords[,2], LONG=towns.coords[,1], TYPE='GRID', LOCATION=towns.nearcoast.ll@data$NAME)
+outland <- data.frame(ID=1:nrow(landdist), LAT=n, LONG=n, TYPE='LAND', LOCATION=towns.nearcoast.ll@data$NAME)
+
+for(i in 1:nrow(landdist)){ # fill in nearest landpt for each town
+	j <- which.min(landdist[i,]) # index for nearest landpt
+	outland$LAT[i] <- land.coords[j,2]
+	outland$LONG[i] <- land.coords[j,1]
+}
+
+	# make sure it looks OK
+	plot(outland$LONG, outland$LAT, pch=16, cex=0.5)
+	points(outgrid$LONG, outgrid$LAT, col='red', pch=16, cex=0.5) # the towns
+	
+# combine town and landings points
+out <- rbind(outland, outgrid)
+
+	head(out)
+	tail(out)
+	
+# write out
+write.csv(out, file='cmsp_data/LandGridPts_NorthAmerica.csv', row.names=FALSE)
