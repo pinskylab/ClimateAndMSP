@@ -114,7 +114,12 @@ wave_NEg <- readGDAL('./cmsp_data/Wave/output/npv_usd_Northeast_global.tif') # w
 
 load(paste(climgridfolder, 'climGrid_rcp45.proj2.RData', sep='')) # loads clim. has the grid cells we want to summarize to
 
-# combine output into a list
+# trim clim to only non-duplicated rows (don't need every year) and those with climate data
+dim(clim)
+clim <- clim[!duplicated(clim[,c('lat', 'lon', 'region')]) & !is.na(clim$bottemp.proj_1) & !is.na(clim$surftemp.proj_1),]
+dim(clim) # 6156
+
+# combine wave output into a list
 wave <- list(wave_AKw, wave_AKe, wave_WC, wave_GM, wave_GMg, wave_NE, wave_NEg)
 names(wave) <- c('wave_AKw', 'wave_AKe', 'wave_WC', 'wave_GM', 'wave_GMg', 'wave_NE', 'wave_NEg')
 
@@ -126,7 +131,7 @@ for(i in 1:length(wave)){
 #		sc <- (wave.t[[i]]$band1- min(wave.t[[i]]$band1))/(max(wave.t[[i]]$band1) - min(wave.t[[i]]$band1))
 #		plot(wave.t[[i]], col=rgb(colfun(sc), maxColorValue=255), pch=16, cex=0.05) # plots
 #		plot(wave.t[[i]], col=c('blue', 'red')[1+(wave.t[[i]]$band1> -600)], pch=16, cex=0.05) # plots of <> a threshold
-}
+} 
 	
 # Add a grid indicator
 gridsize=0.25 # size of grid of the climate data, in degrees
@@ -140,6 +145,7 @@ wave.sum <- wave.t
 for(i in 1:length(wave.t)){
 	wave.sum[[i]] <- aggregate(list(wave_npv = wave.t[[i]]$band1), by=list(lat = wave.t[[i]]$lat, lon = wave.t[[i]]$lon), FUN=mean)
 }
+
 	# plot to make sure it worked
 	i <- 4 # pick the region to plot
 	thresh <- median(wave.t[[i]]$band1)
@@ -164,51 +170,63 @@ wave.out$lon[wave.out$lon<0] <- wave.out$lon[wave.out$lon<0] + 360
 	range(wave.out$lon)
 	
 	# whole plot
-	plot(wave.out$lon, wave.out$lat, col=c('blue', 'red')[1+(wave.out$wave_npv > 0)], pch=16, cex=0.3)	# only positive NPV on west coast
+	plot(wave.out$lon, wave.out$lat, col=c('blue', 'red')[1+(wave.out$wave_npv > 0)], pch=16, cex=0.3)	# only positive NPV on west coast, SE Alaska, and off Newfoundland
 
 # compare regional to global data in Gulf of Mexico and Northeast
-gomcomp <- merge(wave.out[wave.out$wave_region=='wave_GM',], wave.out[wave.out$wave_region=='wave_GMg',], by=c('lat', 'lon'))
-	plot(gomcomp$wave_npv.x, gomcomp$wave_npv.y) # slight indications that global dataset is a little low on the low side, and a little high on the high side
-	abline(a=0,b=1)
-
-necomp <- merge(wave.out[wave.out$wave_region=='wave_NE',], wave.out[wave.out$wave_region=='wave_NEg',], by=c('lat', 'lon'))
-	plot(necomp$wave_npv.x, necomp$wave_npv.y) # more scatter than for Gulf of Mexico
-	abline(a=0,b=1)
+#	gomcomp <- merge(wave.out[wave.out$wave_region=='wave_GM',], wave.out[wave.out$wave_region=='wave_GMg',], by=c('lat', 'lon'))
+#		plot(gomcomp$wave_npv.x, gomcomp$wave_npv.y) # slight indications that global dataset is a little low on the low side, and a little high on the high side
+#		abline(a=0,b=1)
+#
+#	necomp <- merge(wave.out[wave.out$wave_region=='wave_NE',], wave.out[wave.out$wave_region=='wave_NEg',], by=c('lat', 'lon'))
+#		plot(necomp$wave_npv.x, necomp$wave_npv.y) # more scatter than for Gulf of Mexico
+#		abline(a=0,b=1)
 
 
 # mark which grids are in which clim region
 dim(wave.out)
-wave.out <- merge(wave.out, clim[nodups,c('region', 'lat', 'lon')], all.x=TRUE)
+wave.out <- merge(wave.out, clim[,c('region', 'lat', 'lon')], all.x=TRUE)
 dim(wave.out) # more rows. some lat/lon grids are in multiple regions
 
-sum(is.na(wave.out$region)) # 4929 rows that don't match clim
+sum(is.na(wave.out$region)) # 8063 rows that don't match clim
 table(wave.out$region, wave.out$wave_region) # which wave regions match which climate projection regions
 
 	# plots of clim grid and wave region overlaps
-#	plot(clim$lon[nodups], clim$lat[nodups], pch=16, cex=0.5, col=as.numeric(as.factor(clim$region[nodups])))
+#	plot(clim$lon, clim$lat, pch=16, cex=0.5, col=as.numeric(as.factor(clim$region)))
 #	regwavedat <- wave.out$wave_region %in% c('wave_WC', 'wave_NE', 'wave_GM')
 #	points(wave.out$lon[regwavedat], wave.out$lat[regwavedat], pch=16, cex=0.3, col='brown')
 #	points(wave.out$lon, wave.out$lat, pch=16, cex=0.1) # only the west coast is fully covered by a high resolution wave dataset. Northeast regional data miss the offshore part of Georges Bank in NEUS. Gulf of Mexico regional data miss a few inshore and offshore points.
 
 	# plot of zoomed in region to verify grid spacing
-	plot(clim$lon[nodups], clim$lat[nodups], pch=16, cex=1, xlim=c(285, 290), ylim=c(39, 42))
-	points(wave.out$lon, wave.out$lat, pch=16, cex=0.5, col='red') # yes, wave points are 0.25 deg apart, like the climate points
+#	plot(clim$lon, clim$lat, pch=16, cex=1, xlim=c(285, 290), ylim=c(39, 42))
+#	points(wave.out$lon, wave.out$lat, pch=16, cex=0.5, col='red') # yes, wave points are 0.25 deg apart, like the climate points
 
-# remove regional wave data from wave.out for Northeast and Gulf of Mexico (use global instead)
+# remove global wave data from wave.out for Northeast and Gulf of Mexico where regional wave data are present
 nrow(wave.out)
-wave.out <- wave.out[!(wave.out$wave_region %in% c('wave_NE', 'wave_GM')),]
+reginds <- wave.out$wave_region %in% c('wave_GM', 'wave_NE') # rows with regional data for NE or GoM
+globdups <- (paste(wave.out$lat, wave.out$lon) %in% paste(wave.out$lat[reginds], wave.out$lon[reginds])) & (wave.out$wave_region %in% c('wave_GMg', 'wave_NEg'))
+	# make sure I selected what I expected to select
+#	sort(unique(wave.out$wave_region[globdups]))
+#	plot(wave.out$lon[reginds], wave.out$lat[reginds]) # where I have regional data
+#	points(wave.out$lon[globdups], wave.out$lat[globdups], col='red', pch=16, cex=0.5) # global data to be removed
+#	globnotdups <- !globdups & wave.out$wave_region %in% c('wave_GMg', 'wave_NEg')
+#	points(wave.out$lon[globnotdups], wave.out$lat[globnotdups], col='blue', pch=16, cex=0.5) # global data to not be removed
+wave.out <- wave.out[!globdups,]
 nrow(wave.out)
 sort(unique(wave.out$wave_region))
 
+tokeep <- !is.na(wave.out$region)
+
 	# compared untrimmed and trimmed wave.out
 	par(mfrow=c(1,2))
-	plot(clim$lon[nodups], clim$lat[nodups], pch=16, cex=0.3)
-	points(wave.out$lon, wave.out$lat, col=c('blue', 'red')[1+(wave.out$wave_npv > 0)], pch=16, cex=0.3)	
-	plot(clim$lon[nodups], clim$lat[nodups], pch=16, cex=0.3)
-	points(wave.out$lon[!is.na(wave.out$region)], wave.out$lat[!is.na(wave.out$region)], col=c('blue', 'red')[1+(wave.out$wave_npv[!is.na(wave.out$region)] > 0)], pch=16, cex=0.3)	
+	plot(clim$lon, clim$lat, pch=16, cex=0.3)
+	points(wave.out$lon, wave.out$lat, col=c('blue', 'red')[1+(wave.out$wave_npv > 0)], pch=16, cex=0.2)	
+	plot(clim$lon, clim$lat, pch=16, cex=0.3)
+	points(wave.out$lon[tokeep], wave.out$lat[tokeep], col=c('blue', 'red')[1+(wave.out$wave_npv[tokeep] > 0)], pch=16, cex=0.2)	
 
 # remove grids not in clim
-wave.out <- wave.out[!is.na(wave.out$region), c('lat', 'lon', 'wave_npv')]
+nrow(wave.out)
+wave.out <- wave.out[tokeep, c('lat', 'lon', 'wave_npv')]
+nrow(wave.out)
 
 # order wave.out
 wave.out <- wave.out[order(wave.out$lon, wave.out$lat),]
@@ -220,7 +238,7 @@ dups <- duplicated(wave.out)
 
 	nrow(wave.out)
 wave.out <- wave.out[!dups,]
-	nrow(wave.out)
+	nrow(wave.out) # 4596
 
 # write out
 write.csv(wave.out, 'cmsp_data/wave_npv.csv')
