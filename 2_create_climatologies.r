@@ -208,6 +208,7 @@ load("data/trawl_allregionsforprojections_wSST_2015-06-02.RData") # loads dat
 #	sum(is.na(clim$stratum)) # 0
 
 # write out climatology
+## WOULD BE GOOD TO TRIM OUT LINES WITH NA VALUES HERE (E.G., BOTTEMP.CLIM.INT OR SURFTEMP.CLIM.INT)
 	write.csv(clim, file=paste('data/climGrid.csv', sep=''))
 	
 # write out all grid cell lat/lons for Lauren Rogers
