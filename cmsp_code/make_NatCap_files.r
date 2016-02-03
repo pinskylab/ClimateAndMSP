@@ -113,12 +113,12 @@ crslatlong = CRS("+init=epsg:4326")
 # read in files
 coastlines <- readOGR(dsn=natcapfolder, layer='NAmainland_lines') # global coast layer from NatCap
 #	plot(coastlines)
-towns <- readOGR(dsn=paste(natcapfolder, 'ne_10m_populated_places', sep='/'), layer='ne_10m_populated_places') # global coast layer from NatCap
+towns <- readOGR(dsn=paste(natcapfolder, 'ne_10m_populated_places', sep='/'), layer='ne_10m_populated_places') # populated places layer from Natural Earth data
 #	plot(towns, pch=16, cex=0.2)
 	# plot(towns, pch=16, cex=0.2, add=TRUE) # to add to coastlines plot
 
 # calculate coastline length
-ln <- SpatialLinesLengths(coastlines, longlat=TRUE) # returns answer in km
+ln <- SpatialLinesLengths(coastlines, longlat=TRUE) # returns answer in km for each line
 	ln
 	
 # trim towns to those >1000 people
@@ -131,14 +131,16 @@ coastlines.p <- spTransform(coastlines, CRSobj=crs)
 	plot(coastlines.p, lwd=0.2, axes=TRUE)
 towns.p <- spTransform(towns1000, CRSobj=crs)
 #	plot(towns.p, pch=16) # odd plot: some towns seem to have extreme coordinats
-	plot(towns.p, pch=16, cex=0.5, add=TRUE) # but plots on top of NA well
+	plot(towns.p, pch=16, cex=0.5, add=TRUE, col='blue') # but plots on top of NA well
 
 # trim town to those <20km from the NA coast
-nearcoast <- gWithinDistance(coastlines.p, towns.p, byid=TRUE, dist=50*1000) # slow (a few min). units in meters (50km)
-	sum(nearcoast) # 337
-	points(towns.p[which(nearcoast),], col='red', pch=16, cex=1)	
+nearcoast <- gWithinDistance(coastlines.p, towns.p, byid=TRUE, dist=50*1000) # slow (a few min). units in meters (50km). returns a matrix with columns corresponding to each coastline (includes a few major islands)
+nearcoastany <- rowSums(nearcoast) > 0 # sum across rows: we don't care which coast a town is close to
+	sum(nearcoast) # 370
+	sum(nearcoastany) # 347. shows that some towns were close to multiple coastlines
+	points(towns.p[which(nearcoastany),], col='red', pch=16, cex=1) # adds to the plot before
 
-towns.nearcoast <- towns.p[which(nearcoast),]
+towns.nearcoast <- towns.p[which(nearcoastany),]
 
 
 # add points along the coastline. 1 every km

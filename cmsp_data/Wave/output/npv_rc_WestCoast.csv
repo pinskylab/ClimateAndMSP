@@ -1,0 +1,6 @@
+id,Value Range,Pixel Count
+1,1 - -66256 thousands of US dollars (US$),0.0
+2,-66256 - 51866 (US$),16148.0
+3,51866 - 128232 (US$),16154.0
+4,128232 - 180131 (US$),9695.0
+5,Greater than 180131 (US$),6461.0

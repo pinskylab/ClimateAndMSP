@@ -1,0 +1,74 @@
+Arguments:
+analysis_area_uri   East Coast of North America and Puerto Rico
+aoi_uri             C:/InVEST_3_2_0_x86/WindEnergy/input/New_England_US_Aoi.shp
+dem_uri             C:\InVEST_3_2_0_x86\Base_Data\Marine\DEMs\global_dem
+machine_param_uri   C:\InVEST_3_2_0_x86\WaveEnergy\input\Machine_Pelamis_Parameter.csv
+machine_perf_uri    C:\InVEST_3_2_0_x86\WaveEnergy\input\Machine_Pelamis_Performance.csv
+suffix              test
+valuation_container False
+wave_base_data_uri  C:\InVEST_3_2_0_x86\WaveEnergy\input\WaveData
+workspace_dir       C:\Users\mpinsky\Documents\NatCap\Wave
+
+
+01/12/2016 15:53:27  root               INFO     Logging will be saved to wave_energy-log-2016-01-12--15_53_27.txt
+01/12/2016 15:53:27  root               DEBUG    Loaded the model from invest_natcap.wave_energy.wave_energy
+01/12/2016 15:53:27  root               INFO     Executing the loaded model
+01/12/2016 15:53:27  root               INFO     Running InVEST version "3.2.0"
+01/12/2016 15:53:27  root               INFO     Python architecture: ('32bit', 'WindowsPE')
+01/12/2016 15:53:27  root               INFO     Disk space remaining for workspace: 2.45 GB
+01/12/2016 15:53:27  root               INFO     Pointing temporary directory at the workspace at C:\Users\mpinsky\Documents\NatCap\Wave
+01/12/2016 15:53:27  root               INFO     Updating os.environ["TMP"]=C:\Users\mpinsky\AppData\Local\Temp to C:\Users\mpinsky\Documents\NatCap\Wave
+01/12/2016 15:53:27  root               INFO     Updating os.environ["TEMP"]=C:\Users\mpinsky\AppData\Local\Temp to C:\Users\mpinsky\Documents\NatCap\Wave
+01/12/2016 15:53:27  root               INFO     Setting os.environ["TMPDIR"]=C:\Users\mpinsky\Documents\NatCap\Wave
+01/12/2016 15:53:27  root               INFO     Setting tempfile.tempdir to C:\Users\mpinsky\Documents\NatCap\Wave\tmp
+01/12/2016 15:53:27  root               INFO     Starting wave_energy
+01/12/2016 15:53:27  invest_natcap.wave_energy.wave_energy DEBUG    Machine Performance Rows : ['0.0', '3.0', '4.0', '5.0', '6.0', '7.0', '8.0', '9.0', '10.0', '11.0', '12.0', '13.0', '14.0', '15.0', '16.0', '17.0', '18.0', '20.0']
+01/12/2016 15:53:27  invest_natcap.wave_energy.wave_energy DEBUG    Machine Performance Cols : ['0.0', '0.1', '0.5', '1.0', '1.5', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0', '5.5', '6.0', '6.5', '7.0', '7.5', '8.0', '8.5', '9.0', '9.5', '10.0']
+01/12/2016 15:53:27  invest_natcap.wave_energy.wave_energy DEBUG    Extrapolating wave data from text to a dictionary
+01/12/2016 15:53:29  invest_natcap.wave_energy.wave_energy DEBUG    WaveData col [0.25, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 59.75]
+01/12/2016 15:53:29  invest_natcap.wave_energy.wave_energy DEBUG    WaveData row [0.125, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 54.875]
+01/12/2016 15:53:29  invest_natcap.wave_energy.wave_energy DEBUG    Finished extrapolating wave data to dictionary
+01/12/2016 15:53:29  invest_natcap.wave_energy.wave_energy DEBUG    AOI was provided
+01/12/2016 15:53:31  invest_natcap.wave_energy.wave_energy DEBUG    Binding Shapes Feature Count : 1
+01/12/2016 15:53:31  invest_natcap.wave_energy.wave_energy DEBUG    Shape to be Bounds Feature Count : 17376
+01/12/2016 15:53:34  invest_natcap.wave_energy.wave_energy DEBUG    Binding Shapes Feature Count : 2
+01/12/2016 15:53:34  invest_natcap.wave_energy.wave_energy DEBUG    Shape to be Bounds Feature Count : 1
+01/12/2016 15:53:34  invest_natcap.wave_energy.wave_energy DEBUG    Pixel size in meters : 3247.116423
+01/12/2016 15:53:34  invest_natcap.wave_energy.wave_energy DEBUG    Adding a depth field to the shapefile from the DEM raster
+01/12/2016 15:53:36  invest_natcap.wave_energy.wave_energy DEBUG    Finished adding depth field to shapefile from DEM raster
+01/12/2016 15:53:36  invest_natcap.wave_energy.wave_energy DEBUG    Interpolating machine performance table
+01/12/2016 15:53:36  invest_natcap.wave_energy.wave_energy INFO     Calculating Captured Wave Energy.
+01/12/2016 15:53:36  invest_natcap.wave_energy.wave_energy DEBUG    Position of max period : 20.000000
+01/12/2016 15:53:36  invest_natcap.wave_energy.wave_energy DEBUG    Position of max height : 20.000000
+01/12/2016 15:53:37  invest_natcap.wave_energy.wave_energy DEBUG    Adding the wave energy sums to the WaveData shapefile
+01/12/2016 15:53:37  invest_natcap.wave_energy.wave_energy INFO     Calculating Wave Power.
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    Interpolate wave power and wave energy capacity onto rasters
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    Create Perctile Rasters
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    Percentile Rank List: [4039, 8077, 12116, 14539]
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentile value is : 509.81
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentile value is : 854.445
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentile value is : 1163.06
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentile value is : 1406.65
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentiles_list : [509, 854, 1163, 1406]
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    range_values : ['1 - 509 megawatt hours per year (MWh/yr)', '509 - 854 (MWh/yr)', '854 - 1163 (MWh/yr)', '1163 - 1406 (MWh/yr)', 'Greater than 1406 (MWh/yr)']
+01/12/2016 15:53:38  pygeoprocessing.geoprocessing WARNING  this call is vectorizing which is deprecated and slow
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    number of pixels per group: : [ 4034.  4040.  4042.  2412.  1626.]
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    Create Perctile Rasters
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    Percentile Rank List: [4039, 8077, 12116, 14539]
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentile value is : 3.59571
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentile value is : 6.10564
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentile value is : 8.25785
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentile value is : 9.97545
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    percentiles_list : [3, 6, 8, 9]
+01/12/2016 15:53:38  invest_natcap.wave_energy.wave_energy DEBUG    range_values : ['1 - 3 wave power per unit width of wave crest length (kW/m)', '3 - 6 (kW/m)', '6 - 8 (kW/m)', '8 - 9 (kW/m)', 'Greater than 9 (kW/m)']
+01/12/2016 15:53:39  pygeoprocessing.geoprocessing WARNING  this call is vectorizing which is deprecated and slow
+01/12/2016 15:53:39  invest_natcap.wave_energy.wave_energy DEBUG    number of pixels per group: : [ 2292.  4496.  3769.  1604.  2902.]
+01/12/2016 15:53:39  invest_natcap.wave_energy.wave_energy INFO     Completed Wave Energy Biophysical
+01/12/2016 15:53:39  invest_natcap.wave_energy.wave_energy DEBUG    Valuation not selected
+01/12/2016 15:53:39  root               INFO     Opening file explorer to workspace directory
+01/12/2016 15:53:39  root               INFO     Using windows explorer to view files
+01/12/2016 15:53:39  root               INFO     Disk space free: 2.45 GB
+01/12/2016 15:53:39  root               INFO     Elapsed time: 11.45s
+01/12/2016 15:53:39  root               INFO     Finished.
+01/12/2016 15:53:39  root               INFO     Elapsed time: 11.88s
+01/12/2016 15:53:39  root               INFO     Operations completed successfully
