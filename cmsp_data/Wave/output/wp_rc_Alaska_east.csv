@@ -1,6 +1,6 @@
 id,Value Range,Pixel Count
-1,1 - 0 wave power per unit width of wave crest length (kW/m),0.0
-2,0 - 0 (kW/m),0.0
-3,0 - 1 (kW/m),479.0
-4,1 - 1 (kW/m),0.0
-5,Greater than 1 (kW/m),436.0
+1,1 - 12 wave power per unit width of wave crest length (kW/m),94856.0
+2,12 - 18 (kW/m),107745.0
+3,18 - 22 (kW/m),98300.0
+4,22 - 29 (kW/m),64050.0
+5,Greater than 29 (kW/m),51300.0

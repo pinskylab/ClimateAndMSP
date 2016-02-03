@@ -13,23 +13,23 @@
       </FieldDefn>
       <Row index="0">
         <F>1</F>
-        <F>1 - 65 megawatt hours per year (MWh/yr)</F>
+        <F>1 - 1530 megawatt hours per year (MWh/yr)</F>
       </Row>
       <Row index="1">
         <F>2</F>
-        <F>65 - 65 (MWh/yr)</F>
+        <F>1530 - 1952 (MWh/yr)</F>
       </Row>
       <Row index="2">
         <F>3</F>
-        <F>65 - 105 (MWh/yr)</F>
+        <F>1952 - 2266 (MWh/yr)</F>
       </Row>
       <Row index="3">
         <F>4</F>
-        <F>105 - 105 (MWh/yr)</F>
+        <F>2266 - 2584 (MWh/yr)</F>
       </Row>
       <Row index="4">
         <F>5</F>
-        <F>Greater than 105 (MWh/yr)</F>
+        <F>Greater than 2584 (MWh/yr)</F>
       </Row>
     </GDALRasterAttributeTable>
   </PAMRasterBand>

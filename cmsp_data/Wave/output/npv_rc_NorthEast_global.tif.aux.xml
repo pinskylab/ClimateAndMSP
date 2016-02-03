@@ -13,23 +13,23 @@
       </FieldDefn>
       <Row index="0">
         <F>1</F>
-        <F>1 - -494042 thousands of US dollars (US$)</F>
+        <F>1 - -320400 thousands of US dollars (US$)</F>
       </Row>
       <Row index="1">
         <F>2</F>
-        <F>-494042 - -337432 (US$)</F>
+        <F>-320400 - -251548 (US$)</F>
       </Row>
       <Row index="2">
         <F>3</F>
-        <F>-337432 - -250904 (US$)</F>
+        <F>-251548 - -163811 (US$)</F>
       </Row>
       <Row index="3">
         <F>4</F>
-        <F>-250904 - -191870 (US$)</F>
+        <F>-163811 - -42842 (US$)</F>
       </Row>
       <Row index="4">
         <F>5</F>
-        <F>Greater than -191870 (US$)</F>
+        <F>Greater than -42842 (US$)</F>
       </Row>
     </GDALRasterAttributeTable>
   </PAMRasterBand>

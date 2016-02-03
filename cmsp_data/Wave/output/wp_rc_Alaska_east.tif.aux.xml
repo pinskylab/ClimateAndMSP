@@ -13,23 +13,23 @@
       </FieldDefn>
       <Row index="0">
         <F>1</F>
-        <F>1 - 0 wave power per unit width of wave crest length (kW/m)</F>
+        <F>1 - 12 wave power per unit width of wave crest length (kW/m)</F>
       </Row>
       <Row index="1">
         <F>2</F>
-        <F>0 - 0 (kW/m)</F>
+        <F>12 - 18 (kW/m)</F>
       </Row>
       <Row index="2">
         <F>3</F>
-        <F>0 - 1 (kW/m)</F>
+        <F>18 - 22 (kW/m)</F>
       </Row>
       <Row index="3">
         <F>4</F>
-        <F>1 - 1 (kW/m)</F>
+        <F>22 - 29 (kW/m)</F>
       </Row>
       <Row index="4">
         <F>5</F>
-        <F>Greater than 1 (kW/m)</F>
+        <F>Greater than 29 (kW/m)</F>
       </Row>
     </GDALRasterAttributeTable>
   </PAMRasterBand>
