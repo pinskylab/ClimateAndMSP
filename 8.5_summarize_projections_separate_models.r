@@ -21,14 +21,20 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 ## projtype refers to how the SDM projections were done
 #runtype <- 'test'; projtype=''
 #runtype <- 'testK6noSeas'; projtype=''
-runtype <- 'testK6noSeas'; projtype='_xreg'
+#runtype <- 'testK6noSeas'; projtype='_xreg'
+runtype <- 'fitallreg'; projtype='_xreg' # for cross-region models and projections
+
+# choose the RCP
+rcp <- 85
+# rcp <- 45
 
 ## choose the time periods
 timeperiods <- data.frame(year = 2006:2100, period = c(rep('2006-2020', 15), rep('2021-2040', 20), rep('2041-2060', 20), rep('2061-2080', 20), rep('2081-2100', 20)))
 periods <- sort(unique(timeperiods$period))
 nt <- length(unique(periods))
 
-nm <- 13 # number of climate models
+# number of climate models
+nm <- 13
 
 
 #############
@@ -51,7 +57,7 @@ wmean <- function(x){ # values in col 1, weights in col 2
 ############################################################
 
 # list all projections from this run
-files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, projtype, '_', sep=''))
+files <- list.files(path = projfolder, pattern=paste('summproj_', runtype, projtype, '_rcp', rcp, sep=''))
 
 
 # set up dataframes
@@ -66,7 +72,7 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 	# load data for this species
 	load(paste(projfolder, '/', files[i], sep='')) # load summproj for this taxon
 	myregions <- sort(unique(summproj$region))
-	mysppocean <- gsub('.Rdata', '', gsub(paste('summproj_', runtype, '_', sep=''), '', files[i]))
+	mysppocean <- gsub('.Rdata', '', gsub(paste('summproj_', runtype, projtype, '_rcp', rcp, '_', sep=''), '', files[i]))
 
 	print(paste(i, 'of', length(files), mysppocean, paste(myregions, collapse=', '), Sys.time()))
 
@@ -109,4 +115,4 @@ dim(biomassavemapbymod)
 
 
 ### Save the biomass maps by model
-save(biomassavemapbymod, file = paste('data/biomassavemapbymod_', runtype, projtype, '.RData', sep=''))
+save(biomassavemapbymod, file = paste('data/biomassavemapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
