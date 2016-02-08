@@ -71,17 +71,19 @@ wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
 
 # any overlapping richness projections? different regions, same grid cell
 # average across regions
-sum(duplicated(rich[,c('period', 'lat', 'lon')])) # yes: 4110
+sum(duplicated(rich[,c('period', 'lat', 'lon')])) # yes: 6871
 numdup <- aggregate(list(n = rich$region), by=list(period=rich$period, lat=rich$lat, lon=rich$lon), FUN=length)
-	sum(numdup$n>1) # 4110, which means the aggregate worked
-	sum(numdup$n>2) # only doubles
+	sum(numdup$n>1) # 6326, which means the aggregate worked
+	sum(numdup$n>2) # 545, more than doubles
 numdupreg <- aggregate(list(nreg = rich$region), by=list(period=rich$period, lat=rich$lat, lon=rich$lon), FUN=lu)
 	numdupreg <- merge(numdupreg, numdup)
 	sum(numdupreg$n>1 & numdupreg$nreg==1) # 0: no duplications within a region
-	sum(numdupreg$n>1 & numdupreg$nreg==2) # 4110: all duplications involve 2 regions
+	sum(numdupreg$n>1 & numdupreg$nreg==2) # 5781: all duplications involve 2 regions
+	sum(numdupreg$n>1 & numdupreg$nreg==3) # 545: all duplications involve 3 regions
+	sum(numdupreg$n>1 & numdupreg$nreg>3) # 0: no more than 3 regions
 	
 richave <- aggregate(list(rich = rich$rich), by=list(period=rich$period, lat=rich$lat, lon=rich$lon), FUN=mean) # take the average across regions
-	dim(richave)
+	dim(richave) # 22886
 
 # convert wdpa lon to + to match grid
 wdpa$lon[wdpa$lon < 0] = wdpa$lon[wdpa$lon < 0] + 360
@@ -95,8 +97,8 @@ wdparich <- merge(wdpa, richave, all.x=TRUE)
 	length(unique(wdparich$wdpapolyID)) # 625 PAs
 
 	# examine the merge
-	sum(is.na(wdparich$rich)) # 169 values missing
-	wdparich[is.na(wdparich$rich), c('lat', 'lon', 'country', 'sub_loc', 'period', 'rich')] # seem to be outside the richness projection. not sure why they were in the intersection with the climate grid
+	sum(is.na(wdparich$rich)) # 219 values missing
+	wdparich[is.na(wdparich$rich), c('lat', 'lon', 'country', 'sub_loc', 'period', 'rich')] # FL and NC, and unclear
 	
 	# remove missing values
 	wdparich <- wdparich[!is.na(wdparich$rich),]
@@ -105,9 +107,9 @@ wdparich <- merge(wdpa, richave, all.x=TRUE)
 # important when PAs cross multiple grid cells
 wdparichave <- Hmisc::summarize(wdparich[,c('rich', 'prop_grid')], by=llist(period=wdparich$period, wdpapolyID=wdparich$wdpapolyID), FUN=wmean, stat.name='rich')
 	dim(wdparichave)
-	length(unique(wdparichave$wdpapolyID)) # 611 PAs (lost a few)
+	length(unique(wdparichave$wdpapolyID)) # 586 PAs (lost a few)
 wdparichave <- merge(wdparichave, wdpa[!duplicated(wdpa$wdpapolyID),]) # merge in other data
-	dim(wdparichave) # 3045
+	dim(wdparichave) # 2930
 	
 # write out
 write.csv(wdparichave, paste('data/wdparichave_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
@@ -130,7 +132,7 @@ wdparichtrend <- merge(wdparichtrend, wdparichave[wdparichave$period=='2081-2100
 	dim(wdparichtrend)
 	names(wdparichtrend)[names(wdparichtrend)=='rich'] = 'rich2081_2100'
 	head(wdparichtrend)
-	which(is.na(wdparichtrend$rich2081-2100)) # six missing values
+	which(is.na(wdparichtrend$rich2081_2100)) # 0 missing values
 
 # calculate fractional gain/loss of species in PAs
 wdparichtrend$richchange = (wdparichtrend$rich2081_2100 - wdparichtrend$rich2006_2020)/wdparichtrend$rich2006_2020
@@ -139,52 +141,29 @@ wdparichtrend$richlogRR = log10(wdparichtrend$rich2081_2100/wdparichtrend$rich20
 # write out wdparichtrend
 write.csv(wdparichtrend, paste('data/wdparichtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	
-# calculate trend in richness for all grid cells
-pds <- as.numeric(unlist(strsplit(as.character(rich$period), split='-')))
-dim(pds) <- c(2,nrow(rich))
-rich$periodmids <- colMeans(pds) # midpoints of each time period
-richtrend <- Hmisc::summarize(X=rich[,c('periodmids', 'rich')], by=llist(region=rich$region, lat=rich$lat, lon=rich$lon, dummy=rich$lon), FUN=calcrichtrendmids, stat.name='trend') # calculate richness (# taxa) by grid cell in each time period. for an unknown resion, the last column in the by list gets NAs, so padded with a dummy column here
-	richtrend <- richtrend[,-grep('dummy', names(richtrend))]
-	head(richtrend)
 
-richtrend <- merge(richtrend, rich[rich$period=='2006-2020',c('region', 'lat', 'lon', 'rich')]) # merge in original richness
-	dim(richtrend)
-	names(richtrend)[names(richtrend)=='rich'] = 'rich2006_2020'
-richtrend <- merge(richtrend, rich[rich$period=='2081-2100',c('region', 'lat', 'lon', 'rich')], all.x=TRUE) # merge in final richness
-	dim(richtrend)
-	names(richtrend)[names(richtrend)=='rich'] = 'rich2081_2100'
-	head(richtrend)
-	which(is.na(richtrend$rich2081-2100)) # three missing values
 
-# calculate fractional gain/loss of species in grid cells
-richtrend$richchange = (richtrend$rich2081_2100 - richtrend$rich2006_2020)/richtrend$rich2006_2020
-richtrend$richlogRR = log10(richtrend$rich2081_2100/richtrend$rich2006_2020)
-	
-# write out wdparichtrend
-write.csv(wdparichtrend, paste('data/wdparichtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
-
-	
 ###########################################################
 ## Calculate community turnover within PAs
 ###########################################################
-
 load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads turnover data.frame: sorenson similiarty by grid cell by time period (ensemble mean)
 wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
 
 # any overlapping richness projections? different regions, same grid cell
 # average across regions
-sum(duplicated(turn[,c('lat', 'lon')])) # yes: 1374
+sum(duplicated(turn[,c('lat', 'lon')])) # yes: 1373
 numdup <- aggregate(list(n = turn$region), by=list(lat=turn$lat, lon=turn$lon), FUN=length)
-	sum(numdup$n>1) # 1265, which means the aggregate worked
+	sum(numdup$n>1) # 1264, which means the aggregate worked
 	sum(numdup$n>2) # 109 triples or more... why?
 numdupreg <- aggregate(list(nreg = turn$region), by=list(lat=turn$lat, lon=turn$lon), FUN=lu)
 	numdupreg <- merge(numdupreg, numdup)
 	sum(numdupreg$n>1 & numdupreg$nreg==1) # 0: no duplications within a region
-	sum(numdupreg$n>1 & numdupreg$nreg>=2) # 1265: all duplications involve 2+ regions
+	sum(numdupreg$n>1 & numdupreg$nreg>=2) # 1264: all duplications involve 2+ regions
 	sum(numdupreg$n>1 & numdupreg$nreg>=3) # 109: some duplications involve 3 regions... why?
+	# why don't these numbers match to rich missing values in previous section?
 	
 turnave <- aggregate(list(beta_sor = turn$beta_sor, fgained=turn$fgained, flost=turn$flost), by=list(lat=turn$lat, lon=turn$lon), FUN=mean) # take the average across regions
-	dim(turnave)
+	dim(turnave) # 4574
 
 # convert wdpa lon to + to match grid
 wdpa$lon[wdpa$lon < 0] = wdpa$lon[wdpa$lon < 0] + 360
@@ -198,9 +177,9 @@ wdpaturn <- merge(wdpa, turnave, all.x=TRUE)
 	length(unique(wdpaturn$wdpapolyID)) # 625 PAs
 
 	# examine the merge
-	sum(is.na(wdpaturn$beta_sor)) # 228 values missing
-	sum(is.na(wdpaturn$flost)) # 228 values missing
-	sum(is.na(wdpaturn$fgained)) # 228 values missing
+	sum(is.na(wdpaturn$beta_sor)) # 238 values missing
+	sum(is.na(wdpaturn$flost)) # 238 values missing
+	sum(is.na(wdpaturn$fgained)) # 238 values missing
 	wdpaturn[is.na(wdpaturn$beta_sor), c('lat', 'lon', 'country', 'sub_loc', 'beta_sor')] # seem to be outside the richness projection. not sure why they were in the intersection with the climate grid
 	
 	# remove missing values
@@ -221,48 +200,26 @@ wdpaturnave <- merge(wdpaturnave1, wdpaturnave2)
 wdpaturnave <- merge(wdpaturnave, wdpaturnave3)
 wdpaturnave <- merge(wdpaturnave, wdpa[!duplicated(wdpa$wdpapolyID),]) # merge in other data
 	dim(wdpaturnave) # 586
-	
-	# examine MLPA MPAs
-	wdpaturnave[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game",] # all rows
-	summary(wdpaturnave$beta_sor[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Sorenson similarity
-	summary(wdpaturnave$flost[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Fraction species lost
-	summary(wdpaturnave$fgained[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Fraction species gained
 
-##############################################
-# Calculate turnover within MPA networks
-##############################################
-load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
-wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
+# write out wdpaturnave
+write.csv(wdpaturnave, paste('data/wdpaturnave_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 
-# pick a MPA network
-grids <- wdpa[wdpa$sub_loc=='US-CA' & wdpa$mang_auth=="California Department of Fish and Game", c('lat', 'lon')] #MLPA
-	dim(grids)
 
-# select initial and final timeperiod for these grids
-thesespp <- presmap[paste(presmap$lat, presmap$lon) %in% paste(grids$lat, grids$lon) & presmap$period %in% c('2006-2020', '2081-2100'),]
-thesespp <- thesespp[thesespp$pres,] # trim to present spp
-	dim(thesespp) # 4858
-	sort(unique(thesespp$region))
-#	thesespp <- thesespp[thesespp$region == 'AFSC_WCTri',] # trim to one region
-	thesespp <- thesespp[thesespp$region == 'NWFSC_WCAnn',] # trim to one region
-	dim(thesespp) # 4858
-	
-# trim to unique species in each period
-thesespp <- thesespp[!duplicated(thesespp[,c('sppocean', 'period')]),]
-	dim(thesespp) # 180
-
-# evaluate turnover
-turnover(thesespp[,c('region', 'lat', 'lon', 'period', 'sppocean', 'pres')])
 
 ################
 # Evaluate change
 ################
 
 # Richness change in PAs
-hist(wdparichtrend$richtrend) # nicely centered around 0. perhaps a slightly longer tail to the right (positive)
+hist(wdparichtrend$richtrend) # nicely centered around 0. perhaps a slightly longer tail to the left (negative)
 summary(wdparichtrend$richtrend) # mean gain/loss of species (spp/year): -0.04
 summary(wdparichtrend$richtrend)*(2100-2006) # mean gain/loss of species (spp): -3 species, but -70 to +79
 summary(wdparichtrend$richchange) # mean gain/loss of species (fraction): -3.5% (-85% to +400%)
+
+summary(wdpaturnave$beta_sor) # Sorenson similarity
+summary(wdpaturnave$flost) # Fraction species lost
+summary(wdpaturnave$fgained) # Fraction species gained
+
 
 # Richness change in grid cells
 summary(richtrend$richchange) # mean gain/loss of species (fraction): -0.5% (-85% to +300%) (shouldn't upper bound match PAs?)
@@ -275,3 +232,39 @@ t.test(richtrend$trend, wdparichtrend$richtrend) # trend in PAs is less negative
 wdpainc = table(wdparichtrend$richtrend>0)
 gridinc = table(richtrend$trend>0)
 prop.test(x=rbind(wdpainc, gridinc)) # PAs are more likely to increase than on average across the shelf (46% vs. 36%)
+
+# examine MLPA MPAs
+	wdpaturnave[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game",] # all rows
+	summary(wdpaturnave$beta_sor[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Sorenson similarity
+	summary(wdpaturnave$flost[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Fraction species lost
+	summary(wdpaturnave$fgained[wdpaturnave$sub_loc=='US-CA' & wdpaturnave$mang_auth=="California Department of Fish and Game"]) # Fraction species gained
+
+
+##############################################
+# Calculate turnover within MPA networks
+##############################################
+load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
+
+# convert lon to positive
+wdpa$lon[wdpa$lon<0] <- wdpa$lon[wdpa$lon<0] + 360
+
+# pick a MPA network
+grids <- wdpa[wdpa$sub_loc=='US-CA' & wdpa$mang_auth=="California Department of Fish and Game", c('lat', 'lon')] #MLPA
+	dim(grids)
+
+# select initial and final timeperiod for these grids
+thesespp <- presmap[paste(presmap$lat, presmap$lon) %in% paste(grids$lat, grids$lon) & presmap$period %in% c('2006-2020', '2081-2100'),]
+thesespp <- thesespp[thesespp$pres,] # trim to present spp
+	dim(thesespp) # 5340
+	sort(unique(thesespp$region))
+#	thesespp <- thesespp[thesespp$region == 'AFSC_WCTri',] # trim to one region
+	thesespp <- thesespp[thesespp$region == 'NWFSC_WCAnn',] # trim to one region
+	dim(thesespp) # 3009
+	
+# trim to unique species in each period
+thesespp <- thesespp[!duplicated(thesespp[,c('sppocean', 'period')]),]
+	dim(thesespp) # 203
+
+# evaluate turnover
+turnover(thesespp[,c('region', 'lat', 'lon', 'period', 'sppocean', 'pres')])

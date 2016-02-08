@@ -5,7 +5,7 @@ if(Sys.info()["nodename"] == "pinsky-macbookair"){
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
 	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
-	ncores=20
+	ncores=15
 	}
 # could add code for Lauren's working directory here
 
@@ -74,6 +74,14 @@ findthresh <- function(counter, model, sppocean, region, bm, ncount){
 	ind<-max(which(cumsum(wts)/sum(wts)<0.05))
 	return(wts[ind])
 }
+
+# version that relies on bmave2020 being in the environment
+findthresh2 <- function(counter, model, sppocean, region, ncount){ 
+	print(paste(counter, 'of', ncount, Sys.time()))
+	wts <- sort(bmave2020$wtcpue.proj[bmave2020$model == model & bmave2020$sppocean == sppocean & bmave2020$region == region])
+	ind<-max(which(cumsum(wts)/sum(wts)<0.05))
+	return(wts[ind])
+}
 	
 
 ############################################
@@ -82,7 +90,7 @@ findthresh <- function(counter, model, sppocean, region, bm, ncount){
 ############################################
 
 load(paste('data/biomassavemapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads biomassavemapbymod data.frame. SLOW (a 1GB file).
-	dim(biomassavemapbymod) # 37,460,605 x 7
+	dim(biomassavemapbymod) # 101,196,030 x 7
 #	summary(biomassavemapbymod) # some NAs
 #		table(biomassavemapbymod$region[is.na(biomassavemapbymod$wtcpue.proj)]) # WCTri, ScotianShelf, NEUSFall, NEUSSpring, GOMex
 #		table(biomassavemapbymod$period[is.na(biomassavemapbymod$wtcpue.proj)]) # evenly across all periods
@@ -90,7 +98,7 @@ load(paste('data/biomassavemapbymod_', runtype, projtype, '_rcp', rcp, '.RData',
 
 	# trim out NAs
 	biomassavemapbymod <- biomassavemapbymod[!is.na(biomassavemapbymod$wtcpue.proj),]
-	dim(biomassavemapbymod) # 34,876,270 x 7
+	dim(biomassavemapbymod) # 94,935,750 x 7
 
 # find abundance threshold to count as present for each taxon
 # use cumulative 5% of wtcpue from earliest timeperiod, by region
@@ -99,8 +107,14 @@ i <- !duplicated(biomassavemapbymod[,c('model', 'region', 'sppocean')])
 taxthreshbymod <- biomassavemapbymod[i,c('model', 'region', 'sppocean')]
 	taxthreshbymod$thresh<-NA
 
+#taxthreshbymod$thresh <- mcmapply(findthresh, counter=1:nrow(taxthreshbymod), model=taxthreshbymod$model, sppocean=taxthreshbymod$sppocean, region=taxthreshbymod$region, MoreArgs=list(bm=biomassavemapbymod[biomassavemapbymod$period == '2006-2020',], ncount=nrow(taxthreshbymod)), SIMPLIFY = TRUE, mc.cores=ncores) # initiating each run is slow: perhaps because it creates many copies of biomassavemapbymod? each instance uses 17GB memory, yikes. takes about 5 hours?
 
-taxthreshbymod$thresh <- mcmapply(findthresh, counter=1:nrow(taxthreshbymod), model=taxthreshbymod$model, sppocean=taxthreshbymod$sppocean, region=taxthreshbymod$region, MoreArgs=list(bm=biomassavemapbymod[biomassavemapbymod$period == '2006-2020',], ncount=nrow(taxthreshbymod)), SIMPLIFY = TRUE, mc.cores=ncores) # initiating each run is slow: perhaps because it creates many copies of biomassavemapbymod? each instance uses 7GB memory, yikes. takes about 5 hours?
+bmave2020 <- biomassavemapbymod[biomassavemapbymod$period == '2006-2020',] # smaller version with just the first period
+	nrow(bmave2020) # 18,987,150
+	
+i <- 1:nrow(taxthreshbymod) # a simple way to run just a part of the data as a test
+taxthreshbymod$thresh[i] <- mcmapply(findthresh2, counter=(1:nrow(taxthreshbymod))[i], model=taxthreshbymod$model[i], sppocean=taxthreshbymod$sppocean[i], region=taxthreshbymod$region[i], MoreArgs=list(ncount=nrow(taxthreshbymod[i,])), SIMPLIFY = TRUE, mc.cores=ncores) # each instance uses 17GB memory, yikes, but some fo this is shared. takes about 6 hours?
+
 
 # save threshold
 save(taxthreshbymod, file=paste('data/taxthreshbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
@@ -122,53 +136,26 @@ presmapbymod$pres <- presmapbymod$wtcpue.proj > presmapbymod$thresh
 # write out pres/abs
 save(presmapbymod, file=paste('data/presmapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	
-# richness by grid cell by time period (across all seasons)
+# richness by grid cell by time period
 i <- presmapbymod$pres # only count where a spp is present
-richbymod <- aggregate(list(rich = presmapbymod$sppocean[i]), by=list(model=presmapbymod$model[i], region=presmapbymod$region[i], period=presmapbymod$period[i], lat=presmapbymod$lat[i], lon=presmapbymod$lon[i]), FUN=lu) # calculate richness (# taxa) by grid cell in each time period
+richbymod <- aggregate(list(rich = presmapbymod$sppocean[i]), by=list(model=presmapbymod$model[i], region=presmapbymod$region[i], period=presmapbymod$period[i], lat=presmapbymod$lat[i], lon=presmapbymod$lon[i]), FUN=lu) # calculate richness (# taxa) by grid cell in each time period for each model
 
 	# examine
 	nrich <- aggregate(list(nrich = richbymod$rich), by=list(model=richbymod$model, region=richbymod$region, lat=richbymod$lat, lon=richbymod$lon), FUN=lu)
 		summary(nrich) # up to five values: good (most 4-5)
 	
-	i<- rich$lat == 52.875 & rich$lon == 170.625
-	plot(rich$period[i], rich$rich[i])
-	
-	regs <- unique(rich$region)
-	allgrids <- paste(rich$lat, rich$lon)
-	col.ln <- rgb(0.1, 0.1, 0.1, 0.5)
-	# quartz(width=5,height=5)
-	pdf(width=5, height=5, file=paste('figures/richness_proj_by_grid_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
-	par(mfrow=c(3,4), mai=c(0.4, 0.4, 0.2, 0.1), mgp=c(2, 0.6, 0), las=1)
-	for(i in 1:length(regs)){
-		print(i)
-		inds1 <- rich$region == regs[i]
-		mxr <- max(rich$rich[inds1])
-		thesegrids <- unique(allgrids[inds1])
-
-		inds2 <- inds1 & allgrids == thesegrids[1]
-		plot(as.numeric(rich$period)[inds2], rich$rich[inds2], type='l', xlab='Period', ylab='Richness', ylim=c(0,mxr), main=regs[i], cex.main=0.8, cex.axis=0.8, col=col.ln, lwd=0.1)
-
-		for(j in 2:length(thesegrids)){
-			inds2 <- inds1 & allgrids == thesegrids[j]
-			lines(as.numeric(rich$period)[inds2], rich$rich[inds2], col=col.ln, lwd=0.1)
-		}
-	}
-	
-	dev.off()
-	
 # write out richness
 save(richbymod, file=paste('data/richbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	
 # load in richness calcs
-#load('data/richbymod.RData') # loads rich data.frame
+#load(paste('data/richbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads rich data.frame
 
 	
 # calculate trend in richness by grid cell
-richtrend <- Hmisc::summarize(X=richbymod[,c('period', 'rich')], by=list(region=richbymod$region, lat=richbymod$lat, lon=richbymod$lon, dummy=richbymod$lon), FUN=calcrichtrend, stat.name='trend') # calculate richness (# taxa) by grid cell in each time period. for an unknown resion, the last column in the by list gets NAs, so padded with a dummy column here
-	richtrend <- richtrend[,-grep('dummy', names(richtrend))]
+richtrendbymod <- Hmisc::summarize(X=richbymod[,c('period', 'rich')], by=list(model=richbymod$model, region=richbymod$region, lat=richbymod$lat, lon=richbymod$lon, dummy=richbymod$lon), FUN=calcrichtrend, stat.name='trend') # calculate richness (# taxa) by grid cell in each time period for each model. for an unknown resion, the last column in the by list gets NAs, so padded with a dummy column here
+	richtrendbymod <- richtrendbymod[,-grep('dummy', names(richtrendbymod))]
 	
 	# examine
-	hist(richtrend$trend) # nicely centered around 0. perhaps a slightly longer tail to the left (negative)
 	
 # write out richness trends
-save(richtrend, file=paste('data/richtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+save(richtrendbymod, file=paste('data/richtrendbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))

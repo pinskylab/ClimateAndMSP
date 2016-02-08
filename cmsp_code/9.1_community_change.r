@@ -181,6 +181,20 @@ richtrend <- Hmisc::summarize(X=rich[,c('period', 'rich')], by=list(region=rich$
 	
 	# examine
 	hist(richtrend$trend) # nicely centered around 0. perhaps a slightly longer tail to the left (negative)
+
+# add a few useful metrics	
+nrow(richtrend)
+richtrend <- merge(richtrend, rich[rich$period=='2006-2020',c('region', 'lat', 'lon', 'rich')], all.x=TRUE) # merge in original richness
+	names(richtrend)[names(richtrend)=='rich'] = 'rich2006_2020'
+richtrend <- merge(richtrend, rich[rich$period=='2081-2100',c('region', 'lat', 'lon', 'rich')], all.x=TRUE) # merge in final richness
+	names(richtrend)[names(richtrend)=='rich'] = 'rich2081_2100'
+nrow(richtrend)
+	head(richtrend)
+	sum(is.na(richtrend$rich2081_2100)) # 1 missing value
+
+richtrend$richchange = (richtrend$rich2081_2100 - richtrend$rich2006_2020)/richtrend$rich2006_2020
+richtrend$richlogRR = log10(richtrend$rich2081_2100/richtrend$rich2006_2020)
+
 	
 # write out richness trend
 save(richtrend, file=paste('data/richtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
