@@ -18,9 +18,12 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 ## projtype refers to how the SDM projections were done
 #runtype <- 'test'; projtype=''
 #runtype <- ''; projtype=''`
-runtype <- 'testK6noSeas'; projtype='_xreg'
+#runtype <- 'testK6noSeas'; projtype='_xreg'
+runtype <- 'fitallreg'; projtype='_xreg'
 
-
+# choose the rcp
+rcp <- 85
+# rcp <- 45
 
 
 ####################
@@ -71,8 +74,8 @@ turnover <- function(x){
 ## for the multimodel ensemble average
 ############################################
 
-load(paste('data/biomassavemap_', runtype, projtype, '.RData', sep='')) # loads biomassavemap data.frame
-	dim(biomassavemap) # 2,881,585 x 6
+load(paste('data/biomassavemap_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads biomassavemap data.frame
+	dim(biomassavemap) # 7,784,310 x 6
 #	summary(biomassavemap) # some NAs
 #		table(biomassavemap$region[is.na(biomassavemap$wtcpue.proj)]) # WCTri, ScotianShelf, NEUSFall, NEUSSpring, GOMex
 #		table(biomassavemap$period[is.na(biomassavemap$wtcpue.proj)]) # evenly across all periods
@@ -80,7 +83,7 @@ load(paste('data/biomassavemap_', runtype, projtype, '.RData', sep='')) # loads 
 
 	# trim out NAs
 	biomassavemap <- biomassavemap[!is.na(biomassavemap$wtcpue.proj),]
-	dim(biomassavemap) # 2682790 x 6
+	dim(biomassavemap) # 7,302,750 x 6
 
 # find abundance threshold to count as present for each taxon
 # use cumulative 5% of wtcpue from earliest timeperiod
@@ -107,10 +110,12 @@ if(projtype=='_xreg'){ # every species, across all regions
 		taxthresh$thresh[i] <- wts[ind]
 	}
 }	
-	save(taxthresh, file=paste('data/taxthresh_', runtype, projtype, '.RData', sep=''))
+
+# write out taxa pres/abs thresholds
+save(taxthresh, file=paste('data/taxthresh_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 
 # apply threshold to projections to determine presence/absence
-load(paste('data/taxthresh_', runtype, projtype, '.RData', sep=''))
+#load(paste('data/taxthresh_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 presmap <- merge(biomassavemap, taxthresh) # surprisingly fast (a minute or so)
 presmap$pres <- presmap$wtcpue.proj > presmap$thresh
 	
@@ -123,11 +128,11 @@ presmap$pres <- presmap$wtcpue.proj > presmap$thresh
 #	i = presmap$sppocean == 'theragra chalcogramma_Pac' & presmap$period == '2081-2100'
 #	plot(presmap$lon[i], presmap$lat[i], col=c('black', 'red')[presmap$pres[i]+1])
 
-	# write out
-	save(presmap, file=paste('data/presmap_', runtype, projtype, '.RData', sep=''))
+# write out pres/abs file
+save(presmap, file=paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	
 # richness by grid cell by time period (across all seasons)
-#load(paste('data/presmap_', runtype, projtype, '.RData', sep=''))
+#load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 i <- presmap$pres # only count where a spp is present
 rich <- aggregate(list(rich = presmap$sppocean[i]), by=list(region=presmap$region[i], period=presmap$period[i], lat=presmap$lat[i], lon=presmap$lon[i]), FUN=lu) # calculate richness (# taxa) by grid cell in each time period
 
@@ -139,11 +144,12 @@ rich <- aggregate(list(rich = presmap$sppocean[i]), by=list(region=presmap$regio
 #	i<- rich$lat == 52.875 & rich$lon == 170.625
 #	plot(rich$period[i], rich$rich[i])
 	
+	# plot of richness trends in each grid cell
 	regs <- unique(rich$region)
 	allgrids <- paste(rich$lat, rich$lon)
 	col.ln <- rgb(0.1, 0.1, 0.1, 0.5)
 	# quartz(width=5,height=5)
-	pdf(width=5, height=5, file=paste('figures/richness_proj_by_grid_', runtype, projtype, '.pdf', sep=''))
+	pdf(width=5, height=5, file=paste('figures/richness_proj_by_grid_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	par(mfrow=c(3,4), mai=c(0.4, 0.4, 0.2, 0.1), mgp=c(2, 0.6, 0), las=1)
 	for(i in 1:length(regs)){
 		print(i)
@@ -162,11 +168,11 @@ rich <- aggregate(list(rich = presmap$sppocean[i]), by=list(region=presmap$regio
 	
 	dev.off()
 	
-	# write out
-	save(rich, file=paste('data/rich_', runtype, projtype, '.RData', sep=''))
+# write out richness
+save(rich, file=paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	
 # load in richness calcs
-load(paste('data/rich_', runtype, projtype, '.RData', sep='')) # loads rich data.frame
+#load(paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads rich data.frame
 
 	
 # calculate trend in richness by grid cell
@@ -176,8 +182,8 @@ richtrend <- Hmisc::summarize(X=rich[,c('period', 'rich')], by=list(region=rich$
 	# examine
 	hist(richtrend$trend) # nicely centered around 0. perhaps a slightly longer tail to the left (negative)
 	
-	# write out
-	save(richtrend, file=paste('data/richtrend_', runtype, projtype, '.RData', sep=''))
+# write out richness trend
+save(richtrend, file=paste('data/richtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 
 
 
@@ -192,7 +198,7 @@ turn <- merge(turn, rich[rich$period == '2081-2100',c('region', 'lat', 'lon', 'r
 #inds <- presmap$period %in% c('2006-2020', '2081-2100')
 #temp <- Hmisc::summarize(X=presmap[inds,c('region', 'lat', 'lon', 'period', 'sppocean', 'pres')], by=list(region=presmap$region[inds], lat=presmap$lat[inds], lon=presmap$lon[inds]), FUN=turnover, stat.name=NULL)
 
-	# slow: takes an hour
+	# slow: takes 3 hours
 turn$nstart <- turn$nend <- turn$nlost <- turn$ngained <- turn$flost <- turn$fgained <- turn$beta_sor <- NA
 for(i in 1:nrow(turn)){
 	if(i %% 100 == 0) print(paste(i, 'of', nrow(turn), Sys.time()))
@@ -200,8 +206,8 @@ for(i in 1:nrow(turn)){
 	turn[i,c('nstart', 'nend', 'nlost', 'ngained', 'flost', 'fgained', 'beta_sor')] <- turnover(x)
 }
 	
-	# write out
-	save(turn, file=paste('data/turn_', runtype, projtype, '.RData', sep=''))
+# write out turnover
+save(turn, file=paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 
 	
 ################################################################
@@ -212,7 +218,7 @@ for(i in 1:nrow(turn)){
 load('data/dat_selectedspp.Rdata') # load dat data.frame. Has all trawl observations from all regions. wtcpue
 dat$lon[dat$lon<0] <- dat$lon[dat$lon<0] + 360 # reformat to match projections
 
-load(paste('data/presmap_', runtype, projtype, '.RData', sep=''))
+load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	
 spps <- sort(unique(presmap$sppocean)) # each spp to make maps for
 	length(spps)
@@ -222,7 +228,7 @@ options(warn=1) # print warnings as they occur
 cols <- colorRampPalette(c('grey80', 'blue', 'purple', 'red1'), interpolate='linear')
 periods <- sort(unique(presmap$period))
 
-pdf(width=10, height=3, file=paste('figures/pres_proj_mapscontinent_', runtype, projtype, '.pdf', sep=''))
+pdf(width=10, height=3, file=paste('figures/pres_proj_mapscontinent_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #quartz(width=10, height=3)
 
 for(i in 1:length(spps)){
@@ -251,14 +257,15 @@ dev.off()
 ## Plots
 ## for the multimodel ensemble average
 #############################################
-load(paste('data/rich_', runtype, projtype, '.RData', sep=''))
-load(paste('data/turn_', runtype, projtype, '.RData', sep=''))
+load(paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+load(paste('data/richtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 
 # plot maps of richness (all of North America)
 	colfun <- colorRamp(rev(brewer.pal(11, 'Spectral')))
 	periods <- sort(unique(rich$period))
 	#quartz(width=7, height=5)
-	pdf(width=7, height=5, file=paste('figures/richness_proj_map_', runtype, projtype, '.pdf', sep=''))
+	pdf(width=7, height=5, file=paste('figures/richness_proj_map_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	for(i in 1:length(periods)){
 		par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 		j = rich$period == periods[i]
@@ -274,7 +281,7 @@ load(paste('data/turn_', runtype, projtype, '.RData', sep=''))
 	periods <- sort(unique(rich$period))
 	cexs = c(0.7, 1.2, 0.5, 0.8, 0.5, 1.1, 1, 1.5, 0.5, 0.5, 0.8, 1) # to adjust for each region
 	# quartz(width=14, height=3)
-	pdf(width=14, height=3, file='figures/richness_proj_map_byregion_', runtype, projtype, '.pdf', sep=''))
+	pdf(width=14, height=3, file=paste('figures/richness_proj_map_byregion_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	for(k in 1:length(regs)){
 		par(mfrow=c(1,length(periods)), mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 		for(i in 1:length(periods)){
@@ -288,11 +295,12 @@ load(paste('data/turn_', runtype, projtype, '.RData', sep=''))
 	
 # plot map of richness trend
 	colfun <- colorRamp(brewer.pal(11, 'Spectral'))
+	inds <- !is.na(richtrend$trend)
 	# quartz(width=7, height=5)
-	pdf(width=7, height=5, file='figures/richness_proj_trend_map_', runtype, projtype, '.pdf', sep=''))
+	pdf(width=7, height=5, file=paste('figures/richness_proj_trend_map_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
-	plot(richtrend$lon, richtrend$lat, col=rgb(colfun(norm01(richtrend$trend)), maxColorValue=255), pch=16, cex=0.5, xlab='Longitude', ylab='Latitude', main='Change in species richness')
-	legend('bottomleft', legend=round(seq(min(richtrend$trend), max(richtrend$trend), length.out=10),2), col=rgb(colfun(norm01(seq(min(richtrend$trend), max(richtrend$trend), length.out=10))), maxColorValue=255), pch=16, cex=0.8, title='Species/year', bty='n')
+	plot(richtrend$lon[inds], richtrend$lat[inds], col=rgb(colfun(norm01(richtrend$trend[inds])), maxColorValue=255), pch=16, cex=0.5, xlab='Longitude', ylab='Latitude', main='Change in species richness')
+	legend('bottomleft', legend=round(seq(min(richtrend$trend[inds]), max(richtrend$trend[inds]), length.out=10),2), col=rgb(colfun(norm01(seq(min(richtrend$trend[inds]), max(richtrend$trend[inds]), length.out=10))), maxColorValue=255), pch=16, cex=0.8, title='Species/year', bty='n')
 
 	dev.off()
 	
@@ -304,7 +312,7 @@ load(paste('data/turn_', runtype, projtype, '.RData', sep=''))
 
 
 	#quartz(width=4, height=3)
-	pdf(width=4, height=3, file='figures/turnover_proj_map_byregion_beta_sor_', runtype, projtype, '.pdf', sep=''))
+	pdf(width=4, height=3, file=paste('figures/turnover_proj_map_byregion_beta_sor_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	for(k in 1:length(regs)){
 		par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 		j = turn$region == regs[k]
@@ -314,7 +322,7 @@ load(paste('data/turn_', runtype, projtype, '.RData', sep=''))
 	dev.off()
 
 	#quartz(width=4, height=3)
-	pdf(width=4, height=3, file='figures/turnover_proj_map_byregion_flost_', runtype, projtype, '.pdf', sep=''))
+	pdf(width=4, height=3, file=paste('figures/turnover_proj_map_byregion_flost_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	for(k in 1:length(regs)){
 		par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 		j = turn$region == regs[k]
@@ -325,7 +333,7 @@ load(paste('data/turn_', runtype, projtype, '.RData', sep=''))
 
 
 	#quartz(width=4, height=3)
-	pdf(width=4, height=3, file='figures/turnover_proj_map_byregion_fgained_', runtype, projtype, '.pdf', sep=''))
+	pdf(width=4, height=3, file=paste('figures/turnover_proj_map_byregion_fgained_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	y<-turn$fgained
 	y[y>1] <- 1
 	for(k in 1:length(regs)){

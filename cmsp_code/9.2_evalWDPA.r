@@ -5,15 +5,29 @@ require(Hmisc)
 ## Set working directories
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	projfolder <- '../CEmodels_proj' # holds model projections (outside Git)
-	modfolder <- '../CEModels' # holds the models (outside Git)
 	}
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
-	projfolder <- 'CEmodels_proj'
-	modfolder <- 'CEmodels'
+	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
 	}
 # could add code for Lauren's working directory here
+
+############
+## Flags
+############
+
+## choose which runs to use
+## runtype refers to how the Species Distribution Models (SDMs) were fit
+## projtype refers to how the SDM projections were done
+#runtype <- 'test'; projtype=''
+#runtype <- ''; projtype=''`
+#runtype <- 'testK6noSeas'; projtype='_xreg'
+runtype <- 'fitallreg'; projtype='_xreg'
+
+# choose the rcp
+rcp <- 85
+# rcp <- 45
+
 
 ####################
 ## helper functions
@@ -52,7 +66,7 @@ turnover <- function(x){
 ## Calculate species richness change within PAs
 ###########################################################
 
-load('data/rich.RData') # loads rich data.frame: richness by grid cell by time period (ensemble mean)
+load(paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads rich data.frame: richness by grid cell by time period (ensemble mean)
 wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
 
 # any overlapping richness projections? different regions, same grid cell
@@ -95,6 +109,9 @@ wdparichave <- Hmisc::summarize(wdparich[,c('rich', 'prop_grid')], by=llist(peri
 wdparichave <- merge(wdparichave, wdpa[!duplicated(wdpa$wdpapolyID),]) # merge in other data
 	dim(wdparichave) # 3045
 	
+# write out
+write.csv(wdparichave, paste('data/wdparichave_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+	
 # calculate trend in richness by PA
 pds <- as.numeric(unlist(strsplit(as.character(wdparichave$period), split='-')))
 dim(pds) <- c(2,nrow(wdparichave))
@@ -119,6 +136,9 @@ wdparichtrend <- merge(wdparichtrend, wdparichave[wdparichave$period=='2081-2100
 wdparichtrend$richchange = (wdparichtrend$rich2081_2100 - wdparichtrend$rich2006_2020)/wdparichtrend$rich2006_2020
 wdparichtrend$richlogRR = log10(wdparichtrend$rich2081_2100/wdparichtrend$rich2006_2020)
 	
+# write out wdparichtrend
+write.csv(wdparichtrend, paste('data/wdparichtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+	
 # calculate trend in richness for all grid cells
 pds <- as.numeric(unlist(strsplit(as.character(rich$period), split='-')))
 dim(pds) <- c(2,nrow(rich))
@@ -140,12 +160,15 @@ richtrend <- merge(richtrend, rich[rich$period=='2081-2100',c('region', 'lat', '
 richtrend$richchange = (richtrend$rich2081_2100 - richtrend$rich2006_2020)/richtrend$rich2006_2020
 richtrend$richlogRR = log10(richtrend$rich2081_2100/richtrend$rich2006_2020)
 	
+# write out wdparichtrend
+write.csv(wdparichtrend, paste('data/wdparichtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+
 	
 ###########################################################
 ## Calculate community turnover within PAs
 ###########################################################
 
-load('data/turn.RData') # loads turnover data.frame: sorenson similiarty by grid cell by time period (ensemble mean)
+load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads turnover data.frame: sorenson similiarty by grid cell by time period (ensemble mean)
 wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
 
 # any overlapping richness projections? different regions, same grid cell
@@ -208,7 +231,7 @@ wdpaturnave <- merge(wdpaturnave, wdpa[!duplicated(wdpa$wdpapolyID),]) # merge i
 ##############################################
 # Calculate turnover within MPA networks
 ##############################################
-load('data/presmap.RData')
+load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
 
 # pick a MPA network
