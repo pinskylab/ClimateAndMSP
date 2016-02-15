@@ -1,15 +1,71 @@
+# Set up a Marxan with Zones run for CMSP
+
+## Set working directories
+if(Sys.info()["nodename"] == "pinsky-macbookair"){
+	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
+	marxfolder <- '../MarZone_runs/'
+	presmapbymodfolder <- '../data/'
+	}
+if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
+	setwd('~/Documents/range_projections/')
+	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
+	marxfolder <- 'MarZone_runs/'
+	presmapbymodfolder <- 'data/'
+	}
+# could add code for Lauren's working directory here
+
+
+############
+## Flags
+############
+
+## choose which runs to use
+## runtype refers to how the Species Distribution Models (SDMs) were fit
+## projtype refers to how the SDM projections were done
+#runtype <- 'test'; projtype=''
+#runtype <- ''; projtype=''`
+#runtype <- 'testK6noSeas'; projtype='_xreg'
+runtype <- 'fitallreg'; projtype='_xreg'
+
+# choose the rcp (for runs using just one)
+rcp <- 85
+otherrcp <- 45
+
+# CMSP goals
+consgoal <- 0.2 # proportion of presences to capture in conservation
+energygoal <- 0.1 # proportion of NPV
+fishgoal <- 0.6 # proportion of biomass
+
+# name this run
+runname1 <- 'cmsphistonly' # only historical period
+runname2 <- 'cmsp2per' # 2 periods (historical and end of century)
+
+# which region to run this for
+myreg <- 'NEFSC_NEUSSpring'
+
+# folders
+inputfolder <- paste(marxfolder, 'input', runname1, sep='')
+outputfolder <- paste(marxfolder, 'output', runname1, sep='')
+
+
+
 #######################################################
-# Read in results and analyze against ensemble mean
+# Read in results
 #######################################################
 consplan1 <- read.csv(paste(marxfolder, 'output', runname, '/', runname1, '_best.csv', sep=''))
 consplan2 <- read.csv(paste(marxfolder, 'output', runname2, '/', runname2, '_best.csv', sep=''))
-load(paste(inputfolder, '/spps.Rdata', sep=''))
+
+load(paste(marxfolder, 'input', runname1, '/pus.Rdata', sep='')) # pus
+load(paste(marxfolder, 'input', runname2, '/pus.Rdata', sep='')) # pus2
+load(paste(marxfolder, 'input', runname1, '/spps.Rdata', sep='')) # spps
+load(paste(marxfolder, 'input', runname2, '/spps.Rdata', sep='')) # spps2
 
 load(paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads rich data.frame with presence/absence information
 load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information
+load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load)
 
 # add zone to pus
-pusplan <- merge(pus, consplan, by.x='id', by.y='planning_unit')
+pusplan <- merge(pus, consplan1, by.x='id', by.y='planning_unit')
 	dim(pus)
 	dim(pusplan)
 
@@ -17,12 +73,17 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 	dim(pus2)
 	dim(pusplan2)
 
+
+##############################
+## Basic maps of solutions
+##############################
+
 # plot map of selected grids, on top of richness (#1)
 	colfun <- colorRamp(rev(brewer.pal(11, 'Spectral')))
 	cexs = 0.5 # to adjust
 	periods <- sort(unique(rich$period))
 	# quartz(width=10, height=3)
-	pdf(width=10, height=3, file=paste('figures/MarZone_NEUSSpring_on_richness_', runname, '.pdf', sep=''))
+	pdf(width=10, height=3, file=paste('figures/MarZone_', myreg, '_on_richness_', runname, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	par(mfrow=c(1,length(periods)), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
 	j <- rich$region == 'NEFSC_NEUSSpring'
 	for(i in 1:length(periods)){
@@ -60,9 +121,13 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 	dev.off()
 
 
+#######################################################
+# Analyze against ensemble mean
+#######################################################
+
 # evaluate # targets met in each time period
 	pinds <- presmap$region == myreg # trim to this region
-	totals <- aggregate(list(total = presmap$pres[pinds]), by=list(sppocean=presmap$sppocean[pinds], period=presmap$period[pinds]), FUN=sum) # how many spp presences in each period
+	totals <- aggregate(list(totalpres = presmap$pres[pinds], totalwtcpue=presmap$wtcpue.proj[pinds]), by=list(sppocean=presmap$sppocean[pinds], period=presmap$period[pinds]), FUN=sum) # how many spp presences and amount in each period
 	totals <- totals[totals$sppocean %in% spps$sppocean,]
 		length(unique(totals$sppocean))
 
@@ -108,34 +173,13 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 	
 
 ######################################################################
-# Read in results and analyze against each climate model projection  #
+# Analyze against each climate model projection  #
 # across each rcp                                                    #
 ######################################################################
-runname <- 'conservationtest'
-runname2 <- 'conservationtest2per'
-goal <- 0.2
-consplan <- read.csv(paste(marxfolder, 'output', runname, '/', runname, '_best.csv', sep=''))
-consplan2 <- read.csv(paste(marxfolder, 'output', runname2, '/', runname2, '_best.csv', sep=''))
-load(paste(marxfolder, 'input', runname, '/pus.Rdata', sep='')) # pus
-load(paste(marxfolder, 'input', runname2, '/pus.Rdata', sep='')) # pus2
-load(paste(marxfolder, 'input', runname, '/spps.Rdata', sep='')) # spps
-load(paste(marxfolder, 'input', runname2, '/spps.Rdata', sep='')) # spps2
-
-load('data/presmapbymod.RData') # loads presmap data.frame with presence/absence information from each model (slow to load)
-
-# add zone to pus
-pusplan <- merge(pus, consplan, by.x='id', by.y='planning_unit')
-	dim(pus)
-	dim(pusplan)
-
-pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
-	dim(pus2)
-	dim(pusplan2)
-
 
 
 # evaluate # targets met in each time period in each model
-	pinds <- presmapbymod$region == 'NEFSC_NEUSSpring' # trim to this region
+	pinds <- presmapbymod$region == myreg # trim to this region
 	totals <- aggregate(list(total = presmapbymod$pres[pinds]), by=list(sppocean=presmapbymod$sppocean[pinds], period=presmapbymod$period[pinds], model=presmapbymod$model[pinds]), FUN=sum) # how many presences in each period in each model
 	totals <- totals[totals$sppocean %in% spps$sppocean,]
 		length(unique(totals$sppocean))
