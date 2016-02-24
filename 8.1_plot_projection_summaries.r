@@ -174,33 +174,29 @@ load(paste('data/meanlat,lon,biomass_', runtype, projtype, '_rcp', rcp, '.RData'
 
 # plots by region (whether xreg or not)
 ## plots of change in biomass
-	thisspp <- 'gadus morhua_Atl'; div <- 34000
-#	thisspp <- 'loligo pealeii_Atl'; div <- 580000
+#	thisspp <- 'gadus morhua_Atl'
+	thisspp <- 'loligo pealeii_Atl'
 	thisreg <- 'NEFSC_NEUSFall'
 	inds <- biomasssum$sppocean==thisspp & biomasssum$region==thisreg
 
-	thisbiomass <- biomasssum[inds, grep('summwtcpue', names(biomasssum))]
-	thisbiomass <- thisbiomass/div # divide by constant to make the y-axis more readable
-
-
 	# quartz(width=3, height=2.5)
 	pdf(file=paste('figures/biomasssum_projexample_', thisspp, '_', thisreg, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''), width=3, height=2.5)
-	par(mai=c(0.65, 0.65, 0.2, 0.15), cex.main=0.7, cex.axis=0.8, mgp=c(2.8, 0.7, 0), font.main=3)
+	par(mai=c(0.7, 0.85, 0.2, 0.15), cex.main=0.7, cex.axis=0.8, mgp=c(2.8, 0.7, 0), font.main=3)
 	
 	# ylims
-	ylims <- c(0, max(thisbiomass, na.rm=TRUE)) # will warn if all values are NA
+	ylims <- c(0, max(biomasssum[inds, grep('summwtcpue', names(biomasssum))], na.rm=TRUE)) # will warn if all values are NA
 	if(is.infinite(ylims[2])) ylims <- c(0,1)
 
 	# plot data for each GCM
-	plot(biomasssum$year[inds], thisbiomass$summwtcpue_1, col='grey', las=1, type='l', ylim=ylims, main=paste(thisreg, thisspp), xlab='', ylab='')
-	for(j in 2:13) lines(biomasssum$year[inds], thisbiomass[[paste('summwtcpue', j, sep='_')]], col='grey')
+	plot(biomasssum$year[inds], biomasssum$summwtcpue_1[inds], col='grey', las=1, type='l', ylim=ylims, main=paste(thisreg, thisspp), xlab='', ylab='')
+	for(j in 2:13) lines(biomasssum$year[inds], biomasssum[[paste('summwtcpue', j, sep='_')]][inds], col='grey')
 
 	# plot ensemble mean
-	agg <- cbind(biomasssum$year[inds], rowMeans(thisbiomass[, names(thisbiomass)]))
+	agg <- cbind(biomasssum$year[inds], rowMeans(biomasssum[inds, grep('summwtcpue', names(biomasssum))]))
 	lines(agg[,1], agg[,2], col='black', lwd=2)
 	
 	mtext('Year', side=1, line=2)
-	mtext('Biomass index', side=2, line=2)
+	mtext('Biomass index', side=2, line=3.2)
 
 	dev.off()
 
