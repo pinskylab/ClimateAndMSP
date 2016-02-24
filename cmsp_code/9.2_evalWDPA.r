@@ -63,7 +63,7 @@ turnover <- function(x){
 }
 
 ###########################################################
-## Calculate species richness change within PAs
+## Calculate species richness change within PAs (average across grid cells)
 ###########################################################
 
 load(paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads rich data.frame: richness by grid cell by time period (ensemble mean)
@@ -144,9 +144,9 @@ write.csv(wdparichtrend, paste('data/wdparichtrend_', runtype, projtype, '_rcp',
 
 
 ###########################################################
-## Calculate community turnover within PAs
+## Calculate community turnover within PAs (average across grid cells)
 ###########################################################
-load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads turnover data.frame: sorenson similiarty by grid cell by time period (ensemble mean)
+load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads turnover data.frame: sorenson similiarty by grid cell for 2006-2020 to 2081-2100
 wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
 
 # any overlapping richness projections? different regions, same grid cell
@@ -180,12 +180,12 @@ wdpaturn <- merge(wdpa, turnave, all.x=TRUE)
 	sum(is.na(wdpaturn$beta_sor)) # 238 values missing
 	sum(is.na(wdpaturn$flost)) # 238 values missing
 	sum(is.na(wdpaturn$fgained)) # 238 values missing
-	wdpaturn[is.na(wdpaturn$beta_sor), c('lat', 'lon', 'country', 'sub_loc', 'beta_sor')] # seem to be outside the richness projection. not sure why they were in the intersection with the climate grid
+	wdpaturn[is.na(wdpaturn$beta_sor), c('lat', 'lon', 'country', 'sub_loc', 'beta_sor')] # seem to be outside the richness projection. not sure why they were in the intersection with the climate grid. safe to ignore.
 	
 	# remove missing values
 	wdpaturn <- wdpaturn[!is.na(wdpaturn$beta_sor),]
 	
-# average turnover within each PA and period
+# average turnover within each PA
 # important when PAs cross multiple grid cells
 wdpaturnave1 <- Hmisc::summarize(wdpaturn[,c('beta_sor', 'prop_grid')], by=llist(wdpapolyID=wdpaturn$wdpapolyID), FUN=wmean, stat.name='beta_sor')
 	dim(wdpaturnave1)
@@ -206,19 +206,25 @@ write.csv(wdpaturnave, paste('data/wdpaturnave_', runtype, projtype, '_rcp', rcp
 
 
 
-################
-# Evaluate change
-################
+###############################
+# Examine change within MPAs
+##############################
+wdparichtrend <- read.csv(paste('data/wdparichtrend_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+wdpaturnave <- read.csv(paste('data/wdpaturnave_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 
 # Richness change in PAs
 hist(wdparichtrend$richtrend) # nicely centered around 0. perhaps a slightly longer tail to the left (negative)
-summary(wdparichtrend$richtrend) # mean gain/loss of species (spp/year): -0.04
-summary(wdparichtrend$richtrend)*(2100-2006) # mean gain/loss of species (spp): -3 species, but -70 to +79
-summary(wdparichtrend$richchange) # mean gain/loss of species (fraction): -3.5% (-85% to +400%)
+summary(wdparichtrend$richtrend) # mean gain/loss of species (spp/year): 0.004
+summary(wdparichtrend$richtrend)*(2100-2006) # mean gain/loss of species (spp): +0.4 species, but -67 to +43
+summary(wdparichtrend$richchange) # mean gain/loss of species (fraction): +8.9% (-67% to +949%)
 
 summary(wdpaturnave$beta_sor) # Sorenson similarity
 summary(wdpaturnave$flost) # Fraction species lost
+	sd(wdpaturnave$flost) # SD
+	sd(wdpaturnave$flost)/sqrt(nrow(wdpaturnave)) # SE
 summary(wdpaturnave$fgained) # Fraction species gained
+	sd(wdpaturnave$fgained) # SD
+	sd(wdpaturnave$fgained)/sqrt(nrow(wdpaturnave)) # SE
 
 
 # Richness change in grid cells
@@ -241,7 +247,7 @@ prop.test(x=rbind(wdpainc, gridinc)) # PAs are more likely to increase than on a
 
 
 ##############################################
-# Calculate turnover within MPA networks
+# Calculate turnover within select MPA networks
 ##############################################
 load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
@@ -250,6 +256,7 @@ wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
 wdpa$lon[wdpa$lon<0] <- wdpa$lon[wdpa$lon<0] + 360
 
 # pick a MPA network
+length(unique(wdpa$wdpaid[wdpa$sub_loc=='US-CA' & wdpa$mang_auth=="California Department of Fish and Game"])) # 45 MPAs
 grids <- wdpa[wdpa$sub_loc=='US-CA' & wdpa$mang_auth=="California Department of Fish and Game", c('lat', 'lon')] #MLPA
 	dim(grids)
 
@@ -268,3 +275,56 @@ thesespp <- thesespp[!duplicated(thesespp[,c('sppocean', 'period')]),]
 
 # evaluate turnover
 turnover(thesespp[,c('region', 'lat', 'lon', 'period', 'sppocean', 'pres')])
+
+
+##############################################
+# Calculate turnover within whole MPAs
+##############################################
+load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1)
+
+# convert lon to positive
+wdpa$lon[wdpa$lon<0] <- wdpa$lon[wdpa$lon<0] + 360
+	
+# select initial and final timeperiod for these grids
+thesespp <- presmap[paste(presmap$lat, presmap$lon) %in% paste(wdpa$lat, wdpa$lon) & presmap$period %in% c('2006-2020', '2081-2100'),]
+	dim(thesespp) # 
+	sort(unique(thesespp$region))
+	thesespp <- thesespp[!(thesespp$region %in% c('NEFSC_NEUSFall', 'AFSC_WCTri', 'DFO_NewfoundlandSpring')),] # trim out duplicate regions
+	dim(thesespp) # 
+	
+# merge in MPA information
+thesespp <- merge(thesespp, wdpa[,c('wdpapolyID', 'lat', 'lon')], by=c('lat', 'lon'))
+	dim(thesespp) #260691
+#	sort(unique(wdpa$wdpapolyID))
+#	sort(unique(thesespp$wdpapolyID))
+	
+# summarize by unique species in each period in each MPA (pres or not)
+thesesppbyMPA <- aggregate(list(pres=thesespp$pres), by=list(sppocean=thesespp$sppocean, period=thesespp$period, wdpapolyID=thesespp$wdpapolyID), FUN=max)
+	thesesppbyMPA$pres <- as.logical(thesesppbyMPA$pres)
+	dim(thesesppbyMPA) # 
+
+# evaluate turnover by MPA
+wdpaturnbyMPA <- wdpa[!duplicated(wdpa$wdpapolyID) & wdpa$wdpapolyID %in% thesespp$wdpapolyID, c('wdpapolyID', 'area_wdpa', 'country', 'sub_loc', 'name', 'orig_name', 'desig', 'desig_eng', 'desig_type', 'iucn_cat', 'marine', 'rep_m_area', 'rep_area', 'status', 'status_yr', 'gov_type', 'mang_auth', 'int_crit', 'mang_plan', 'official', 'is_point', 'no_take', 'no_tk_area', 'metadata_i', 'action')] # initial richness
+	nrow(wdpaturnbyMPA) # 562
+
+	# quick
+wdpaturnbyMPA$nstart <- wdpaturnbyMPA$nend <- wdpaturnbyMPA$nlost <- wdpaturnbyMPA$ngained <- wdpaturnbyMPA$flost <- wdpaturnbyMPA$fgained <- wdpaturnbyMPA$beta_sor <- NA
+for(i in 1:nrow(wdpaturnbyMPA)){
+	if(i %% 10 == 0) print(paste(i, 'of', nrow(wdpaturnbyMPA), Sys.time()))
+	x<-thesesppbyMPA[thesesppbyMPA$wdpapolyID == wdpaturnbyMPA$wdpapolyID[i],c('period', 'sppocean', 'pres')]
+		x$region <- x$lat <- x$lon <- NA
+		x <- x[,c('region', 'lat', 'lon', 'period', 'sppocean', 'pres')] # re-order to what turnover() expects
+	wdpaturnbyMPA[i,c('nstart', 'nend', 'nlost', 'ngained', 'flost', 'fgained', 'beta_sor')] <- turnover(x)
+}
+
+# write out wdpaturnbyMPA
+write.csv(wdpaturnbyMPA, paste('data/wdpaturnbyMPA_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
+
+
+# examine
+mean(wdpaturnbyMPA$flost[is.finite(wdpaturnbyMPA$flost)])
+sd(wdpaturnbyMPA$flost[is.finite(wdpaturnbyMPA$flost)])
+
+mean(wdpaturnbyMPA$fgained[is.finite(wdpaturnbyMPA$flost)])
+sd(wdpaturnbyMPA$fgained[is.finite(wdpaturnbyMPA$flost)])

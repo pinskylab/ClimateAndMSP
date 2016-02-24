@@ -215,7 +215,8 @@ finds <- fisheryspps$region == myreg # trim to this region
 	totals2 <- rbind(totals2, temp) # for conservation
 
 		length(unique(totals2$sppocean)) # number of species
-		length(unique(paste(totals2$sppocean, totals2$zone))) # number of goals: 75
+		numgoals <- length(unique(paste(totals2$sppocean, totals2$zone))) # number of goals: 75
+			numgoals
 		nrow(totals2)
 
 	# merge in plan zones
@@ -264,8 +265,11 @@ finds <- fisheryspps$region == myreg # trim to this region
 	# calculate number goals met in each timeperiod
 	goalsmet1 <- aggregate(list(nmet=abundbyzone1.2$metgoal), by=list(period=abundbyzone1.2$period), FUN=sum)
 	goalsmet1$mid <- sapply(strsplit(as.character(goalsmet1$period), split='-'), FUN=function(x) mean(as.numeric(x)))
+	goalsmet1$pmet <- goalsmet1$nmet/numgoals
+
 	goalsmet2 <- aggregate(list(nmet=abundbyzone2.2$metgoal), by=list(period=abundbyzone2.2$period), FUN=sum)
 	goalsmet2$mid <- sapply(strsplit(as.character(goalsmet2$period), split='-'), FUN=function(x) mean(as.numeric(x)))
+	goalsmet2$pmet <- goalsmet2$nmet/numgoals
 
 # write out
 	write.csv(abundbyzone1.2, file=paste('output/abundbyzone_', runtype, projtype, '_', runname1, '.csv', sep=''))
@@ -274,15 +278,22 @@ finds <- fisheryspps$region == myreg # trim to this region
 	write.csv(goalsmet2, file=paste('output/goalsmet_', runtype, projtype, '_', runname2, '.csv', sep=''))
 
 
+#######################################################
+# Plot comparison against the ensemble mean
+#######################################################
+goalsmet1 <- read.csv(paste('output/goalsmet_', runtype, projtype, '_', runname1, '.csv', sep=''))
+goalsmet2 <- read.csv(paste('output/goalsmet_', runtype, projtype, '_', runname2, '.csv', sep=''))
+
+
 # plot goals met (solution #1)
 	# quartz(width=4, height=4)
-#	cols = brewer.pal(4, 'Paired')
-#	ylims <- c(0, max(goalsmet1$nmet))
-#	pdf(width=4, height=4, file=paste('figures/MarZone_NEUSSpring_goalsmet_', runname, '.pdf', sep=''))
-#
-#	plot(goalsmet1$mid, goalsmet1$nmet, xlab='Year', ylab='# Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
-#	
-#	dev.off()
+	cols = brewer.pal(4, 'Paired')
+	ylims <- c(0, max(c(max(goalsmet1$nmet), max(goalsmet2$nmet))))
+	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_goalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+
+	plot(goalsmet1$mid, goalsmet1$nmet, xlab='Year', ylab='# Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
+
+	dev.off()
 	
 # plot goals met (solution #1 and #2)
 	cols = brewer.pal(4, 'Paired')
@@ -294,6 +305,30 @@ finds <- fisheryspps$region == myreg # trim to this region
 	points(goalsmet2$mid, goalsmet2$nmet, type='o', pch=16, col=cols[4])
 	
 	dev.off()
+
+
+# plot %goals met (solution #1)
+	# quartz(width=4, height=4)
+	cols = brewer.pal(4, 'Paired')
+	ylims <- c(0, 1)
+	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_pgoalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+
+
+	plot(goalsmet1$mid, goalsmet1$pmet, xlab='Year', ylab='% Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
+
+	dev.off()
+	
+# plot %goals met (solution #1 and #2)
+	cols = brewer.pal(4, 'Paired')
+	ylims <- c(0, 1)
+	# quartz(width=4, height=4)
+	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_pgoalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+
+	plot(goalsmet1$mid, goalsmet1$pmet, xlab='Year', ylab='% Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
+	points(goalsmet2$mid, goalsmet2$pmet, type='o', pch=16, col=cols[4])
+	
+	dev.off()
+
 	
 	
 
@@ -387,38 +422,59 @@ finds <- fisheryspps$region == myreg # trim to this region
 	write.csv(goalsmetbymod1, file=paste('output/goalsmetbymod_', runtype, projtype, '_', runname1, '.csv', sep=''))
 	write.csv(goalsmetbymod2, file=paste('output/goalsmetbymod_', runtype, projtype, '_', runname2, '.csv', sep=''))
 
+
+#######################################################
+# Compare and plot the planning approaches against all models
+#######################################################
+goalsmetbymod1 <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname1, '.csv', sep=''))
+goalsmetbymod2 <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname2, '.csv', sep=''))
+
+
+
 # compare goals met
 	t.test(goalsmetbymod1$nmet[goalsmetbymod1$period=='2081-2100'], goalsmetbymod2$nmet[goalsmetbymod2$period=='2081-2100'])
 
 
-# plot goals met (solution #1)
+# plot %goals met (solution #1)
 	# quartz(width=4, height=4)
-#	cols = brewer.pal(4, 'Paired')
-#	mods <- sort(unique(goalsmetbymod1$model))
-#	pdf(width=4, height=4, file=paste('figures/MarZone_NEUSSpring_goalsmetbymod_', runname1, '.pdf', sep=''))
-#
-#	inds <- goalsmetbymod1$model == 1
-#	plot(goalsmetbymod1$mid[inds], goalsmetbymod1$nmet[inds], xlab='Year', ylab='# Goals met', ylim=c(0, 125), type='o', pch=16, las=1, col=cols[1])
-#	for(i in 2:length(mods)){
-#		inds <- goalsmetbymod1$model == i
-#		points(goalsmetbymod1$mid[inds], goalsmetbymod1$nmet[inds], type='o', pch=16, col=cols[1])
-#	
-#	}
-#	ensmean <- aggregate(list(nmet=goalsmetbymod1$nmet), by=list(mid=goalsmetbymod1$mid), FUN=mean)
-#	lines(ensmean$mid, ensmean$nmet, col=cols[2], lwd=2)
-#	
-#	dev.off()
-	
-# plot goals met (solution #1 and #2)
-	# quartz(width=4, height=4)
-	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
-	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(80,255,80,255), maxColorValue=255)
+#	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
+	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
+	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
 	mods <- sort(unique(goalsmetbymod1$model))
 	rcps <- sort(unique(goalsmetbymod1$rcp))
-	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_goalsmetbymod_', runtype, projtype, '_', runname1, '&', runname2, '.pdf', sep=''))
+	outfile <- paste('figures/MarZone_', myreg, '_goalsmetbymod_', runtype, projtype, '_', runname1, '.pdf', sep='')
+		outfile
+	pdf(width=4, height=4, file=outfile)
 
 	inds <- goalsmetbymod1$model == mods[1] & goalsmetbymod1$rcp == rcps[1]
-	plot(goalsmetbymod1$mid[inds], goalsmetbymod1$pmet[inds], xlab='Year', ylab='# Goals met', ylim=c(0, 1), type='l', pch=16, las=1, col=cols[1])
+	plot(goalsmetbymod1$mid[inds], goalsmetbymod1$pmet[inds], xlab='Year', ylab='Fraction goals met', ylim=c(0.5, 1), type='l', pch=16, las=1, col=cols[1])
+	for(i in 1:length(mods)){
+		for(j in 1:length(rcps)){
+			if(!(i==1 & j==1)){
+				inds <- goalsmetbymod1$model == mods[i] & goalsmetbymod1$rcp == rcps[j]
+				points(goalsmetbymod1$mid[inds], goalsmetbymod1$pmet[inds], type='l', pch=16, col=cols[1])	
+			}
+		}
+	}
+	ensmean <- aggregate(list(nmet=goalsmetbymod1$nmet, pmet=goalsmetbymod1$pmet), by=list(mid=goalsmetbymod1$mid), FUN=mean)
+	lines(ensmean$mid, ensmean$pmet, col=cols[2], lwd=2)
+
+	
+	dev.off()
+	
+# plot %goals met (solution #1 and #2)
+	# quartz(width=4, height=4)
+#	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
+	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
+	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
+	mods <- sort(unique(goalsmetbymod1$model))
+	rcps <- sort(unique(goalsmetbymod1$rcp))
+	outfile <- paste('figures/MarZone_', myreg, '_goalsmetbymod_', runtype, projtype, '_', runname1, '&', runname2, '.pdf', sep='')
+		outfile
+	pdf(width=4, height=4, file=outfile)
+
+	inds <- goalsmetbymod1$model == mods[1] & goalsmetbymod1$rcp == rcps[1]
+	plot(goalsmetbymod1$mid[inds], goalsmetbymod1$pmet[inds], xlab='Year', ylab='Fraction goals met', ylim=c(0.5, 1), type='l', pch=16, las=1, col=cols[1])
 	for(i in 1:length(mods)){
 		for(j in 1:length(rcps)){
 			if(!(i==1 & j==1)){
@@ -433,7 +489,7 @@ finds <- fisheryspps$region == myreg # trim to this region
 	for(i in 1:length(mods)){
 		for(j in 1:length(rcps)){
 			inds <- goalsmetbymod2$model == mods[i] & goalsmetbymod2$rcp == rcps[j]
-			points(goalsmetbymod2$mid[inds], goalsmetbymod2$pmet[inds], type='l', pch=16, col=cols[3])
+			points(goalsmetbymod2$mid[inds], goalsmetbymod2$pmet[inds], type='l', pch=16, col=cols[2])
 		}	
 	}
 	ensmean2 <- aggregate(list(nmet=goalsmetbymod2$nmet, pmet=goalsmetbymod2$pmet), by=list(mid=goalsmetbymod2$mid), FUN=mean)
