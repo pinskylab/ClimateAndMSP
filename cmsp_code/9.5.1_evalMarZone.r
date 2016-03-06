@@ -27,19 +27,19 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 #runtype <- 'testK6noSeas'; projtype='_xreg'
 runtype <- 'fitallreg'; projtype='_xreg'
 
-# choose the rcp (for runs using just one)
+# choose the rcps (get to choose two)
 rcp <- 85
 otherrcp <- 45
 
 # CMSP goals
 consgoal <- 0.1 # proportion of presences to capture in conservation
-energygoal <- 0.1 # proportion of NPV
+energygoal <- 0.5 # proportion of NPV
 fishgoal <- 0.5 # proportion of biomass
 conscolnm <- 'proppres'
 fishcolnm <- 'proppres' # which column to use for fish goal (pres = occurrences, propwtcpue = biomass)
 
-# choose region and name these runs
-myreg <- 'NEFSC_NEUSSpring'; runname1 <- 'cmsphistonly'; runname2 <- 'cmsp2per'
+# choose region and name for these runs
+myreg <- 'NEFSC_NEUSSpring'; runname1 <- 'cmsphistonlytest'; runname2 <- 'cmsp2pertest'
 
 
 # folders
@@ -194,140 +194,140 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 #######################################################
 # Analyze plan against the ensemble mean
 #######################################################
-pinds <- presmap$region == myreg & presmap$pres # trim to presences in this region
-finds <- fisheryspps$region == myreg # trim to this region
-
-# evaluate # targets met in each time period (only biogical targets)
-
-	# calculate total presences and wtcpue by species and time-period
-	totals <- expand.grid(sppocean=spps$sppocean[spps$name != 'energy'], period=sort(unique(presmap$period))) # grid of all spp and time periods
-	totcalcs <- aggregate(list(totalpres = presmap$pres[pinds], totalwtcpue=presmap$wtcpue.proj[pinds]), by=list(sppocean=presmap$sppocean[pinds], period=presmap$period[pinds]), FUN=sum) # how many spp presences and amount in each period
-	totals2 <- merge(totals, totcalcs, all.x=TRUE) # make sure all spp and time period represented
-	totals2$totalpres[is.na(totals2$totalpres)] <- 0
-	totals2$totalwtcpue[is.na(totals2$totalwtcpue)] <- 0
-	totals2$zone <- 2 # for conservation
-
-	# add totals for the fishery zones
-	temp <- totals2
-	temp$zone <- 3
-	temp <- temp[temp$sppocean %in% fisheryspps$projname[finds],]
-		nrow(temp)/5 # 8 species
-	totals2 <- rbind(totals2, temp) # for conservation
-
-		length(unique(totals2$sppocean)) # number of species
-		numgoals <- length(unique(paste(totals2$sppocean, totals2$zone))) # number of goals: 75
-			numgoals
-		nrow(totals2)
-
-	# merge in plan zones
-	temp1 <- merge(presmap[pinds, ], pusplan1[pusplan1$zone %in% c(2,3),]) # only keep the conserved & fishery zones for goals
-	temp2 <- merge(presmap[pinds, ], pusplan2[pusplan2$zone %in% c(2,3),])
-	abundbyzone1 <- aggregate(list(npres = temp1$pres, sumwtcpue = temp1$wtcpue.proj), by=list(sppocean=temp1$sppocean, period=temp1$period, zone=temp1$zone), FUN=sum)
-		dim(abundbyzone1)
-	abundbyzone2 <- aggregate(list(npres = temp2$pres, sumwtcpue = temp2$wtcpue.proj), by=list(sppocean=temp2$sppocean, period=temp2$period, zone=temp2$zone), FUN=sum)
-		dim(abundbyzone2)
-
-	# add totals for pres and wtcpue across all zones
-	# intersect(names(abundbyzone1), names(totals2))
-	abundbyzone1.2 <- merge(abundbyzone1, totals2, all.y=TRUE)
-		abundbyzone1.2$npres[is.na(abundbyzone1.2$npres)] <- 0
-		abundbyzone1.2$sumwtcpue[is.na(abundbyzone1.2$sumwtcpue)] <- 0
-		dim(abundbyzone1.2) # 375
-		length(unique(abundbyzone1.2$sppocean)) # 67 species
-		sort(table(as.character(abundbyzone1.2$sppocean))) # entries per species, from low to high. 8 species appear in both conservation and fishery zones.
-	abundbyzone2.2 <- merge(abundbyzone2, totals2, all.y=TRUE)
-		abundbyzone2.2$npres[is.na(abundbyzone2.2$npres)] <- 0
-		abundbyzone2.2$sumwtcpue[is.na(abundbyzone2.2$sumwtcpue)] <- 0
-		dim(abundbyzone2.2) # 375
-		length(unique(abundbyzone2.2$sppocean)) # 67 species
-		sort(table(as.character(abundbyzone2.2$sppocean))) # entries per species, from low to high. 8 species appear in both conservation and fishery zones.
-
-	# calculate proportion of presences and wtcpue
-	abundbyzone1.2$proppres <- abundbyzone1.2$npres/abundbyzone1.2$totalpres
-	abundbyzone2.2$proppres <- abundbyzone2.2$npres/abundbyzone2.2$totalpres
-	abundbyzone1.2$propwtcpue <- abundbyzone1.2$sumwtcpue/abundbyzone1.2$totalwtcpue
-	abundbyzone2.2$propwtcpue <- abundbyzone2.2$sumwtcpue/abundbyzone2.2$totalwtcpue
-
-	# force 0/0 to 1 so that it counts as a goal met
-	abundbyzone1.2$proppres[abundbyzone1.2$npres==0 & abundbyzone1.2$totalpres==0] <- 1
-	abundbyzone2.2$proppres[abundbyzone2.2$npres==0 & abundbyzone2.2$totalpres==0] <- 1
-	abundbyzone1.2$propwtcpue[abundbyzone1.2$sumwtcpue==0 & abundbyzone1.2$totalwtcpue==0] <- 1
-	abundbyzone2.2$propwtcpue[abundbyzone2.2$sumwtcpue==0 & abundbyzone2.2$totalwtcpue==0] <- 1
-	
-	# mark where goals met for conservation or fishery
-	abundbyzone1.2$metgoal <- FALSE
-	abundbyzone2.2$metgoal <- FALSE
-	abundbyzone1.2$metgoal[abundbyzone1.2$zone==2 & abundbyzone1.2[[conscolnm]] >= consgoal] <- TRUE
-	abundbyzone2.2$metgoal[abundbyzone2.2$zone==2 & abundbyzone2.2[[conscolnm]] >= consgoal] <- TRUE
-	abundbyzone1.2$metgoal[abundbyzone1.2$zone==3 & abundbyzone1.2[[fishcolnm]] >= fishgoal] <- TRUE
-	abundbyzone2.2$metgoal[abundbyzone2.2$zone==3 & abundbyzone2.2[[fishcolnm]] >= fishgoal] <- TRUE
-
-	# calculate number goals met in each timeperiod
-	goalsmet1 <- aggregate(list(nmet=abundbyzone1.2$metgoal), by=list(period=abundbyzone1.2$period), FUN=sum)
-	goalsmet1$mid <- sapply(strsplit(as.character(goalsmet1$period), split='-'), FUN=function(x) mean(as.numeric(x)))
-	goalsmet1$pmet <- goalsmet1$nmet/numgoals
-
-	goalsmet2 <- aggregate(list(nmet=abundbyzone2.2$metgoal), by=list(period=abundbyzone2.2$period), FUN=sum)
-	goalsmet2$mid <- sapply(strsplit(as.character(goalsmet2$period), split='-'), FUN=function(x) mean(as.numeric(x)))
-	goalsmet2$pmet <- goalsmet2$nmet/numgoals
-
-# write out
-	write.csv(abundbyzone1.2, file=paste('output/abundbyzone_', runtype, projtype, '_', runname1, '.csv', sep=''))
-	write.csv(abundbyzone2.2, file=paste('output/abundbyzone_', runtype, projtype, '_', runname2, '.csv', sep=''))
-	write.csv(goalsmet1, file=paste('output/goalsmet_', runtype, projtype, '_', runname1, '.csv', sep=''))
-	write.csv(goalsmet2, file=paste('output/goalsmet_', runtype, projtype, '_', runname2, '.csv', sep=''))
+#pinds <- presmap$region == myreg & presmap$pres # trim to presences in this region
+#finds <- fisheryspps$region == myreg # trim to this region
+#
+## evaluate # targets met in each time period (only biogical targets)
+#
+#	# calculate total presences and wtcpue by species and time-period
+#	totals <- expand.grid(sppocean=spps$sppocean[spps$name != 'energy'], period=sort(unique(presmap$period))) # grid of all spp and time periods
+#	totcalcs <- aggregate(list(totalpres = presmap$pres[pinds], totalwtcpue=presmap$wtcpue.proj[pinds]), by=list(sppocean=presmap$sppocean[pinds], period=presmap$period[pinds]), FUN=sum) # how many spp presences and amount in each period
+#	totals2 <- merge(totals, totcalcs, all.x=TRUE) # make sure all spp and time period represented
+#	totals2$totalpres[is.na(totals2$totalpres)] <- 0
+#	totals2$totalwtcpue[is.na(totals2$totalwtcpue)] <- 0
+#	totals2$zone <- 2 # for conservation
+#
+#	# add totals for the fishery zones
+#	temp <- totals2
+#	temp$zone <- 3
+#	temp <- temp[temp$sppocean %in% fisheryspps$projname[finds],]
+#		nrow(temp)/5 # 8 species
+#	totals2 <- rbind(totals2, temp) # for conservation
+#
+#		length(unique(totals2$sppocean)) # number of species
+#		numgoals <- length(unique(paste(totals2$sppocean, totals2$zone))) # number of goals: 75
+#			numgoals
+#		nrow(totals2)
+#
+#	# merge in plan zones
+#	temp1 <- merge(presmap[pinds, ], pusplan1[pusplan1$zone %in% c(2,3),]) # only keep the conserved & fishery zones for goals
+#	temp2 <- merge(presmap[pinds, ], pusplan2[pusplan2$zone %in% c(2,3),])
+#	abundbyzone1 <- aggregate(list(npres = temp1$pres, sumwtcpue = temp1$wtcpue.proj), by=list(sppocean=temp1$sppocean, period=temp1$period, zone=temp1$zone), FUN=sum)
+#		dim(abundbyzone1)
+#	abundbyzone2 <- aggregate(list(npres = temp2$pres, sumwtcpue = temp2$wtcpue.proj), by=list(sppocean=temp2$sppocean, period=temp2$period, zone=temp2$zone), FUN=sum)
+#		dim(abundbyzone2)
+#
+#	# add totals for pres and wtcpue across all zones
+#	# intersect(names(abundbyzone1), names(totals2))
+#	abundbyzone1.2 <- merge(abundbyzone1, totals2, all.y=TRUE)
+#		abundbyzone1.2$npres[is.na(abundbyzone1.2$npres)] <- 0
+#		abundbyzone1.2$sumwtcpue[is.na(abundbyzone1.2$sumwtcpue)] <- 0
+#		dim(abundbyzone1.2) # 375
+#		length(unique(abundbyzone1.2$sppocean)) # 67 species
+#		sort(table(as.character(abundbyzone1.2$sppocean))) # entries per species, from low to high. 8 species appear in both conservation and fishery zones.
+#	abundbyzone2.2 <- merge(abundbyzone2, totals2, all.y=TRUE)
+#		abundbyzone2.2$npres[is.na(abundbyzone2.2$npres)] <- 0
+#		abundbyzone2.2$sumwtcpue[is.na(abundbyzone2.2$sumwtcpue)] <- 0
+#		dim(abundbyzone2.2) # 375
+#		length(unique(abundbyzone2.2$sppocean)) # 67 species
+#		sort(table(as.character(abundbyzone2.2$sppocean))) # entries per species, from low to high. 8 species appear in both conservation and fishery zones.
+#
+#	# calculate proportion of presences and wtcpue
+#	abundbyzone1.2$proppres <- abundbyzone1.2$npres/abundbyzone1.2$totalpres
+#	abundbyzone2.2$proppres <- abundbyzone2.2$npres/abundbyzone2.2$totalpres
+#	abundbyzone1.2$propwtcpue <- abundbyzone1.2$sumwtcpue/abundbyzone1.2$totalwtcpue
+#	abundbyzone2.2$propwtcpue <- abundbyzone2.2$sumwtcpue/abundbyzone2.2$totalwtcpue
+#
+#	# force 0/0 to 1 so that it counts as a goal met
+#	abundbyzone1.2$proppres[abundbyzone1.2$npres==0 & abundbyzone1.2$totalpres==0] <- 1
+#	abundbyzone2.2$proppres[abundbyzone2.2$npres==0 & abundbyzone2.2$totalpres==0] <- 1
+#	abundbyzone1.2$propwtcpue[abundbyzone1.2$sumwtcpue==0 & abundbyzone1.2$totalwtcpue==0] <- 1
+#	abundbyzone2.2$propwtcpue[abundbyzone2.2$sumwtcpue==0 & abundbyzone2.2$totalwtcpue==0] <- 1
+#	
+#	# mark where goals met for conservation or fishery
+#	abundbyzone1.2$metgoal <- FALSE
+#	abundbyzone2.2$metgoal <- FALSE
+#	abundbyzone1.2$metgoal[abundbyzone1.2$zone==2 & abundbyzone1.2[[conscolnm]] >= consgoal] <- TRUE
+#	abundbyzone2.2$metgoal[abundbyzone2.2$zone==2 & abundbyzone2.2[[conscolnm]] >= consgoal] <- TRUE
+#	abundbyzone1.2$metgoal[abundbyzone1.2$zone==3 & abundbyzone1.2[[fishcolnm]] >= fishgoal] <- TRUE
+#	abundbyzone2.2$metgoal[abundbyzone2.2$zone==3 & abundbyzone2.2[[fishcolnm]] >= fishgoal] <- TRUE
+#
+#	# calculate number goals met in each timeperiod
+#	goalsmet1 <- aggregate(list(nmet=abundbyzone1.2$metgoal), by=list(period=abundbyzone1.2$period), FUN=sum)
+#	goalsmet1$mid <- sapply(strsplit(as.character(goalsmet1$period), split='-'), FUN=function(x) mean(as.numeric(x)))
+#	goalsmet1$pmet <- goalsmet1$nmet/numgoals
+#
+#	goalsmet2 <- aggregate(list(nmet=abundbyzone2.2$metgoal), by=list(period=abundbyzone2.2$period), FUN=sum)
+#	goalsmet2$mid <- sapply(strsplit(as.character(goalsmet2$period), split='-'), FUN=function(x) mean(as.numeric(x)))
+#	goalsmet2$pmet <- goalsmet2$nmet/numgoals
+#
+## write out
+#	write.csv(abundbyzone1.2, file=paste('output/abundbyzone_', runtype, projtype, '_', runname1, '.csv', sep=''))
+#	write.csv(abundbyzone2.2, file=paste('output/abundbyzone_', runtype, projtype, '_', runname2, '.csv', sep=''))
+#	write.csv(goalsmet1, file=paste('output/goalsmet_', runtype, projtype, '_', runname1, '.csv', sep=''))
+#	write.csv(goalsmet2, file=paste('output/goalsmet_', runtype, projtype, '_', runname2, '.csv', sep=''))
 
 
 #######################################################
 # Plot comparison against the ensemble mean
 #######################################################
-goalsmet1 <- read.csv(paste('output/goalsmet_', runtype, projtype, '_', runname1, '.csv', sep=''))
-goalsmet2 <- read.csv(paste('output/goalsmet_', runtype, projtype, '_', runname2, '.csv', sep=''))
-
-
-# plot goals met (solution #1)
-	# quartz(width=4, height=4)
-	cols = brewer.pal(4, 'Paired')
-	ylims <- c(0, max(c(max(goalsmet1$nmet), max(goalsmet2$nmet))))
-	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_goalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
-
-	plot(goalsmet1$mid, goalsmet1$nmet, xlab='Year', ylab='# Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
-
-	dev.off()
-	
-# plot goals met (solution #1 and #2)
-	cols = brewer.pal(4, 'Paired')
-	ylims <- c(0, max(c(max(goalsmet1$nmet), max(goalsmet2$nmet))))
-	# quartz(width=4, height=4)
-	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_goalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
-
-	plot(goalsmet1$mid, goalsmet1$nmet, xlab='Year', ylab='# Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
-	points(goalsmet2$mid, goalsmet2$nmet, type='o', pch=16, col=cols[4])
-	
-	dev.off()
-
-
-# plot %goals met (solution #1)
-	# quartz(width=4, height=4)
-	cols = brewer.pal(4, 'Paired')
-	ylims <- c(0, 1)
-	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_pgoalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
-
-
-	plot(goalsmet1$mid, goalsmet1$pmet, xlab='Year', ylab='% Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
-
-	dev.off()
-	
-# plot %goals met (solution #1 and #2)
-	cols = brewer.pal(4, 'Paired')
-	ylims <- c(0, 1)
-	# quartz(width=4, height=4)
-	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_pgoalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
-
-	plot(goalsmet1$mid, goalsmet1$pmet, xlab='Year', ylab='% Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
-	points(goalsmet2$mid, goalsmet2$pmet, type='o', pch=16, col=cols[4])
-	
-	dev.off()
+#goalsmet1 <- read.csv(paste('output/goalsmet_', runtype, projtype, '_', runname1, '.csv', sep=''))
+#goalsmet2 <- read.csv(paste('output/goalsmet_', runtype, projtype, '_', runname2, '.csv', sep=''))
+#
+#
+## plot goals met (solution #1)
+#	# quartz(width=4, height=4)
+#	cols = brewer.pal(4, 'Paired')
+#	ylims <- c(0, max(c(max(goalsmet1$nmet), max(goalsmet2$nmet))))
+#	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_goalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#
+#	plot(goalsmet1$mid, goalsmet1$nmet, xlab='Year', ylab='# Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
+#
+#	dev.off()
+#	
+## plot goals met (solution #1 and #2)
+#	cols = brewer.pal(4, 'Paired')
+#	ylims <- c(0, max(c(max(goalsmet1$nmet), max(goalsmet2$nmet))))
+#	# quartz(width=4, height=4)
+#	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_goalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#
+#	plot(goalsmet1$mid, goalsmet1$nmet, xlab='Year', ylab='# Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
+#	points(goalsmet2$mid, goalsmet2$nmet, type='o', pch=16, col=cols[4])
+#	
+#	dev.off()
+#
+#
+## plot %goals met (solution #1)
+#	# quartz(width=4, height=4)
+#	cols = brewer.pal(4, 'Paired')
+#	ylims <- c(0, 1)
+#	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_pgoalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#
+#
+#	plot(goalsmet1$mid, goalsmet1$pmet, xlab='Year', ylab='% Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
+#
+#	dev.off()
+#	
+## plot %goals met (solution #1 and #2)
+#	cols = brewer.pal(4, 'Paired')
+#	ylims <- c(0, 1)
+#	# quartz(width=4, height=4)
+#	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_pgoalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#
+#	plot(goalsmet1$mid, goalsmet1$pmet, xlab='Year', ylab='% Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
+#	points(goalsmet2$mid, goalsmet2$pmet, type='o', pch=16, col=cols[4])
+#	
+#	dev.off()
 
 	
 	
@@ -489,7 +489,7 @@ goalsmetbymod2 <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_'
 	for(i in 1:length(mods)){
 		for(j in 1:length(rcps)){
 			inds <- goalsmetbymod2$model == mods[i] & goalsmetbymod2$rcp == rcps[j]
-			points(goalsmetbymod2$mid[inds], goalsmetbymod2$pmet[inds], type='l', pch=16, col=cols[2])
+			points(goalsmetbymod2$mid[inds], goalsmetbymod2$pmet[inds], type='l', pch=16, col=cols[3])
 		}	
 	}
 	ensmean2 <- aggregate(list(nmet=goalsmetbymod2$nmet, pmet=goalsmetbymod2$pmet), by=list(mid=goalsmetbymod2$mid), FUN=mean)
