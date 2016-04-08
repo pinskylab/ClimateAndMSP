@@ -500,10 +500,13 @@ write.csv(goalsmetbymod2out, file=paste('output/goalsmetbymod_', runtype, projty
 #######################################################
 # Compare and plot the planning approaches against all models
 #######################################################
-goalsmetbymod1 <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname1, '.csv', sep=''))
-goalsmetbymod2 <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname2, '.csv', sep=''))
+goalsmetbymod1out <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname1out, '.csv', sep=''))
+goalsmetbymod2out <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname2out, '.csv', sep=''))
 
-
+myregs <- c('AFSC_Aleutians', 'AFSC_EBS', 'AFSC_GOA', 'DFO_NewfoundlandFall', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSSpring', 'SEFSC_GOMex')
+mods <- sort(unique(goalsmetbymod1out$model))
+rcps <- sort(unique(goalsmetbymod1out$rcp))
+regnames<-c('Aleutians Is.', 'E. Bering Sea', 'Gulf of AK', 'Newfoundland', 'Scotian Shelf', 'S. Gulf of St. Lawrence', 'Northeast US')
 
 # compare goals met
 	t.test(goalsmetbymod1$nmet[goalsmetbymod1$period=='2081-2100'], goalsmetbymod2$nmet[goalsmetbymod2$period=='2081-2100'])
@@ -537,38 +540,43 @@ goalsmetbymod2 <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_'
 	dev.off()
 	
 # plot %goals met (solution #1 and #2)
-	# quartz(width=4, height=4)
-#	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
-	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
+	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
+#	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
 	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
-	mods <- sort(unique(goalsmetbymod1$model))
-	rcps <- sort(unique(goalsmetbymod1$rcp))
-	outfile <- paste('figures/MarZone_', myreg, '_goalsmetbymod_', runtype, projtype, '_', runname1, '&', runname2, '.pdf', sep='')
+	outfile <- paste('figures/MarZone_allregs_goalsmetbymod_', runtype, projtype, '_', runname1out, '&', runname2out, '.pdf', sep='')
 		outfile
-	pdf(width=4, height=4, file=outfile)
+	ylims <- c(0.3,1)
 
-	inds <- goalsmetbymod1$model == mods[1] & goalsmetbymod1$rcp == rcps[1]
-	plot(goalsmetbymod1$mid[inds], goalsmetbymod1$pmet[inds], xlab='Year', ylab='Fraction goals met', ylim=c(0.5, 1), type='l', pch=16, las=1, col=cols[1])
-	for(i in 1:length(mods)){
-		for(j in 1:length(rcps)){
-			if(!(i==1 & j==1)){
-				inds <- goalsmetbymod1$model == mods[i] & goalsmetbymod1$rcp == rcps[j]
-				points(goalsmetbymod1$mid[inds], goalsmetbymod1$pmet[inds], type='l', pch=16, col=cols[1])	
+	# quartz(width=6, height=6)
+	pdf(width=6, height=6, file=outfile)
+	par(mfrow=c(3,3), mai=c(0.3, 0.35, 0.2, 0.05), omi=c(0.2,0.2,0,0), cex.main=0.8)
+
+	for(i in 1:length(myregs)){
+		inds <- goalsmetbymod1out$model == mods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i]
+		plot(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], xlab='', ylab='', ylim=ylims, type='l', pch=16, las=1, col=cols[1], main=regnames[i])
+		for(k in 1:length(mods)){
+			for(j in 1:length(rcps)){
+				if(!(k==1 & j==1)){
+					inds <- goalsmetbymod1out$model == mods[k] & goalsmetbymod1out$rcp == rcps[j] & goalsmetbymod1out$region==myregs[i]
+					points(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], type='l', pch=16, col=cols[1])	
+				}
 			}
 		}
-	}
-	ensmean <- aggregate(list(nmet=goalsmetbymod1$nmet, pmet=goalsmetbymod1$pmet), by=list(mid=goalsmetbymod1$mid), FUN=mean)
-	lines(ensmean$mid, ensmean$pmet, col=cols[2], lwd=2)
+		inds <- goalsmetbymod1out$region==myregs[i]
+		ensmean <- aggregate(list(nmet=goalsmetbymod1out$nmet[inds], pmet=goalsmetbymod1out$pmet[inds]), by=list(mid=goalsmetbymod1out$mid[inds]), FUN=mean)
+		lines(ensmean$mid, ensmean$pmet, col=cols[2], lwd=2)
 
-	for(i in 1:length(mods)){
-		for(j in 1:length(rcps)){
-			inds <- goalsmetbymod2$model == mods[i] & goalsmetbymod2$rcp == rcps[j]
-			points(goalsmetbymod2$mid[inds], goalsmetbymod2$pmet[inds], type='l', pch=16, col=cols[3])
-		}	
+		for(k in 1:length(mods)){
+			for(j in 1:length(rcps)){
+				inds <- goalsmetbymod2out$model == mods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]
+				points(goalsmetbymod2out$mid[inds], goalsmetbymod2out$pmet[inds], type='l', pch=16, col=cols[3])
+			}	
+		}
+		inds <- goalsmetbymod2out$region==myregs[i]
+		ensmean2 <- aggregate(list(nmet=goalsmetbymod2out$nmet[inds], pmet=goalsmetbymod2out$pmet[inds]), by=list(mid=goalsmetbymod2out$mid[inds]), FUN=mean)
+		lines(ensmean2$mid, ensmean2$pmet, col=cols[4], lwd=2)
 	}
-	ensmean2 <- aggregate(list(nmet=goalsmetbymod2$nmet, pmet=goalsmetbymod2$pmet), by=list(mid=goalsmetbymod2$mid), FUN=mean)
-	lines(ensmean2$mid, ensmean2$pmet, col=cols[4], lwd=2)
-
+	mtext(side=1,text='Year',line=0.5, outer=TRUE)
+	mtext(side=2,text='Fraction goals met',line=0.3, outer=TRUE)
 	
 	dev.off()
-	
