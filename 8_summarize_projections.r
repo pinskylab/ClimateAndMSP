@@ -46,8 +46,8 @@ wmean <- function(x){
 
 ##########################################################
 ## Calculate mean lat/depth and sum of biomass by year  ##
-## within each region (if not xreg)                     ##
-## or across regions (if xreg)                          ##
+## within each region                                   ##
+## and across regions (if xreg)                         ##
 ##########################################################
 
 # list all projections from this run
@@ -60,9 +60,9 @@ meanpos <- list(0)
 # set up dataframes
 # Don't know how many regions for each taxon, so can't pre-allocate the rows (but could guess high... might speed this up)
 # could also calc mean depth, but would need to pull from rugosity file
-biomasssum <- data.frame(sppocean = character(0), region = character(0), year = numeric(0)) # sum of average wtcpue across the region (2020-2099) for each survey in each model (columns)
+biomasssum <- data.frame(sppocean = character(0), region = character(0), year = numeric(0)) # sum of average wtcpue across the region (2006-2100) for each survey in each model (columns)
 	for(i in 1:13) biomasssum[[paste('summwtcpue', i, sep='_')]] <- numeric(0)
-meanlat <- data.frame(sppocean = character(0), region = character(0), year = numeric(0)) # biomass-weighted mean latitude across the region (2020-2099) for each survey in each model (columns)
+meanlat <- data.frame(sppocean = character(0), region = character(0), year = numeric(0)) # biomass-weighted mean latitude across the region (2006-2100) for each survey in each model (columns)
 	for(i in 1:13) meanlat[[paste('lat', i, sep='_')]] <- numeric(0)
 meanlon <- data.frame(sppocean = character(0), region = character(0), year = numeric(0))
 	for(i in 1:13) meanlon[[paste('lon', i, sep='_')]] <- numeric(0)
@@ -80,9 +80,9 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 	print(paste(i, 'of', length(files), mysppocean, paste(myregions, collapse=', '), Sys.time()))
 
 	# set up dataframes for this taxon
-	mybiomasssum <- data.frame(sppocean = mysppocean, region = rep(myregions, rep(80,length(myregions))), year = rep(2020:2099, length(myregions)))
-	mymeanlat <- data.frame(sppocean = mysppocean, region = rep(myregions, rep(80,length(myregions))), year = rep(2020:2099, length(myregions)))
-	mymeanlon <- data.frame(sppocean = mysppocean, region = rep(myregions, rep(80,length(myregions))), year = rep(2020:2099, length(myregions)))
+	mybiomasssum <- data.frame(sppocean = mysppocean, region = rep(myregions, rep(95,length(myregions))), year = rep(2006:2100, length(myregions)))
+	mymeanlat <- data.frame(sppocean = mysppocean, region = rep(myregions, rep(95,length(myregions))), year = rep(2006:2100, length(myregions)))
+	mymeanlon <- data.frame(sppocean = mysppocean, region = rep(myregions, rep(95,length(myregions))), year = rep(2006:2100, length(myregions)))
 
 	# Summarize projections
 	for(j in 1:13){
