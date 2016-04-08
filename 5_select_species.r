@@ -112,7 +112,7 @@ for(r in myregions){
 	yrocc<-table(regdat$year,regdat$sppocean) #table of number of occurrances each year
 	sumyrs<-apply(yrocc,2,function(x) sum(x>0)) #identify years with more than zero catch of each taxon
 	sumobs<-colSums(yrocc)
-	min1<-colnames(yrocc)[sumyrs>=10 & sumobs >= 300]  #identify taxa with at least 8 years of catch and at least 40 total catch records
+	min1<-colnames(yrocc)[sumyrs>=10 & sumobs >= 300]  #identify taxa with at least 10 years of catch and at least 300 total catch records
 	myspp<-c(myspp,min1) #now with myspp plus ocean
 }
 #table(myspp) #shows which species are selected in multiple surveys
