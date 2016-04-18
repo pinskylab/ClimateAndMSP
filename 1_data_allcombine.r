@@ -2,6 +2,7 @@
 
 library(data.table) # much of this code could be sped up by converting to data.tables
 library(Hmisc)
+library(stringr)
 
 # useful function: acts like sum(na.rm=T) but returns NA if all are NA
 	sumna = function(x){
@@ -55,6 +56,22 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	neus = as.data.frame(neus) # this makes the calculations less efficient... but avoids having to rewrite the code for data.tables
 	rm(survdat, spp)
 
+	# Southeast US, comes from two surveys, SEAMAP (bottom trawl survey) and MARMAP (offshore trap survey)
+	# First SEAMAP trawl survey
+	survcatch = read.csv('/Users/jim/Documents/Work/OceanAdapt/seus_catch.csv', stringsAsFactors=FALSE)
+	survhaul = read.csv('/Users/jim/Documents/Work/OceanAdapt/seus_haul.csv', stringsAsFactors=FALSE) # only needed for depth
+	survhaul <- unique(data.frame(EVENTNAME = survhaul$EVENTNAME, DEPTHSTART = survhaul$DEPTHSTART))
+	seusstrata = read.csv('/Users/jim/Documents/Work/OceanAdapt/seus_strata.csv') # contains strata areas
+	seus = merge(x=survcatch, y=survhaul, all.x=T, by="EVENTNAME") # Add depth data from survhaul 
+	seus = cbind(seus, STRATA = as.integer(str_sub(string = seus$STATIONCODE, start = 1, end = 2))) #Create STRATA column
+	seus = seus[seus$DEPTHZONE != "OUTER",] # Drop OUTER depth zone because it was only sampled for 10 years, and in specific seasons-areas
+	seus = merge(x=seus, y=seusstrata, all.x=TRUE, by='STRATA') #add STRATAHECTARE to main file 
+	# Second MARMAP trap survey
+	
+	
+	rm(seusstata, survcatch, survhaul, )
+	
+	
 	# West Coast Trienniel (1977-2004)
 	wctricatch = read.csv('../NorthAmerican_survey_data/AFSC_WestCoast/2011-12-08/CATCHWCTRIALLCOAST.csv')
 	wctrihaul = read.csv('../NorthAmerican_survey_data/AFSC_WestCoast/2011-12-08/HAULWCTRIALLCOAST.csv')
