@@ -83,7 +83,7 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 	cexs = 0.5 # to adjust
 	periods <- sort(unique(rich$period))
 	# quartz(width=10, height=3)
-	pdf(width=10, height=3, file=paste('figures/MarZone_', myreg, '_on_richness_', runname, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+	pdf(width=10, height=3, file=paste('cmsp_figures/MarZone_', myreg, '_on_richness_', runname, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	par(mfrow=c(1,length(periods)), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
 	j <- rich$region == 'NEFSC_NEUSSpring'
 	for(i in 1:length(periods)){
@@ -103,7 +103,7 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 	cexs = 0.5 # to adjust
 	periods <- sort(unique(rich$period))
 	# quartz(width=10, height=3)
-	pdf(width=10, height=3, file=paste('figures/MarZone_NEUSSpring_on_richness_', runname, '&', runname2, '.pdf', sep=''))
+	pdf(width=10, height=3, file=paste('cmsp_figures/MarZone_NEUSSpring_on_richness_', runname, '&', runname2, '.pdf', sep=''))
 	par(mfrow=c(1,length(periods)), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
 	j <- rich$region == 'NEFSC_NEUSSpring'
 	for(i in 1:length(periods)){
@@ -154,7 +154,7 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 # plot goals met (solution #1)
 	# quartz(width=4, height=4)
 	cols = brewer.pal(4, 'Paired')
-	pdf(width=4, height=4, file=paste('figures/MarZone_NEUSSpring_goalsmet_', runname, '.pdf', sep=''))
+	pdf(width=4, height=4, file=paste('cmsp_figures/MarZone_NEUSSpring_goalsmet_', runname, '.pdf', sep=''))
 
 	plot(goalsmet$mid, goalsmet$nmet, xlab='Year', ylab='# Goals met', ylim=c(0, 125), type='o', pch=16, las=1, col=cols[2])
 	
@@ -163,7 +163,7 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 # plot goals met (solution #1 and #2)
 	# quartz(width=4, height=4)
 	cols = brewer.pal(4, 'Paired')
-	pdf(width=4, height=4, file=paste('figures/MarZone_NEUSSpring_goalsmet_', runname, '&', runname2, '.pdf', sep=''))
+	pdf(width=4, height=4, file=paste('cmsp_figures/MarZone_NEUSSpring_goalsmet_', runname, '&', runname2, '.pdf', sep=''))
 
 	plot(goalsmet$mid, goalsmet$nmet, xlab='Year', ylab='# Goals met', ylim=c(0, 125), type='o', pch=16, las=1, col=cols[2])
 	points(goalsmet2$mid, goalsmet2$nmet, type='o', pch=16, col=cols[4])
@@ -217,7 +217,7 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 	# quartz(width=4, height=4)
 	cols = brewer.pal(4, 'Paired')
 	mods <- sort(unique(goalsmet$model))
-	pdf(width=4, height=4, file=paste('figures/MarZone_NEUSSpring_goalsmetbymod_', runname, '.pdf', sep=''))
+	pdf(width=4, height=4, file=paste('cmsp_figures/MarZone_NEUSSpring_goalsmetbymod_', runname, '.pdf', sep=''))
 
 	inds <- goalsmet$model == 1
 	plot(goalsmet$mid[inds], goalsmet$nmet[inds], xlab='Year', ylab='# Goals met', ylim=c(0, 125), type='o', pch=16, las=1, col=cols[1])
@@ -235,7 +235,7 @@ pusplan2 <- merge(pus2, consplan2, by.x='id', by.y='planning_unit')
 	# quartz(width=4, height=4)
 	cols = brewer.pal(4, 'Paired')
 	mods <- sort(unique(goalsmet$model))
-	pdf(width=4, height=4, file=paste('figures/MarZone_NEUSSpring_goalsmetbymod_', runname, '&', runname2, '.pdf', sep=''))
+	pdf(width=4, height=4, file=paste('cmsp_figures/MarZone_NEUSSpring_goalsmetbymod_', runname, '&', runname2, '.pdf', sep=''))
 
 	inds <- goalsmet$model == 1
 	plot(goalsmet$mid[inds], goalsmet$nmet[inds], xlab='Year', ylab='# Goals met', ylim=c(0, 125), type='o', pch=16, las=1, col=cols[1])

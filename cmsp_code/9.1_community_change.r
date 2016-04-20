@@ -149,7 +149,7 @@ rich <- aggregate(list(rich = presmap$sppocean[i]), by=list(region=presmap$regio
 	allgrids <- paste(rich$lat, rich$lon)
 	col.ln <- rgb(0.1, 0.1, 0.1, 0.5)
 	# quartz(width=5,height=5)
-	pdf(width=5, height=5, file=paste('figures/richness_proj_by_grid_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+	pdf(width=5, height=5, file=paste('cmsp_figures/richness_proj_by_grid_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	par(mfrow=c(3,4), mai=c(0.4, 0.4, 0.2, 0.1), mgp=c(2, 0.6, 0), las=1)
 	for(i in 1:length(regs)){
 		print(i)
@@ -242,7 +242,7 @@ options(warn=1) # print warnings as they occur
 cols <- colorRampPalette(c('grey80', 'blue', 'purple', 'red1'), interpolate='linear')
 periods <- sort(unique(presmap$period))
 
-pdf(width=10, height=3, file=paste('figures/pres_proj_mapscontinent_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+pdf(width=10, height=3, file=paste('cmsp_figures/pres_proj_mapscontinent_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #quartz(width=10, height=3)
 
 for(i in 1:length(spps)){
@@ -279,7 +279,7 @@ load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	colfun <- colorRamp(rev(brewer.pal(11, 'Spectral')))
 	periods <- sort(unique(rich$period))
 	#quartz(width=7, height=5)
-	pdf(width=7, height=5, file=paste('figures/richness_proj_map_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+	pdf(width=7, height=5, file=paste('cmsp_figures/richness_proj_map_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	for(i in 1:length(periods)){
 		par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 		j = rich$period == periods[i]
@@ -295,7 +295,7 @@ load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	periods <- sort(unique(rich$period))
 	cexs = c(0.7, 1.2, 0.5, 0.8, 0.5, 1.1, 1, 1.5, 0.5, 0.5, 0.8, 1) # to adjust for each region
 	# quartz(width=14, height=3)
-	pdf(width=14, height=3, file=paste('figures/richness_proj_map_byregion_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+	pdf(width=14, height=3, file=paste('cmsp_figures/richness_proj_map_byregion_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	for(k in 1:length(regs)){
 		par(mfrow=c(1,length(periods)), mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 		for(i in 1:length(periods)){
@@ -311,7 +311,7 @@ load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	colfun <- colorRamp(brewer.pal(11, 'Spectral'))
 	inds <- !is.na(richtrend$trend)
 	# quartz(width=7, height=5)
-	pdf(width=7, height=5, file=paste('figures/richness_proj_trend_map_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+	pdf(width=7, height=5, file=paste('cmsp_figures/richness_proj_trend_map_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 	plot(richtrend$lon[inds], richtrend$lat[inds], col=rgb(colfun(norm01(richtrend$trend[inds])), maxColorValue=255), pch=16, cex=0.5, xlab='Longitude', ylab='Latitude', main='Change in species richness')
 	legend('bottomleft', legend=round(seq(min(richtrend$trend[inds]), max(richtrend$trend[inds]), length.out=10),2), col=rgb(colfun(norm01(seq(min(richtrend$trend[inds]), max(richtrend$trend[inds]), length.out=10))), maxColorValue=255), pch=16, cex=0.8, title='Species/year', bty='n')
@@ -326,7 +326,7 @@ load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 
 
 	#quartz(width=4, height=3)
-	pdf(width=4, height=3, file=paste('figures/turnover_proj_map_byregion_beta_sor_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+	pdf(width=4, height=3, file=paste('cmsp_figures/turnover_proj_map_byregion_beta_sor_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	for(k in 1:length(regs)){
 		par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 		j = turn$region == regs[k]
@@ -336,7 +336,7 @@ load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 	dev.off()
 
 	#quartz(width=4, height=3)
-	pdf(width=4, height=3, file=paste('figures/turnover_proj_map_byregion_flost_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+	pdf(width=4, height=3, file=paste('cmsp_figures/turnover_proj_map_byregion_flost_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	for(k in 1:length(regs)){
 		par(mai=c(0.7,0.7,0.3, 0.1), las=1, mgp=c(2,1,0))
 		j = turn$region == regs[k]
@@ -347,7 +347,7 @@ load(paste('data/turn_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
 
 
 	#quartz(width=4, height=3)
-	pdf(width=4, height=3, file=paste('figures/turnover_proj_map_byregion_fgained_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+	pdf(width=4, height=3, file=paste('cmsp_figures/turnover_proj_map_byregion_fgained_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 	y<-turn$fgained
 	y[y>1] <- 1
 	for(k in 1:length(regs)){
