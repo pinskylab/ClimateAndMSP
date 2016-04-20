@@ -153,6 +153,14 @@ beta_sor <- function(period, spp, pres, periods){
 	gained <- length(setdiff(finalcomm, initcomm))
 	return(2*a/(2*a+gained+lost))
 }
+
+# pick the most common item in a list, or the first if a tie
+pickone <- function(x){
+	tab <- table(x)
+	pick <- which.max(tab)
+	return(names(tab)[pick])
+}
+
 ###############
 ## Load and set up data
 ###############
@@ -166,6 +174,9 @@ wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1) # shows wich MPAs
 	wdpa[sub_loc == 'US-CA' & mang_auth == 'California Department of Fish and Game',network:='mlpa']
 	wdpa[(sub_loc %in% c('US-DE', 'US-FL', 'US-GA', 'US-MA', 'US-MD', 'US-ME', 'US-NC', 'US-NJ', 'US-NY', 'US-RI', 'US-SC', 'US-VA')) & (lon > 280), network:='eastcoast'] # by choosing by state, this won't include federal water closures
 	wdpa[(sub_loc %in% c('US-AK')), network:='ak'] # by choosing by state, this won't include federal water closures
+	
+	# choose one and only one region per MPA, assing to a new column
+	wdpa[,region.one:=pickone(region),by=wdpapolyID]
 
 #	wdpanets[network=='mlpa',plot(lon,lat)]
 #	wdpanets[network=='eastcoast',plot(lon,lat)]
@@ -185,33 +196,58 @@ load(paste('data/presmap_', runtype, projtype, '_rcp', otherrcp, '.RData', sep='
 	dim(presmap)
 	rm(presmap.1)
 
-# load presmap for all model runs... very slow (both rcps)
+# load presmap for all model runs, a bit slow (large files)
 load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load).
-	# SHOULD CONVERT TO DATATABLE HERE
-	presmapbymod.1 <- presmapbymod[paste(presmapbymod$lat, presmapbymod$lon) %in% paste(wdpa$lat, wdpa$lon) & presmapbymod$period %in% periods & presmapbymod$pres,] # trim to rows relevant to WDPA analysis
-	presmapbymod.1$rcp <- rcp
-	dim(presmapbymod.1)
-load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', otherrcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load) (for the other rcp, the one not used for planning)
-	presmapbymod$rcp <- otherrcp
-	dim(presmapbymod)
-	presmapbymod <- rbind(presmapbymod.1, presmapbymod[paste(presmapbymod$lat, presmapbymod$lon) %in% paste(wdpa$lat, wdpa$lon) & presmapbymod$period %in% periods & presmapbymod$pres,]) # trim to rows relevant to WDPA analysis
-	dim(presmapbymod)
+	presmapbymod.1 <- as.data.table(presmapbymod) # seems to remove presmapbymod as well?
+
+	setkey(presmapbymod.1,latlon)
+		dim(presmapbymod.1)
+	presmapbymod.2 <- presmapbymod.1[.(wdpa$lat, wdpa$lon),nomatch=0] # trim to lat lon rows relevant to WDPA analysis. need nomatch=0 so that latlon values not in the data.table return 0 rows instead of a row with NA
+	setkey(presmapbymod.2,period,pres)
+	presmapbymod.2 <- presmapbymod.2[.(periods,TRUE),nomatch=0] # trim to periods and pres=TRUE rows
+		presmapbymod.2[,sum(is.na(pres))] # should be zero
+		dim(presmapbymod.2)
+	presmapbymod.2[,rcp:=rcp] # add label for rcp
+
 	rm(presmapbymod.1)
 
+load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', otherrcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load) (for the other rcp, the one not used for planning)
+	presmapbymod <- as.data.table(presmapbymod)
+
+	setkey(presmapbymod,lat,lon)
+		dim(presmapbymod)
+	presmapbymod.3 <- presmapbymod[.(wdpa$lat, wdpa$lon),nomatch=0] # trim to rows relevant to WDPA analysis
+	setkey(presmapbymod.3,period,pres)
+	presmapbymod.3 <- presmapbymod.3[.(periods,TRUE),nomatch=0] # trim to rows relevant to WDPA analysis
+		presmapbymod.3[,sum(is.na(pres))] # should be zero
+		dim(presmapbymod.3)
+	presmapbymod.3[,rcp:=otherrcp]
+
+# bind the presmaps together
+	presmapbymod <- rbind(presmapbymod.2, presmapbymod.3)
+		nrow(presmapbymod.2)
+		nrow(presmapbymod.3)
+		dim(presmapbymod)
+
+	rm(presmapbymod.2)
+	rm(presmapbymod.3)
+
 # trim presmap to species present, locations and time periods relevant to wdpa analysis
-	dim(presmapbymod) # 189,871,500
-	setkey(presmapbymod,period,pres) # data.tables!
-thesesppbymod <- presmapbymod[list(periods,TRUE)] # quick, using binary search
-	rm(presmapbymod) # clean up memory
+#	dim(presmapbymod) # 189,871,500
+#	setkey(presmapbymod,period,pres) # data.tables!
+#thesesppbymod <- presmapbymod[list(periods,TRUE)] # quick, using binary search
+#	rm(presmapbymod) # clean up memory
 
-thesesppbymod <- thesesppbymod[paste(thesesppbymod$lat, thesesppbymod$lon) %in% paste(wdpa$lat, wdpa$lon),] # "slow" vector search
-	dim(thesesppbymod) # 6,010,462
-	regs <- sort(unique(thesesppbymod$region))
+#thesesppbymod <- thesesppbymod[paste(thesesppbymod$lat, thesesppbymod$lon) %in% paste(wdpa$lat, wdpa$lon),] # "slow" vector search
+#	dim(thesesppbymod) # 6,010,462
+
+	regs <- sort(unique(presmapbymod$region))
 	regstokeep <- setdiff(regs, c('NEFSC_NEUSFall', 'AFSC_WCTri', 'DFO_NewfoundlandSpring')) # remove some surveys to avoid duplicates in a region
-	setkey(thesesppbymod, region)
-	thesesppbymod <- thesesppbymod[list(regstokeep)] # trim out duplicate regions
-	dim(thesesppbymod) # 5,183,120
+	setkey(presmapbymod, region)
+	thesesppbymod <- presmapbymod[.(regstokeep)] # trim out duplicate regions
+	dim(thesesppbymod) # 5,183,120? 7,601,343
 
+	rm(presmapbymod)
 
 ##############################################
 # Calculate turnover within whole MPAs
@@ -370,22 +406,20 @@ thesesppbymod <- thesesppbymod[paste(thesesppbymod$lat, thesesppbymod$lon) %in% 
 
 ##############################################
 # Calculate turnover within whole MPAs
-# Use individual ensemble projections
+# Use individual models from the ensemble projections
 ##############################################
 	
 # merge in MPA ID (using data.tables)
 setkey(wdpa, lat, lon)
 setkey(thesesppbymod, lat, lon)
-thesesppbymod2 <- wdpa[thesesppbymod,.(sppocean, period, rcp, model, pres, wdpapolyID, lat, lon), allow.cartesian=TRUE] # datatable join, using the keys set in each dt. the order specifies to keep all rows of thesesppbymod. allow.cartesian is needed because the result is larger than either parent
-	dim(thesesppbymod2) # 10,015,534
-#	sort(unique(wdpa$wdpapolyID))
-#	sort(unique(thesesppbymod$wdpapolyID)) # lose some MPAs, likely those outside our regions
+thesesppbymod2 <- wdpa[thesesppbymod,.(sppocean, period, rcp, model, pres, wdpapolyID, lat, lon, region), allow.cartesian=TRUE] # datatable join, using the keys set in each dt. the order specifies to keep all rows of thesesppbymod. allow.cartesian is needed because the result is larger than either parent
+	dim(thesesppbymod2) # 10,015,534? 20,905,480
 	
 # summarize by unique species in each period in each MPA in each RCP in each model (pres or not)
-thesesppbyMPAbymod <- thesesppbymod2[,max(pres),by="sppocean,period,wdpapolyID,rcp,model"] # DT aggregate function
+thesesppbyMPAbymod <- thesesppbymod2[,max(pres),by="sppocean,period,wdpapolyID,region,rcp,model"] # DT aggregate function
 	thesesppbyMPAbymod[,pres:=as.logical(V1)]
 	thesesppbyMPAbymod[,V1:=NULL] # drop V1
-	dim(thesesppbyMPAbymod) # 2,214,439
+	dim(thesesppbyMPAbymod) # 2,214,439? now 2,326,903
 
 # calculate turnover by MPA, rcp, and model. each calc is pretty quick (a few seconds)
 thesesppbyMPAbymod[,nstart:=nstart(period, sppocean, pres, periods), by="wdpapolyID,rcp,model"]
@@ -406,10 +440,10 @@ wdpaturnbyMPAbymod <- unique(thesesppbyMPAbymod)
 # merge in mpa metadata
 setkey(wdpa, wdpapolyID)
 uwdpa <- unique(wdpa) # only the lines with unique mpas
-	dim(uwdpa) # 625
+	dim(uwdpa) # 634
 setkey(uwdpa, wdpapolyID)
 setkey(wdpaturnbyMPAbymod, wdpapolyID,rcp,model)
-wdpaturnbyMPAbymod <- uwdpa[wdpaturnbyMPAbymod, .(wdpapolyID, network, area_wdpa, country, sub_loc, name, orig_name, desig, desig_eng, desig_type, iucn_cat, marine, rep_m_area, rep_area, status, status_yr, gov_type, mang_auth, int_crit, mang_plan, official, is_point, no_take, no_tk_area, metadata_i, action,rcp,model,nstart,nend,nlost,ngained,flost,fgained,fgainedalt,beta_sor)]
+wdpaturnbyMPAbymod <- uwdpa[wdpaturnbyMPAbymod, .(wdpapolyID, region, network, area_wdpa, country, sub_loc, name, orig_name, desig, desig_eng, desig_type, iucn_cat, marine, rep_m_area, rep_area, status, status_yr, gov_type, mang_auth, int_crit, mang_plan, official, is_point, no_take, no_tk_area, metadata_i, action,rcp,model,nstart,nend,nlost,ngained,flost,fgained,fgainedalt,beta_sor)]
 	dim(wdpaturnbyMPAbymod) # 14,612
 
 
@@ -420,7 +454,7 @@ write.csv(wdpaturnbyMPAbymod, paste('data/wdpaturnbyMPAbymod_', runtype, projtyp
 
 ###############################
 # Examine change within MPAs
-# Across all models in the ensemble
+# Examine all models in the ensemble
 ##############################
 wdpaturnbyMPAbymod <- as.data.table(read.csv(paste('data/wdpaturnbyMPAbymod_', runtype, projtype, '_rcp', rcp, '&', otherrcp, '.csv', sep=''), row.names=1))
 
@@ -431,10 +465,10 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 # Fraction of species lost
 	# all MPAs
 	a <- wdpaturnbyMPAbymod[,mean(flost,na.rm=TRUE),by=c('rcp','model')]; a
-		a[,range(V1),by='rcp'] # 11%-35% or 28%-44% min
-		a[,mean(V1),by='rcp'] # 23% or 36% mean flost (rcp45 or rcp85)
-		a[,median(V1),by='rcp'] # 23% or 37% median flost (rcp45 or rcp85)
-		a[,se(V1),by='rcp'] # 1.5% or 0.94% se across models (rcp45 or rcp85)
+		a[,range(V1),by='rcp'] # 
+		a[,mean(V1),by='rcp'] # 
+		a[,median(V1),by='rcp'] # 
+		a[,se(V1),by='rcp'] # 
 	wdpaturnbyMPAbymod[,sd(flost,na.rm=TRUE),by=c('rcp','model')]
 	wdpaturnbyMPAbymod[,min(flost,na.rm=TRUE),by=c('rcp','model')]
 	wdpaturnbyMPAbymod[,max(flost,na.rm=TRUE),by=c('rcp','model')]
@@ -447,19 +481,27 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 
 # Fraction of species gained (fraction of final community)
 	# all MPAs
-	a <- wdpaturnbyMPAbymod[,mean(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; a
-		a[,range(V1),by='rcp'] # 14%-32% or 26%-41% min
-		a[,mean(V1),by='rcp'] # 19% or 31% mean fgained (rcp45 or rcp85)
-		a[,median(V1),by='rcp'] # 19% or 31% median fgained (rcp45 or rcp85)
-		a[,sd(V1),by='rcp'] # 4.5% or 3.6% sd fgained across models (rcp45 or rcp85)
-		a[,se(V1),by='rcp'] # 1.2% or 1.0% se fgained across models (rcp45 or rcp85)
-	b <- wdpaturnbyMPAbymod[,sd(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; b
-		b[,mean(V1),by='rcp'] # 18% or 23% mean sd fgained within models (rcp45 or rcp85)
+	a <- wdpaturnbyMPAbymod[,mean(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; a # mean across MPAs within climate models
+		a[,range(V1),by='rcp'] 
+		a[,mean(V1),by='rcp'] 
+		a[,median(V1),by='rcp'] 
+		a[,sd(V1),by='rcp'] 
+		a[,se(V1),by='rcp'] # SE across climate models
+	b <- wdpaturnbyMPAbymod[,sd(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; b # sd across MPAs within climate models (rcp45 or rcp85)
+		b[,mean(V1),by='rcp'] 
 
 
 	# no-take
 	wdpaturnbyMPAbymod[ntk,mean(fgained,na.rm=TRUE),by=c('rcp','model')]
 	wdpaturnbyMPAbymod[ntk,sd(fgained,na.rm=TRUE),by=c('rcp','model')]
+
+# Similarity
+	# all MPAs
+	a <- wdpaturnbyMPAbymod[,mean(beta_sor,na.rm=TRUE),by=c('rcp','model')]; a # mean across MPAs within climate models
+		a[,range(V1),by='rcp'] 
+		a[,mean(V1),by='rcp'] 
+		a[,sd(V1),by='rcp'] 
+		a[,se(V1),by='rcp'] # SE across climate models
 
 
 # Plot of fraction species lost
@@ -513,7 +555,7 @@ wdpanets <- wdpa[!is.na(network),] # trim out non-network rows
 setkey(wdpanets, lat, lon)
 setkey(thesesppbymod, lat, lon)
 thesesppbymodnet <- wdpanets[thesesppbymod,.(sppocean, period, rcp, model, pres, network, lat, lon), allow.cartesian=TRUE, nomatch=0] # datatable join, using the keys set in each dt. the order specifies to keep all rows of thesesppbymod. allow.cartesian is needed because the result is larger than either parent. drop locations not in a network.
-	dim(thesesppbymodnet) # 2,637,693
+	dim(thesesppbymodnet) # 2,637,693? 5,816,336
 	
 # summarize by unique species in each period in each MPA in each RCP in each model (pres or not)
 thesesppbynetbymod <- thesesppbymodnet[,max(pres),by="sppocean,period,network,rcp,model"] # DT aggregate function

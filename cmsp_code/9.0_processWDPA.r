@@ -64,11 +64,11 @@ wdpa = readShapePoly('data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp',
 	# Create a SpatialPolygonsDataFrame (a list of "Polygons", each of which is a list of "Polygon")
 	pgns = vector('list', length(lats))
 	for(i in 1:length(pgns)){
-		inds = (5*(i-1)+1):(5*(i-1)+5)
-		pgns[[i]] = Polygons(list(Polygon(cbind(x[inds],y[inds]))), i)
+		inds2 = (5*(i-1)+1):(5*(i-1)+5)
+		pgns[[i]] = Polygons(list(Polygon(cbind(x[inds2],y[inds2]))), i)
 	}
 	SP <- SpatialPolygons(pgns, proj4string=CRS(proj4string(wdpa)))
-	SPdata <- data.frame(gridpolyID = as.numeric(sapply(slot(SP, 'polygons'), slot, 'ID')), lat = clim$lat[inds], lon = clim$lon[inds]) # would be better to put this in with SP is a SpatialPolygonsDataFrame
+	SPdata <- data.frame(gridpolyID = as.numeric(sapply(slot(SP, 'polygons'), slot, 'ID')), lat = clim$lat[inds], lon = clim$lon[inds], region=clim$region[inds]) # would be better to put this in with SP as a SpatialPolygonsDataFrame
 		length(SP)
 		#plot(SP[1:10])
 		#plot(SP[1:1000]) # slow for so many
@@ -76,12 +76,12 @@ wdpa = readShapePoly('data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp',
 
 # Intersect the grid and the PAs (slow: can skip if done earlier)
 	# see https://stat.ethz.ch/pipermail/r-sig-geo/2012-June/015340.html and https://stat.ethz.ch/pipermail/r-sig-geo/2011-June/012099.html
-	gI <- gIntersects(SP, wdpa, byid=TRUE) # slowish (~1 min)
+	gI <- gIntersects(SP, wdpa, byid=TRUE) # slowish (~1 min). rownames are wdpa IDs, colnames are SP ID names
 		sum(gI); dim(gI)
 		ng = sum(colSums(gI)>0); ng # number of SP polygons that intersect wdpa
 		cols = which(colSums(gI)>0) # ids of SP polygons that intersect wdpa
 	out <- vector(mode="list", length=ng) # one entry for each SP grid cell
-	for(i in 1:length(out)){ # quite slow: 20 min
+	for(i in 1:length(out)){ # 20 min? steps through each grid cell. quickly for some, slowly for others.
 		print(paste(i, 'of', ng))
 		out[[i]] <- gIntersection(SP[cols[i],], wdpa[gI[,cols[i]],], byid=TRUE) # only calc intersections for those polygons that actually intersect (according to gIntersects)
 		if(class(out[[i]]) == 'SpatialCollections'){
@@ -98,14 +98,14 @@ load('data/wdpa_by_grid0.25_intersect.RData'); gridsz <- 0.25
 	
 # Calc fraction of each grid covered by a PA
 	# Merge together wdpa pieces in the same grid cell
-	rn = row.names(out1) # the rownames have the ids of SP and wdpa that make up the intersection
+	rn = row.names(out1) # the rownames of rn have the rownames of SP and wdpa (which we now use as IDs) that make up the intersection
 	nrn = do.call('rbind', strsplit(rn, " ")) # split apart the ids
-	out2 <- gUnaryUnion(out1, id = nrn[,1]) # do the merge by grid cell ID
+	out2 <- gUnaryUnion(out1, id = nrn[,1]) # do the merge by grid cell ID (=rowname in SP)
 
 	save(out2, file=paste('data/grid', gridsz, '_int_by_wdpa.RData', sep='')) # save the SpatialPolygons object
 
 	# Calculate area of the grid intersected by PAs
-	rn = as.numeric(row.names(out2)) # the rownames have the ids of SP
+	rn = as.numeric(row.names(out2)) # the rownames have the ids of SP (=rownames of SP)
 	df = data.frame(grid = rn, area_wdpa=sapply(slot(out2, 'polygons'), slot, 'area')) # area of all intersected wdpa pieces	
 	df$prop_wdpa = df$area_wdpa/gridsz^2 # turn to a proportion of the grid cell (e.g., 0.25x0.25°). would be even better to project to an equal-area projection...
 	df <- df[order(df$grid),]
@@ -151,15 +151,18 @@ load('data/wdpa_by_grid0.25_intersect.RData'); gridsz <- 0.25
 	# add in other wdpa metadata
 	wdpatomerge = wdpa
 	wdpatomerge@data <- cbind(wdpa@data, wdpapolyID = sapply(slot(wdpa, 'polygons'), slot, 'ID')) # add a column of polygon ID, to allow merging
-	wdpa.by.grid2 <- merge(wdpa.by.grid, wdpatomerge@data)
+		intersect(names(wdpa.by.grid), names(wdpatomerge@data)) # wdpapolyID
+	wdpa.by.grid2 <- merge(wdpa.by.grid, wdpatomerge@data) # merges on wdpapolyID
 		dim(wdpa.by.grid2)
 		head(wdpa.by.grid2)
 
 	# add in grid cell metadata
+		intersect(names(wdpa.by.grid2), names(SPdata)) # gridpolyID
 	wdpa.by.grid2 <- merge(wdpa.by.grid2, SPdata)
 			
 	# re-order
 	wdpa.by.grid2 <- wdpa.by.grid2[order(wdpa.by.grid2$wdpapolyID, wdpa.by.grid2$gridpolyID),]
+		head(wdpa.by.grid2)
 	
 	# write out
 	write.csv(wdpa.by.grid2, file=paste('data/wdpa_cov_by_grid', gridsz, '.csv', sep=''))

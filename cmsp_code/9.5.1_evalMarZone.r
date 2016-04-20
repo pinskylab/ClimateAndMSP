@@ -39,9 +39,9 @@ conscolnm <- 'proppres'
 fishcolnm <- 'proppres' # which column to use for fish goal (pres = occurrences, propwtcpue = biomass)
 
 # choose regions and names for these runs (for reading in)
-myregs <- c('NEFSC_NEUSSpring', 'AFSC_EBS', 'DFO_NewfoundlandFall', 'SEFSC_GOMex', 'DFO_ScotianShelf', 'DFO_SoGulf', 'AFSC_GOA', 'AFSC_Aleutians')
-runname1s <- c('cmsphistonly_neus', 'cmsphistonly_ebs', 'cmsphistonly_newf', 'cmsphistonly_gmex', 'cmsphistonly_scot', 'cmsphistonly_sgulf', 'cmsphistonly_goa', 'cmsphistonly_ai')
-runname2s <- c('cmsp2per_neus', 'cmsp2per_ebs', 'cmsp2per_newf', 'cmsp2per_gmex', 'cmsp2per_scot', 'cmsp2per_sgulf', 'cmsp2per_goa', 'cmsp2per_ai')
+myregs <- c('NEFSC_NEUSSpring', 'AFSC_EBS', 'DFO_NewfoundlandFall', 'SEFSC_GOMex', 'DFO_ScotianShelf', 'DFO_SoGulf', 'AFSC_GOA', 'AFSC_Aleutians', 'NWFSC_WCAnn')
+runname1s <- c('cmsphistonly_neus', 'cmsphistonly_ebs', 'cmsphistonly_newf', 'cmsphistonly_gmex', 'cmsphistonly_scot', 'cmsphistonly_sgulf', 'cmsphistonly_goa', 'cmsphistonly_ai', 'cmsphistonly_wc')
+runname2s <- c('cmsp2per_neus', 'cmsp2per_ebs', 'cmsp2per_newf', 'cmsp2per_gmex', 'cmsp2per_scot', 'cmsp2per_sgulf', 'cmsp2per_goa', 'cmsp2per_ai', 'cmsp2per_wc')
 
 # choose names for writing out
 runname1out <- 'cmsphistonly_all'
@@ -134,7 +134,7 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 #	cexs = 1 # to adjust
 #	periods <- sort(unique(rich$period))
 #	# quartz(width=20, height=5)
-#	pdf(width=20, height=5, file=paste('figures/MarZone_', myreg, '_on_richness_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#	pdf(width=20, height=5, file=paste('cmsp_figures/MarZone_', myreg, '_on_richness_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #	par(mfrow=c(1,length(periods)), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
 #	j <- rich$region == 'NEFSC_NEUSSpring'
 #	for(i in 1:length(periods)){
@@ -160,7 +160,7 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 #	cexs = 1 # to adjust
 #	periods <- sort(unique(rich$period))
 #	# quartz(width=20, height=10)
-#	pdf(width=20, height=10, file=paste('figures/MarZone_', myreg, '_on_richness_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#	pdf(width=20, height=10, file=paste('cmsp_figures/MarZone_', myreg, '_on_richness_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #	par(mfrow=c(2,length(periods)), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
 #	j <- rich$region == myreg
 #	for(i in 1:length(periods)){ # for plan1
@@ -199,7 +199,7 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 #	cexs = 0.5 # to adjust
 #	periods <- sort(unique(rich$period))
 #	# quartz(width=5, height=3)
-#	pdf(width=5, height=3, file=paste('figures/MarZone_', myreg, '_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#	pdf(width=5, height=3, file=paste('cmsp_figures/MarZone_', myreg, '_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #	par(mfrow=c(1,2), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
 #	j <- rich$region == myreg
 #	i <- pusplan1$zone == 2
@@ -320,7 +320,7 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 #	# quartz(width=4, height=4)
 #	cols = brewer.pal(4, 'Paired')
 #	ylims <- c(0, max(c(max(goalsmet1$nmet), max(goalsmet2$nmet))))
-#	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_goalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#	pdf(width=4, height=4, file=paste('cmsp_figures/MarZone_', myreg, '_goalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #
 #	plot(goalsmet1$mid, goalsmet1$nmet, xlab='Year', ylab='# Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
 #
@@ -330,7 +330,7 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 #	cols = brewer.pal(4, 'Paired')
 #	ylims <- c(0, max(c(max(goalsmet1$nmet), max(goalsmet2$nmet))))
 #	# quartz(width=4, height=4)
-#	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_goalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#	pdf(width=4, height=4, file=paste('cmsp_figures/MarZone_', myreg, '_goalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #
 #	plot(goalsmet1$mid, goalsmet1$nmet, xlab='Year', ylab='# Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
 #	points(goalsmet2$mid, goalsmet2$nmet, type='o', pch=16, col=cols[4])
@@ -342,7 +342,7 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 #	# quartz(width=4, height=4)
 #	cols = brewer.pal(4, 'Paired')
 #	ylims <- c(0, 1)
-#	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_pgoalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#	pdf(width=4, height=4, file=paste('cmsp_figures/MarZone_', myreg, '_pgoalsmet_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #
 #
 #	plot(goalsmet1$mid, goalsmet1$pmet, xlab='Year', ylab='% Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
@@ -353,7 +353,7 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 #	cols = brewer.pal(4, 'Paired')
 #	ylims <- c(0, 1)
 #	# quartz(width=4, height=4)
-#	pdf(width=4, height=4, file=paste('figures/MarZone_', myreg, '_pgoalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
+#	pdf(width=4, height=4, file=paste('cmsp_figures/MarZone_', myreg, '_pgoalsmet_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
 #
 #	plot(goalsmet1$mid, goalsmet1$pmet, xlab='Year', ylab='% Goals met', ylim=ylims, type='o', pch=16, las=1, col=cols[2])
 #	points(goalsmet2$mid, goalsmet2$pmet, type='o', pch=16, col=cols[4])
@@ -367,7 +367,6 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 # Analyze against each climate model projection                      #
 # across each rcp                                                    #
 ######################################################################
-# better to run this on Amphiprion: takes 30 GB memory
 
 abundbyzonebymod1 <- vector('list', length(myregs))
 abundbyzonebymod2 <- vector('list', length(myregs))
@@ -519,7 +518,7 @@ regnames<-c('Aleutians Is.', 'E. Bering Sea', 'Gulf of AK', 'Newfoundland', 'Sco
 	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
 	mods <- sort(unique(goalsmetbymod1$model))
 	rcps <- sort(unique(goalsmetbymod1$rcp))
-	outfile <- paste('figures/MarZone_', myreg, '_goalsmetbymod_', runtype, projtype, '_', runname1, '.pdf', sep='')
+	outfile <- paste('cmsp_figures/MarZone_', myreg, '_goalsmetbymod_', runtype, projtype, '_', runname1, '.pdf', sep='')
 		outfile
 	pdf(width=4, height=4, file=outfile)
 
@@ -543,7 +542,7 @@ regnames<-c('Aleutians Is.', 'E. Bering Sea', 'Gulf of AK', 'Newfoundland', 'Sco
 	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
 #	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
 	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
-	outfile <- paste('figures/MarZone_allregs_goalsmetbymod_', runtype, projtype, '_', runname1out, '&', runname2out, '.pdf', sep='')
+	outfile <- paste('cmsp_figures/MarZone_allregs_goalsmetbymod_', runtype, projtype, '_', runname1out, '&', runname2out, '.pdf', sep='')
 		outfile
 	ylims <- c(0.3,1)
 
