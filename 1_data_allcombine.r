@@ -57,7 +57,7 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	rm(survdat, spp)
 
 	# Southeast US, comes from two surveys, SEAMAP (bottom trawl survey) and MARMAP (offshore trap survey)
-	# First SEAMAP trawl survey
+	# SEAMAP trawl survey
 	survcatch = read.csv('/Users/jim/Documents/Work/OceanAdapt/seus_catch.csv', stringsAsFactors=FALSE)
 	survhaul = read.csv('/Users/jim/Documents/Work/OceanAdapt/seus_haul.csv', stringsAsFactors=FALSE) # only needed for depth
 	survhaul <- unique(data.frame(EVENTNAME = survhaul$EVENTNAME, DEPTHSTART = survhaul$DEPTHSTART))
@@ -66,11 +66,16 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	seus = cbind(seus, STRATA = as.integer(str_sub(string = seus$STATIONCODE, start = 1, end = 2))) #Create STRATA column
 	seus = seus[seus$DEPTHZONE != "OUTER",] # Drop OUTER depth zone because it was only sampled for 10 years, and in specific seasons-areas
 	seus = merge(x=seus, y=seusstrata, all.x=TRUE, by='STRATA') #add STRATAHECTARE to main file 
-	# Second MARMAP trap survey
-	
-	
-	rm(seusstata, survcatch, survhaul, )
-	
+	# MARMAP trap survey
+	trapcatch = read.csv('/Users/jim/Documents/Work/Projections/Marmap/Data/Marmap_spp.csv', stringsAsFactors=FALSE)
+	traphaul = read.csv('/Users/jim/Documents/Work/Projections/Marmap/Data/Marmap_data.csv', stringsAsFactors=FALSE) # This file only needed for depth
+	trapcatch <- trapcatch[trapcatch$GEARCODE==324,] # Trip to CHEVRON TRAP, which is only gear with good spatial/temporal coverage
+	traphaul <- traphaul[traphaul$GEARCODE==324,]
+  traphaul <- traphaul[traphaul$DURATION > 49 & traphaul$DURATION < 151,] # Remove traps that soaked short or long duration
+  traphaul <- traphaul[!is.na(traphaul$DURATION),] # Remove some all NA rows
+  traphaul <- data.frame(EVENTNAME=traphaul$EVENTNAME, DEPTHSTART=traphaul$DEPTHSTART) # DEPTHSTART is all that is needed from this dataframe
+  seus.shelf <- merge(x=trapcatch, y=traphaul, all.y=T, by="EVENTNAME")
+	rm(seusstrata, survcatch, survhaul, trapcatch, traphaul)
 	
 	# West Coast Trienniel (1977-2004)
 	wctricatch = read.csv('../NorthAmerican_survey_data/AFSC_WestCoast/2011-12-08/CATCHWCTRIALLCOAST.csv')
@@ -227,6 +232,8 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	ebs$haulid = paste(formatC(ebs$VESSEL, width=3, flag=0), formatC(ebs$CRUISE, width=3, flag=0), formatC(ebs$HAUL, width=3, flag=0), sep='-')
 	goa$haulid = paste(formatC(goa$VESSEL, width=3, flag=0), formatC(goa$CRUISE, width=3, flag=0), formatC(goa$HAUL, width=3, flag=0), sep='-')
 	neus$haulid = paste(formatC(neus$CRUISE6, width=6, flag=0), formatC(neus$STATION, width=3, flag=0), formatC(neus$STRATUM, width=4, flag=0), sep='-') 
+	seus$haulid = seus$EVENTNAME
+	seus.shelf$haulid = seus.shelf$EVENTNAME
 	wctri$haulid = paste(formatC(wctri$VESSEL, width=3, flag=0), formatC(wctri$CRUISE, width=3, flag=0), formatC(wctri$HAUL, width=3, flag=0), sep='-')
 	wcann$haulid = wcann$Trawl.Id
 	gmex$haulid = paste(formatC(gmex$VESSEL, width=3, flag=0), formatC(gmex$CRUISE_NO, width=3, flag=0), formatC(gmex$P_STA_NO, width=5, flag=0, format='d'), sep='-')
@@ -241,7 +248,11 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	newf$year = newf$yearl + 1900 # l stands for local date/time
 	newf$year[newf$year<1950] = newf$year[newf$year<1950] + 100 # correct for 2000s
 	scot$year = as.numeric(substr(as.character(scot$MISSION), 4,7))
-
+  seus$date = as.Date(seus$DATE, "%m/%d/%Y")
+	seus <- cbind(seus, year = year(seus$date), month = month(seus$date)) # also made month column for seus in this step
+	seus.shelf$date = as.Date(seus.shelf$DATE, "%m/%d/%y")
+  seus.shelf <- cbind(seus.shelf, year = year(seus.shelf$date), month = month(seus.shelf$date)) # also made month column for seus.shelf in this step
+	
 # Extract month where needed
 	ai$month = as.numeric(unlist(strsplit(as.character(ai$DATETIME), split='/'))[seq(1,length=nrow(ai), by=3)])
 	ebs$month = as.numeric(unlist(strsplit(as.character(ebs$DATETIME), split='/'))[seq(1,length=nrow(ebs), by=3)])
@@ -303,7 +314,6 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	goa$BOT_TEMP[goa$BOT_TEMP==-9999] = NA
 	goa$SURF_TEMP[goa$SURF_TEMP==-9999] = NA
 
-
 	# The SST entries on Scotian Shelf in 2010 and 2011 appear suspect. There are very few (as opposed to >1000 in previous years) and are only 0 or 1. There are no entries in 2009.
 	scot$SURFACE_TEMPERATURE[scot$year %in% c(2009, 2010, 2011)] = NA
 
@@ -350,7 +360,7 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 #		if(sum(sgsl$month == i) >0) hist(sgsl$t_bottom[sgsl$month == i], col='grey', main='sgsl') else plot(0,0, col='white', bty='n', xaxt='n', yaxt='n', main='')
 #	}
 
-
+	
 # Trim out or fix speed and duration records, and other bad tows
 	gmex = gmex[gmex$MIN_FISH<=60 & gmex$MIN_FISH > 0 & !is.na(gmex$MIN_FISH),] # trim out tows of 0, >60, or unknown minutes
 	gmex$VESSEL_SPD[gmex$VESSEL_SPD==30] = 3 # fix typo according to Jeff Rester: 30 = 3	
@@ -359,7 +369,18 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	newf = newf[newf$duration<=60,]
 	scot = scot[scot$TYPE==1,] # 1 is normal tows
 	sgsl = sgsl[sgsl$expt %in% c(1,5),] # high quality tows: surveys and comparative tows
-
+	seus.shelf = seus.shelf[seus.shelf$year > 1989,] #Several papers trim out the first couple years of MARMAP chevron trap sampling
+  # EFFORT fixes for the the seamap survey
+	seus$EFFORT[seus$COLLECTIONNUMBER == 19910105] <- 1.71273
+	seus$EFFORT[seus$COLLECTIONNUMBER == 19910423] <- 0.50031
+	seus$EFFORT[seus$COLLECTIONNUMBER == 19950335] <- 0.9775
+	seus$EFFORT[seus$COLLECTIONNUMBER == 19990065] <- 0.53648
+	seus$EFFORT[seus$COLLECTIONNUMBER == 20010431] <- 0.25099
+	seus$EFFORT[seus$COLLECTIONNUMBER == 20070177] <- 0.99936
+	seus$EFFORT[seus$COLLECTIONNUMBER == 20110393] <- 1.65726
+	seus$EFFORT[seus$EVENTNAME == 2014325] <- 1.755
+	seus$EFFORT[seus$EVENTNAME == 1992219] <- 1.796247
+	
 # Add "strata" (define by lat, lon and depth bands) where needed
 	stratlatgrid = floor(wctri$START_LATITUDE)+0.5 # degree bins
 	stratdepthgrid = floor(wctri$BOTTOM_DEPTH/100)*100 + 50 # 100 m bins
@@ -373,8 +394,35 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	stratlongrid = floor(gmex$lon)+0.5 # degree bins
 	stratdepthgrid = floor(gmex$depth/100)*100 + 50 # 100 m bins
 	gmex$stratum = paste(stratlatgrid, stratlongrid, stratdepthgrid, sep='-')
+	
+	stratlatgrid = floor(seus.shelf$LATITUDESTART)+0.5 # degree bins
+	stratlongrid = floor(seus.shelf$LONGITUDESTART)+0.5 # degree bins
+	stratdepthgrid = floor(seus.shelf$DEPTHSTART/100)*100 + 50 # 100 m bins
+	seus.shelf$stratum = paste(stratlatgrid, stratlongrid, stratdepthgrid, sep='-')
 	rm(stratlatgrid, stratdepthgrid)
 
+# Fix some lat/lon data entry errors in seus
+	seus$LONGITUDESTART[seus$EVENTNAME == 1998467] <- -79.01
+	seus$LONGITUDESTART[seus$EVENTNAME == 2010233] <- -81.006
+	seus$LATITUDESTART[seus$EVENTNAME == 2014325] <- 34.616
+	
+# Correct more errors in seus with non-weighed species and also remove fish from the SCDNR long-line survey
+	seus$SPECIESTOTALWEIGHT <- replace(seus$SPECIESTOTALWEIGHT, seus$COLLECTIONNUMBER == 20010106 & seus$SPECIESCODE == 8713050104, 31.9) 
+	seus$SPECIESTOTALWEIGHT[is.na(seus$SPECIESTOTALWEIGHT) & seus$SPECIESCODE == 5802010101] <- 0
+	seus <- within(seus, SPECIESTOTALWEIGHT[SPECIESTOTALWEIGHT == 0 & SPECIESCODE == 5802010101] <- NUMBERTOTAL[SPECIESTOTALWEIGHT == 0 & SPECIESCODE == 5802010101]*1.9)
+	seus$SPECIESTOTALWEIGHT <- replace(seus$SPECIESTOTALWEIGHT, seus$COLLECTIONNUMBER == 19940236 & seus$SPECIESCODE == 9002050101, 204) 
+	seus$SPECIESTOTALWEIGHT <- replace(seus$SPECIESTOTALWEIGHT, seus$SPECIESTOTALWEIGHT == 0 & seus$SPECIESCODE == 9002040101, 46) 
+	seus <- seus[!is.na(seus$SPECIESTOTALWEIGHT),] 	#remove long line fish from dataset; these fish all have 'NA' for SPECIESTOTALWEIGHT
+
+# Create cpue column for seus; first must combine paired tows
+	# need to make sure everything has a unique scientific name; any columns with NA need to get not included in aggregate, and then readded, which is just the 2 temp columns.
+	seus.temps <- unique(data.frame(haulid = seus$haulid, bottemp = seus$TEMPBOTTOM, surftemp = seus$TEMPSURFACE))
+	seus <- aggregate(list(BIOMASS = seus$SPECIESTOTALWEIGHT), by=list(haulid = seus$haulid, stratum = seus$STRATA, stratumarea = seus$STRATAHECTARE, year = seus$year, lat = seus$LATITUDESTART, lon = seus$LONGITUDESTART, 
+	  depth = seus$DEPTHSTART, EFFORT = seus$EFFORT, spp = seus$SPECIESSCIENTIFICNAME), FUN=sum)
+	seus <- merge(x=seus, y=seus.temps, all.x=T, by="haulid")
+	seus$wtcpue <- seus$BIOMASS/(seus$EFFORT*2)#yields biomass (kg) per hectare for each 'spp' and 'haulid'; EFFORT is multiplied by 2 b/c it is always identical for each of the paired tows
+	rm(seus.temps)
+	
 # Fix column names
 	names(ai)[names(ai)=='YEAR'] = 'year'
 	names(ai)[names(ai)=='LATITUDE'] = 'lat'
@@ -414,6 +462,14 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	names(neus)[names(neus)=='DEPTH'] = 'depth'
 	names(neus)[names(neus)=='BOTTEMP'] = 'bottemp'
 	names(neus)[names(neus)=='SURFTEMP'] = 'surftemp'
+	
+	names(seus.shelf)[names(seus.shelf)=='SPECIESSCIENTIFICNAME'] = 'spp'
+	names(seus.shelf)[names(seus.shelf)=='SPECIESTOTALWEIGHT'] = 'wtcpue' # this assumes all trap catches are effort = 1. Another option is to use 'DURATION'
+	names(seus.shelf)[names(seus.shelf)=='TEMPSURFACE'] = 'surftemp'
+	names(seus.shelf)[names(seus.shelf)=='TEMPBOTTOM'] = 'bottemp'
+	names(seus.shelf)[names(seus.shelf)=='DEPTHSTART'] = 'depth'
+	names(seus.shelf)[names(seus.shelf)=='LATITUDESTART'] = 'lat'
+	names(seus.shelf)[names(seus.shelf)=='LONGITUDESTART'] = 'lon'
 	
 	names(wctri)[names(wctri)=='VESSEL'] = 'svvessel'
 	names(wctri)[names(wctri) == 'START_LATITUDE'] = 'lat'
@@ -477,7 +533,7 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 #		# sum(!duplicated(dupped$haulid)) # 26 (13 pairs of haulids)
 #	gmex = gmex[!(gmex$haulid %in% unique(dupped$haulid[grep('PORT', dupped$COMSTAT)])),] # remove the port haul (this is arbitrary, but seems to be right based on the notes associated with these hauls)
 
-# Removes rows without scientific names
+# Removes rows without scientific names or with unreliable IDs
 	ai = ai[ai$spp != '',]
 	ebs = ebs[ebs$spp != '',]
 	goa = goa[goa$spp != '',]
@@ -490,8 +546,9 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	newf = newf[!(newf$spp == '' | is.na(newf$spp)),]
 	newf = newf[!(newf$spp %in% c('EGGS, FISH(SPAWN)', 'EGGS, INVERTEBRATE', 'EGGS, SKATE CASES', 'EGGS, UNIDENTIFIED', 'OFFAL, OTHER', 'PLANT MATERIAL', 'SHELLS', 'STONE', 'UNIDENTIFIED FISH', 'UNIDENTIFIED MATERIAL')),]
 	scot = scot[!(scot$spp %in% c('FISH EGGS-UNIDENTIFIED', 'SOFT CORAL UNIDENTIFIED', 'UNID REMAINS,DIGESTED', 'UNID FISH AND INVERTEBRATES', 'UNID. FISH (LARVAE,JUVENILE AND ADULTS)', 'UNIDENTIFIED', 'UNIDENTIFIED A', 'UNIDENTIFIED B', 'UNIDENTIFIED C', 'UNIDENTIFIED D', 'UNIDENTIFIED E', 'RAJA EGGS', 'SHARK (NS)', 'BUCCINIDAE EGGS', 'EGGS UNID.', 'FINFISHES (NS)', 'FOREIGN ARTICLES,GARBAGE', 'HEMITRIPTERUS AMERICANUS, EGGS', 'MARINE INVERTEBRATA (NS)', 'MYOXOCEPHALUS EGGS', 'POLYCHAETA C.,SMALL', 'PURSE LITTLE SKATE', 'PURSE WINTER SKATE', 'COTTIDAE F. UNID.')),]
-	# nothing to remove in Southern Gulf of St. Lawrence
-
+	seus = seus[!(seus$spp %in% c('MISCELLANEOUS INVERTEBRATES', 'XANTHIDAE', 'MICROPANOPE NUTTINGI', 'MICROPANOPE SCULPTIPES', 'GLYPTOXANTHUS EROSUS', 'PSEUDOMEDAEUS AGASSIZII', 'ALGAE', 'DYSPANOPEUS SAYI')),]
+	# nothing to remove in Southern Gulf of St. Lawrence or seus.shelf
+ 
 # Adjust spp names for those cases where they've changed or where matching failed (GMex)
 	# first convert factors to strings so that we can modify them
 	i <- sapply(ai, is.factor); ai[i] <- lapply(ai[i], as.character)
@@ -525,6 +582,11 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	wcann$spp[wcann$spp %in% c('Lepidopsetta polyxystra', 'Lepidopsetta bilineata')] = 'Lepidopsetta sp.' # so that species match wctri
 	wcann$spp[wcann$spp %in% c('Bathyraja abyssicola', 'Bathyraja aleutica', 'Bathyraja kincaidii (formerly B. interrupta)', 'Bathyraja sp. ', 'Bathyraja trachura', 'Bathyraja parmifera', 'Bathyraja spinosissima')] = 'Bathyrajasp.'
 
+	seus$spp[seus$spp %in% c('ANCHOA HEPSETUS', 'ANCHOA MITCHILLI', 'ANCHOA CUBANA', 'ANCHOA LYOLEPIS', 'ENGRAULIS EURYSTOLE')] = 'ANCHOA'
+	seus$spp[seus$spp %in% c('LIBINIA DUBIA', 'LIBINIA EMARGINATA')] = 'LIBINIA'
+	
+	seus.shelf$spp[seus.shelf$spp %in% c('OPSANUS TAU', 'OPSANUS PARDUS')] = 'OPSANUS'
+	
 	i = gmex$GENUS_BGS == 'PELAGIA' & gmex$SPEC_BGS == 'NOCTUL'; gmex$spp[i] = 'PELAGIA NOCTILUCA'; gmex$BIO_BGS[i] = 618030201
 	i = gmex$GENUS_BGS == 'MURICAN' & gmex$SPEC_BGS == 'FULVEN'; gmex$spp[i] = 'MURICANTHUS FULVESCENS'; gmex$BIO_BGS[i] = 308011501
 	i = gmex$spp %in% c('APLYSIA BRASILIANA', 'APLYSIA WILLCOXI'); gmex$spp[i] = 'APLYSIA'
