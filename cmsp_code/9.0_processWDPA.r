@@ -29,6 +29,18 @@ clim = read.csv('data/climGrid.csv', row.names=1, stringsAsFactors=FALSE) # the 
 	clim$lon[clim$lon>180] = clim$lon[clim$lon>180] - 360 # convert lon to shp format (-180 to 180)
 	gridsz = 0.25 # grid size
 
+	# Trim to focal regions
+	regs <- c('AFSC_EBS', 'AFSC_Aleutians', 'AFSC_GOA', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'NEFSC_NEUSSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'DFO_NewfoundlandFall')
+		nrow(clim)
+	clim <- clim[clim$region %in% regs, ]
+		nrow(clim)
+
+	# trim out NA temperatures
+	clim <- clim[!is.na(clim$surftemp.clim.int) & !is.na(clim$bottemp.clim.int),]
+	
+	# sort by region
+	clim <- clim[order(clim$region),]
+
 # read in the LMEs
 wdpa = readShapePoly('data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp', proj4string = CRS('+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs'))
 	# plot(wdpa) # very slow
@@ -52,7 +64,7 @@ wdpa = readShapePoly('data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp',
 	#wdpa_merge = unionSpatialPolygons(wdpa, rep("wdpa", nrow(wdpa)), threshold=0.0001) # threshold avoids slivers of area<0.0001 # extremely slow (>3 min)
 		
 # Make the grid based on corner points
-	inds <- !duplicated(clim[,c('lat', 'lon')]) # clim has multiple entries per location for different seasons and regions
+	inds <- !duplicated(clim[,c('lat', 'lon')]) # clim has multiple entries per location for overlapping regions: this will pick just one alphabetically (since sorted by region name)
 	lats = clim$lat[inds]; length(lats); y = numeric(5*length(lats)) # all the Y coords, in order
 	# lower right, lower left, upper left, upper right, lower right
 	for(i in 1:length(lats)){ y[(5*(i-1)+1):(5*(i-1)+5)] = c(lats[i]-gridsz/2, lats[i]-gridsz/2, lats[i]+gridsz/2, lats[i]+gridsz/2, lats[i]-gridsz/2)}
@@ -151,13 +163,13 @@ load('data/wdpa_by_grid0.25_intersect.RData'); gridsz <- 0.25
 	# add in other wdpa metadata
 	wdpatomerge = wdpa
 	wdpatomerge@data <- cbind(wdpa@data, wdpapolyID = sapply(slot(wdpa, 'polygons'), slot, 'ID')) # add a column of polygon ID, to allow merging
-		intersect(names(wdpa.by.grid), names(wdpatomerge@data)) # wdpapolyID
+		intersect(names(wdpa.by.grid), names(wdpatomerge@data)) # wdpapolyID: good
 	wdpa.by.grid2 <- merge(wdpa.by.grid, wdpatomerge@data) # merges on wdpapolyID
 		dim(wdpa.by.grid2)
 		head(wdpa.by.grid2)
 
 	# add in grid cell metadata
-		intersect(names(wdpa.by.grid2), names(SPdata)) # gridpolyID
+		intersect(names(wdpa.by.grid2), names(SPdata)) # gridpolyID: good
 	wdpa.by.grid2 <- merge(wdpa.by.grid2, SPdata)
 			
 	# re-order
