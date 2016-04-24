@@ -1,14 +1,16 @@
 # basic summary statistics and plots of the BT and SST projections
 
-# This could probably be sped up by switching from data.frames to data.tables
+# This could be sped up by switching from data.frames to data.tables
 
 ## Set working directory
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
+	climgridfolder <- '../data/'
 	}
 if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	setwd('~/Documents/range_projections/')
 	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages (chron and ncdf4)
+	climgridfolder <- 'data/'
 	}
 # could add code for Lauren's working directory here
 
@@ -31,8 +33,46 @@ source('packet.panel.bycolumn.R') # so that I can plot across multiple pages
 
 
 
+#############################
+## Summarize projection data
+#############################
+load(paste(climgridfolder, 'climGrid_rcp', rcp, '.proj2.RData', sep='')) # loads clim
+
+## Average by year within regions
+	clim$bottemp.ave <- rowMeans(clim[, grep('bottemp.proj', names(clim))])
+	clim$surftemp.ave <- rowMeans(clim[, grep('surftemp.proj', names(clim))])
+
+	climbyregbyyr <- with(clim, aggregate(list(surftemp=surftemp.ave, bottemp=bottemp.ave), by=list(region=region, year=year), FUN=mean, na.rm=TRUE))
+		dim(climbyregbyyr)
+		xyplot(bottemp ~ year | region, data=climbyregbyyr)
+		xyplot(surftemp ~ year | region, data=climbyregbyyr)
+
+	# save
+	write.csv(climbyregbyyr, file=paste('data/climRegion_rcp', rcp, '.csv', sep=''))
+
+# Calculate mean increase in temperature
+	trend <- data.frame(region = sort(unique(climbyregbyyr$region)))
+	trend <- merge(trend, aggregate(list(yr_start=climbyregbyyr$year), by=list(region=climbyregbyyr$region), FUN=min))
+	trend <- merge(trend, aggregate(list(yr_end=climbyregbyyr$year), by=list(region=climbyregbyyr$region), FUN=max))
+	trend$b_surf <- NA
+	trend$b_bott <- NA
+	for(i in 1:nrow(trend)){
+		inds <- climbyregbyyr$region == trend$region[i]
+		mods <- lm(surftemp ~ year, data=climbyregbyyr[inds,])
+		modb <- lm(bottemp ~ year, data=climbyregbyyr[inds,])
+		trend$b_surf[i] <- coef(mods)[2]
+		trend$b_bott[i] <- coef(modb)[2]	
+	}
+
+	trend$delta_surf <- with(trend, b_surf * (yr_end-yr_start+1))
+	trend$delta_bott <- with(trend, b_bott * (yr_end-yr_start+1))
+
+	# save
+	write.csv(trend, file=paste('data/climTrendbyreg_rcp', rcp, '.csv', sep=''))
+
+
 ########################
-## Prep projection data
+## Reshape projection data
 ########################
 load(paste('data/climGrid_rcp', rcp, '.proj2.RData', sep='')) # loads clim
 
