@@ -3,6 +3,7 @@
 library(data.table) # much of this code could be sped up by converting to data.tables
 library(Hmisc)
 library(stringr)
+library(zoo)
 
 # useful function: acts like sum(na.rm=T) but returns NA if all are NA
 	sumna = function(x){
@@ -69,13 +70,14 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	# MARMAP trap survey
 	trapcatch = read.csv('/Users/jim/Documents/Work/Projections/Marmap/Data/Marmap_spp.csv', stringsAsFactors=FALSE)
 	traphaul = read.csv('/Users/jim/Documents/Work/Projections/Marmap/Data/Marmap_data.csv', stringsAsFactors=FALSE) # This file only needed for depth
-	trapcatch <- trapcatch[trapcatch$GEARCODE==324,] # Trip to CHEVRON TRAP, which is only gear with good spatial/temporal coverage
+	trapcatch <- trapcatch[trapcatch$GEARCODE==324,] # Trim to CHEVRON TRAP, which is only gear with good spatial/temporal coverage
 	traphaul <- traphaul[traphaul$GEARCODE==324,]
   traphaul <- traphaul[traphaul$DURATION > 49 & traphaul$DURATION < 151,] # Remove traps that soaked short or long duration
   traphaul <- traphaul[!is.na(traphaul$DURATION),] # Remove some all NA rows
   traphaul <- data.frame(EVENTNAME=traphaul$EVENTNAME, DEPTHSTART=traphaul$DEPTHSTART) # DEPTHSTART is all that is needed from this dataframe
   seus.shelf <- merge(x=trapcatch, y=traphaul, all.y=T, by="EVENTNAME")
-	rm(seusstrata, survcatch, survhaul, trapcatch, traphaul)
+  seus.shelf$SPECIESSCIENTIFICNAME[seus.shelf$SPECIESSCIENTIFICNAME == ""] <- "ZERO CATCH" # Gives 'zero catches' a name, rather than just a blank cell (this may not be necessary....)
+  rm(seusstrata, survcatch, survhaul, trapcatch, traphaul)
 	
 	# West Coast Trienniel (1977-2004)
 	wctricatch = read.csv('../NorthAmerican_survey_data/AFSC_WestCoast/2011-12-08/CATCHWCTRIALLCOAST.csv')
@@ -250,6 +252,9 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	scot$year = as.numeric(substr(as.character(scot$MISSION), 4,7))
   seus$date = as.Date(seus$DATE, "%m/%d/%Y")
 	seus <- cbind(seus, year = year(seus$date), month = month(seus$date)) # also made month column for seus in this step
+	seus$season <- as.yearqtr(seus$date) # make a 'season' column to distinguish the spring, summer, and fall surveys
+	seus$season <- factor(format(seus$season, "%q"), levels = 1:4, labels = c("winter", "spring", "summer", "fall")) # takes ~30 sec
+	seus$season[seus$month == 9] <- "fall" 	#Sept EVENTS (all late-sept.) were grouped with summer, should be fall
 	seus.shelf$date = as.Date(seus.shelf$DATE, "%m/%d/%y")
   seus.shelf <- cbind(seus.shelf, year = year(seus.shelf$date), month = month(seus.shelf$date)) # also made month column for seus.shelf in this step
 	
@@ -370,7 +375,9 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	scot = scot[scot$TYPE==1,] # 1 is normal tows
 	sgsl = sgsl[sgsl$expt %in% c(1,5),] # high quality tows: surveys and comparative tows
 	seus.shelf = seus.shelf[seus.shelf$year > 1989,] #Several papers trim out the first couple years of MARMAP chevron trap sampling
-  # EFFORT fixes for the the seamap survey
+  seus = seus[!(seus$year == 1989 & seus$season == "spring"),]
+
+	# EFFORT fixes for the the seamap survey
 	seus$EFFORT[seus$COLLECTIONNUMBER == 19910105] <- 1.71273
 	seus$EFFORT[seus$COLLECTIONNUMBER == 19910423] <- 0.50031
 	seus$EFFORT[seus$COLLECTIONNUMBER == 19950335] <- 0.9775
@@ -415,10 +422,10 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	seus <- seus[!is.na(seus$SPECIESTOTALWEIGHT),] 	#remove long line fish from dataset; these fish all have 'NA' for SPECIESTOTALWEIGHT
 
 # Create cpue column for seus; first must combine paired tows
-	# need to make sure everything has a unique scientific name; any columns with NA need to get not included in aggregate, and then readded, which is just the 2 temp columns.
+	# Any columns with NA need to not get included in aggregate, and then readded, which is just the 2 temp columns.
 	seus.temps <- unique(data.frame(haulid = seus$haulid, bottemp = seus$TEMPBOTTOM, surftemp = seus$TEMPSURFACE))
-	seus <- aggregate(list(BIOMASS = seus$SPECIESTOTALWEIGHT), by=list(haulid = seus$haulid, stratum = seus$STRATA, stratumarea = seus$STRATAHECTARE, year = seus$year, lat = seus$LATITUDESTART, lon = seus$LONGITUDESTART, 
-	  depth = seus$DEPTHSTART, EFFORT = seus$EFFORT, spp = seus$SPECIESSCIENTIFICNAME), FUN=sum)
+	seus <- aggregate(list(BIOMASS = seus$SPECIESTOTALWEIGHT), by=list(haulid = seus$haulid, stratum = seus$STRATA, stratumarea = seus$STRATAHECTARE, year = seus$year, month = seus$month, season = seus$season, 
+	  lat = seus$LATITUDESTART, lon = seus$LONGITUDESTART, depth = seus$DEPTHSTART, EFFORT = seus$EFFORT, spp = seus$SPECIESSCIENTIFICNAME), FUN=sum)
 	seus <- merge(x=seus, y=seus.temps, all.x=T, by="haulid")
 	seus$wtcpue <- seus$BIOMASS/(seus$EFFORT*2)#yields biomass (kg) per hectare for each 'spp' and 'haulid'; EFFORT is multiplied by 2 b/c it is always identical for each of the paired tows
 	rm(seus.temps)
@@ -586,7 +593,46 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	seus$spp[seus$spp %in% c('LIBINIA DUBIA', 'LIBINIA EMARGINATA')] = 'LIBINIA'
 	
 	seus.shelf$spp[seus.shelf$spp %in% c('OPSANUS TAU', 'OPSANUS PARDUS')] = 'OPSANUS'
-	
+	seus.shelf = seus.shelf[seus.shelf$EVENTNAME!="P05950003324" & seus.shelf$EVENTNAME!="P05951104324" & seus.shelf$EVENTNAME!="P05951111324" & seus.shelf$EVENTNAME!="P05951112324" & seus.shelf$EVENTNAME!="P05951113324" & seus.shelf$EVENTNAME!="P05951188324",] # Ambiguous data in these hauls, best to remove entirely
+	seus.shelf = seus.shelf[!(seus.shelf$NUMBERTOTAL==0 & seus.shelf$spp != "ZERO CATCH"),] # two rows that indicate black sea bass caught, but the rest of the data for the catch indicate they were not
+	# below calculates wtcpue for some spp with missing weight values (N = 250). These are based on regressions between number caught and weight for each species, or average weight per individual for species usually caught solo.
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "CENTROPRISTIS STRIATA"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "CENTROPRISTIS STRIATA"]*.23+.3)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "STENOTOMUS"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "STENOTOMUS"]*.09+.08)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "LAGODON RHOMBOIDES"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "LAGODON RHOMBOIDES"]*.1+.02)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "OPSANUS"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "OPSANUS"]*.72)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "DIPLODUS HOLBROOKII"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "DIPLODUS HOLBROOKII"]*.25)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "BALISTES CAPRISCUS"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "BALISTES CAPRISCUS"]*.82+.3)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "HAEMULON AUROLINEATUM"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "HAEMULON AUROLINEATUM"]*.13+.1)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "HAEMULON PLUMIERI"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "HAEMULON PLUMIERI"]*.35+.74)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "EPINEPHELUS MORIO"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "EPINEPHELUS MORIO"]*1.7+2.3)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "DIPLECTRUM FORMOSUM"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "DIPLECTRUM FORMOSUM"]*.2)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "SERIOLA DUMERILI"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "SERIOLA DUMERILI"]*5.2)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "MYCTEROPERCA MICROLEPIS"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "MYCTEROPERCA MICROLEPIS"]*4)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "MURAENA RETIFERA"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "MURAENA RETIFERA"]*1)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "GYMNOTHORAX VICINUS"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "GYMNOTHORAX VICINUS"]*1.7)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "GYMNOTHORAX MORINGA"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "GYMNOTHORAX MORINGA"]*1.1+.35)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "CHAETODON SEDENTARIUS"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "CHAETODON SEDENTARIUS"]*.1)
+	seus.shelf <- within(seus.shelf, wtcpue[is.na(wtcpue) & spp == "CENTROPRISTIS OCYURUS"] <- NUMBERTOTAL[is.na(wtcpue) & spp == "CENTROPRISTIS OCYURUS"]*.16+.01)
+	# Below is code used to derive the coefficients to estimate the missing weight levels above in seus.shelf
+	  # bsb <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="CENTROPRISTIS STRIATA",])
+	  # steno <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="STENOTOMUS",])
+	  # pin <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="LAGODON RHOMBOIDES",])
+	  # toad <- seus.shelf[seus.shelf$spp=="OPSANUS" & seus.shelf$NUMBERTOTAL==1,]
+	  # spotpin <- seus.shelf[seus.shelf$spp=="DIPLODUS HOLBROOKII" & seus.shelf$NUMBERTOTAL==1,]
+	  # trig <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="BALISTES CAPRISCUS",])
+	  # tom <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="HAEMULON AUROLINEATUM",])
+	  # wg <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="HAEMULON PLUMIERI",])
+	  # RED <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="EPINEPHELUS MORIO",])
+	  # SANDP <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="DIPLECTRUM FORMOSUM",])
+	  # AMBER <- seus.shelf[seus.shelf$spp=="SERIOLA DUMERILI" & seus.shelf$NUMBERTOTAL==1,]
+	  # GAG <- seus.shelf[seus.shelf$spp=="MYCTEROPERCA MICROLEPIS" & seus.shelf$NUMBERTOTAL==1,]
+	  # MOR <- seus.shelf[seus.shelf$spp=="MURAENA RETIFERA" & seus.shelf$NUMBERTOTAL==1,]
+	  # MOR2 <- seus.shelf[seus.shelf$spp=="GYMNOTHORAX VICINUS" & seus.shelf$NUMBERTOTAL==1,]
+	  # MOR3 <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="GYMNOTHORAX MORINGA",])
+	  # BUTFLY <- seus.shelf[seus.shelf$spp=="CHAETODON SEDENTARIUS" & seus.shelf$NUMBERTOTAL==1,]
+	  # BANK <- lm(wtcpue~NUMBERTOTAL, data=seus.shelf[seus.shelf$spp=="CENTROPRISTIS OCYURUS",])
+	  # rm(bsb, steno, pin, toad, spotpin, trig, tom, wg, RED, SANDP, AMBER, GAG, MOR, MOR2, MOR3, BUTFLY, BANK)
+	 
 	i = gmex$GENUS_BGS == 'PELAGIA' & gmex$SPEC_BGS == 'NOCTUL'; gmex$spp[i] = 'PELAGIA NOCTILUCA'; gmex$BIO_BGS[i] = 618030201
 	i = gmex$GENUS_BGS == 'MURICAN' & gmex$SPEC_BGS == 'FULVEN'; gmex$spp[i] = 'MURICANTHUS FULVESCENS'; gmex$BIO_BGS[i] = 308011501
 	i = gmex$spp %in% c('APLYSIA BRASILIANA', 'APLYSIA WILLCOXI'); gmex$spp[i] = 'APLYSIA'
@@ -640,6 +686,15 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 	neus2 = aggregate(list(wtcpue = neus$wtcpue), by = list(haulid = neus$haulid, season = neus$SEASON, year = neus$year, lat = neus$lat, lon = neus$lon, spp = neus$spp), FUN=sumna)
 		neus2 = merge(neus2, neus[!duplicated(neus$haulid) ,c('haulid', 'month', 'depth', 'stratum', 'bottemp', 'surftemp')], all.x=TRUE) # add depth, month, temperature
 
+	# ========================================================================================
+	# ========================================================================================
+		
+	seus2 = aggregate(list(wtcpue = seus$wtcpue), by = list(haulid = seus$haulid, season = seus$season, year = seus$year, lat = seus$lat, lon = seus$lon, spp = seus$spp), FUN=sumna)
+		seus2 = merge(seus2, seus[!duplicated(seus$haulid) ,c('haulid', 'month', 'depth', 'stratum', 'bottemp', 'surftemp')], all.x=TRUE) # add depth, month, temperature
+
+	seus.shelf2 = aggregate(list(wtcpue = seus.shelf$wtcpue), by = list(haulid = seus.shelf$haulid, year = seus.shelf$year, lat = seus.shelf$lat, lon = seus.shelf$lon, spp = seus.shelf$spp), FUN=sumna)
+		seus.shelf2 = merge(seus.shelf2, seus.shelf[!duplicated(seus.shelf$haulid) ,c('haulid', 'month', 'depth', 'stratum', 'bottemp', 'surftemp')], all.x=TRUE) # add depth, month, temperature
+		
 	wctri2 = aggregate(list(wtcpue = wctri$wtcpue), by = list(haulid = wctri$haulid, year = wctri$year, lat = wctri$lat, lon = wctri$lon, spp = wctri$spp), FUN=sumna)
 		wctri2 = merge(wctri2, wctri[!duplicated(wctri$haulid) ,c('haulid', 'month', 'depth', 'stratum', 'bottemp', 'surftemp')], all.x=TRUE) # add depth, month, temperature
 
@@ -658,11 +713,15 @@ setwd('/Users/mpinsky/Documents/Rutgers/Range projections')
 # Calculate a corrected longitude for Aleutians (all in western hemisphere coordinates)
 	ai2$lon[ai2$lon>0] = ai2$lon[ai2$lon>0] - 360	
 
-# Split spring and fall surveys (NEUS and Newfoundland)
+# Split spring and fall surveys (NEUS, SEUS, and Newfoundland)
 	# NEUS
 	neusfal2 = neus2[neus2$season == "FALL",]
 	neusspr2 = neus2[neus2$season == "SPRING",]
-
+	# SEUS 
+	seusspr2 = seus2[seus2$season == "spring",]
+	seussum2 = seus2[seus2$season == "summer",]
+	seusfal2 = seus2[seus2$season == "fall",]
+	
 	# Newfoundland
 	surveys = read.csv('../../Princeton/Trawl Data/DFO Newfoundland/Tables/surveys_table.csv') # split spring from fall
 	surveys2 = read.csv('../../Princeton/Trawl Data/DFO Newfoundland/Tables/surveys_table2009-2011.csv')
@@ -687,6 +746,10 @@ newffal2$yearsurv = newffal2$year
 newfspr2$yearsurv = newfspr2$year
 scot$yearsurv = scot$year
 sgsl$yearsurv = sgsl$year
+seusspr2$yearsurv = seusspr2$year
+seussum2$yearsurv = seussum2$year
+seusfal2$yearsurv = seusfal2$year
+seus.shelf2$yearsurv = seus.shelf2$year
 
 
 # Add a region column
@@ -702,6 +765,10 @@ newffal2$region = "DFO_NewfoundlandFall"
 newfspr2$region = "DFO_NewfoundlandSpring"
 scot$region = "DFO_ScotianShelf"
 sgsl$region = "DFO_SoGulf"
+seusspr2$region = "SCDNR_SEUSSpring"
+seussum2$region = "SCDNR_SEUSSummer"
+seusfal2$region = "SCDNR_SEUSFall"
+seus.shelf2$region = "SCDNR_SEUSReef"
 
 # Rearrange and trim columns
 nm = c('region', 'haulid', 'year', 'yearsurv', 'month', 'stratum', 'lat', 'lon', 'depth', 'surftemp', 'bottemp', 'spp', 'wtcpue')
@@ -717,10 +784,14 @@ newffal2 = newffal2[,nm]
 newfspr2 = newfspr2[,nm]
 scot2 = scot[,nm]
 sgsl2 = sgsl[,nm]
+seusspr2 = seusspr2[,nm]
+seussum2 = seussum2[,nm]
+seusfal2 = seusfal2[,nm]
+seus.shelf2 = seus.shelf2[,nm]
 
 # combine together
-dat = rbind(ai2, ebs2, goa2, neusfal2, neusspr2, wctri2, wcann2, gmex2, newffal2, newfspr2, scot2, sgsl2)
-
+dat = rbind(ai2, ebs2, goa2, neusfal2, neusspr2, wctri2, wcann2, gmex2, newffal2, newfspr2, scot2, sgsl2, seusspr2, seussum2, seusfal2, seus.shelf2)
+ 
 # examine
 # summary(dat)
 
