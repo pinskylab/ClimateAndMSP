@@ -446,7 +446,7 @@ wdpaturnbyMPAbymod <- unique(thesesppbyMPAbymod)
 # merge in mpa metadata
 setkey(wdpa, wdpapolyID)
 uwdpa <- unique(wdpa) # only the lines with unique mpas
-	dim(uwdpa) # 634
+	dim(uwdpa) # 634, 571 on 4/24/16
 setkey(uwdpa, wdpapolyID)
 setkey(wdpaturnbyMPAbymod, wdpapolyID,rcp,model)
 wdpaturnbyMPAbymod <- uwdpa[wdpaturnbyMPAbymod, .(wdpapolyID, region.one, network, area_wdpa, lat_min, lat_max, country, sub_loc, name, orig_name, desig, desig_eng, desig_type, iucn_cat, marine, rep_m_area, rep_area, status, status_yr, gov_type, mang_auth, int_crit, mang_plan, official, is_point, no_take, no_tk_area, metadata_i, action,rcp,model,nstart,nend,nlost,ngained,flost,fgained,fgainedalt,beta_sor)]
@@ -470,11 +470,8 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 
 # Fraction of species lost
 	# all MPAs
-	a <- wdpaturnbyMPAbymod[,mean(flost,na.rm=TRUE),by=c('rcp','model')]
-		a[,range(V1),by='rcp'] # 
-		a[,mean(V1),by='rcp'] # 
-#		a[,median(V1),by='rcp'] # 
-		a[,se(V1),by='rcp'] # 
+	wdpaturnbyMPAbymod[,.(mean=mean(flost,na.rm=TRUE)),by=c('rcp','model')][,.(mean=mean(mean), se=se(mean), min=min(mean), max=max(mean)),by='rcp'] # first mean is across MPAs within climate models
+
 #	wdpaturnbyMPAbymod[,sd(flost,na.rm=TRUE),by=c('rcp','model')]
 #	wdpaturnbyMPAbymod[,min(flost,na.rm=TRUE),by=c('rcp','model')]
 #	wdpaturnbyMPAbymod[,max(flost,na.rm=TRUE),by=c('rcp','model')]
@@ -487,12 +484,8 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 
 # Fraction of species gained (fraction of final community)
 	# all MPAs
-	a <- wdpaturnbyMPAbymod[,mean(fgainedalt,na.rm=TRUE),by=c('rcp','model')] # mean across MPAs within climate models
-		a[,range(V1),by='rcp'] 
-		a[,mean(V1),by='rcp'] 
-#		a[,median(V1),by='rcp'] 
-#		a[,sd(V1),by='rcp'] 
-		a[,se(V1),by='rcp'] # SE across climate models
+	wdpaturnbyMPAbymod[,.(mean=mean(fgainedalt,na.rm=TRUE)),by=c('rcp','model')][,.(mean=mean(mean), se=se(mean), min=min(mean), max=max(mean)),by='rcp'] # first mean is across MPAs within climate models
+
 #	b <- wdpaturnbyMPAbymod[,sd(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; b # sd across MPAs within climate models (rcp45 or rcp85)
 #		b[,mean(V1),by='rcp'] 
 
@@ -503,36 +496,41 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 
 # Similarity
 	# all MPAs
-	a <- wdpaturnbyMPAbymod[,mean(beta_sor,na.rm=TRUE),by=c('rcp','model')] # mean across MPAs within climate models
-		a[,range(V1),by='rcp'] 
-		a[,mean(V1),by='rcp'] 
-#		a[,sd(V1),by='rcp'] 
-		a[,se(V1),by='rcp'] # SE across climate models
+	wdpaturnbyMPAbymod[,.(mean=mean(beta_sor,na.rm=TRUE)),by=c('rcp','model')][,.(mean=mean(mean), se=se(mean), min=min(mean), max=max(mean)),by='rcp'] # first mean is across MPAs within climate models
 
 	# examine similarity by MPA size
 		wdpaturnbyMPAbymod[,cor.test(rep_area, beta_sor), by=c('rcp', 'model')]
-	
-		datsc <- as.data.frame(wdpaturnbyMPAbymod[rep_area != 0,.(rep_area, beta_sor, rcp, model)]) # remove zero area
-		datsc$lrep_area <- log(datsc$rep_area)
-		datsc$rcp <- as.factor(datsc$rcp)
-		datsc$model <- as.factor(datsc$model)
-#		datsc$lrep_areasc <- scale(datsc$lrep_area)
-		datsc$y <- asin(sqrt(datsc$beta_sor))
-		mod <- lmer(y ~ lrep_area + (1|rcp/model), data=datsc, REML=FALSE)
-		mod2 <- lmer(y ~ 1 + (1|rcp/model), data=datsc, REML=FALSE)
-		summary(mod)
-		Anova(mod)
-		anova(mod, mod2)
+		
+			# average across rcps and climate models
+		a <- wdpaturnbyMPAbymod[rep_area != 0,.(beta_sor=mean(beta_sor), abeta_sor=asin(sqrt(mean(beta_sor))), larea=log(mean(rep_area))),by=wdpapolyID]
+		mod <- a[,lm(abeta_sor ~ larea)]; summary(mod)
+		a[,plot(larea, beta_sor)] # plot all points
+		i <- order(a$larea); a[, lines(larea[i], sin(fitted(mod)[i])^2)] # add fit line
+		a[,range(exp(larea))]
+		range(sin(fitted(mod))^2)
+		
+			# mixed-effects model
+#		datsc <- as.data.frame(wdpaturnbyMPAbymod[rep_area != 0,.(rep_area, beta_sor, rcp, model)]) # remove zero area
+#		datsc$lrep_area <- log(datsc$rep_area)
+#		datsc$rcp <- as.factor(datsc$rcp)
+#		datsc$model <- as.factor(datsc$model)
+##		datsc$lrep_areasc <- scale(datsc$lrep_area)
+#		datsc$y <- asin(sqrt(datsc$beta_sor))
+#		mod <- lmer(y ~ lrep_area + (1|rcp/model), data=datsc, REML=FALSE)
+#		mod2 <- lmer(y ~ 1 + (1|rcp/model), data=datsc, REML=FALSE)
+#		summary(mod)
+#		Anova(mod)
+#		anova(mod, mod2)
 
-		plot(datsc$rep_area, datsc$beta_sor, log='x')
-		fit <- data.frame(rep_area=datsc$rep_area, lrep_area=datsc$lrep_area)
-		fit$y <- fixef(mod)[1] + fit$lrep_area * fixef(mod)[2]
-		fit$beta_sor <- sin(fit$y)^2
-		fit <- fit[order(fit$lrep_area),]
-		lines(fit$rep_area, fit$beta_sor, col='red')
-
-		head(fit)
-		tail(fit)
+#		plot(datsc$rep_area, datsc$beta_sor, log='x')
+#		fit <- data.frame(rep_area=datsc$rep_area, lrep_area=datsc$lrep_area)
+#		fit$y <- fixef(mod)[1] + fit$lrep_area * fixef(mod)[2]
+#		fit$beta_sor <- sin(fit$y)^2
+#		fit <- fit[order(fit$lrep_area),]
+#		lines(fit$rep_area, fit$beta_sor, col='red')
+#
+#		head(fit)
+#		tail(fit)
 
 	# examine similarity by MPA latitudinal range
 		datsc <- as.data.frame(wdpaturnbyMPAbymod[,.(lat_min, lat_max, beta_sor, rcp, model)])
@@ -618,6 +616,28 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 		turnbyreg[, cor.test(beta_sor, delta_bott), by=rcp]		
 		turnbyreg[, cor.test(beta_sor, delta_surf), by=rcp]		
 
+	# examine similarity by region change in temperature AND by lat rng
+		# average across climate models and rcps
+		turnbyMPA <- wdpaturnbyMPAbymod[,.(beta_sor=mean(beta_sor), latrng=mean(lat_max) - mean(lat_min), region=unique(region.one)),by=.(wdpapolyID)]
+		
+		# average temp trends across rcps
+		trendave <- trend[,.(delta_surf=mean(delta_surf), delta_bott=mean(delta_bott)), by=region]
+		
+		# merge in regional temperature information
+		setkey(trendave, region)
+		setkey(turnbyMPA, region)
+		turnbyMPA <- trendave[turnbyMPA] # merge
+		
+		# linear model
+		mod <- turnbyMPA[, lm(asin(sqrt(beta_sor)) ~ latrng*delta_bott)]
+		summary(mod)
+
+		mod <- turnbyMPA[, lm(asin(sqrt(beta_sor)) ~ latrng*delta_surf)]
+		mod2 <- turnbyMPA[, lm(asin(sqrt(beta_sor)) ~ latrng+delta_surf)]
+		summary(mod)
+		summary(mod2)
+		anova(mod, mod2)
+		AIC(mod, mod2)
 
 # Plot of fraction species lost as a density across MPAs within each climate model
 	inds <- expand.grid(rcp=unique(wdpaturnbyMPAbymod$rcp), model=unique(wdpaturnbyMPAbymod$model))
@@ -670,7 +690,7 @@ wdpanets <- wdpa[!is.na(network),] # trim out non-network rows
 setkey(wdpanets, lat, lon)
 setkey(thesesppbymod, lat, lon)
 thesesppbymodnet <- wdpanets[thesesppbymod,.(sppocean, period, rcp, model, pres, network, lat, lon), allow.cartesian=TRUE, nomatch=0] # datatable join, using the keys set in each dt. the order specifies to keep all rows of thesesppbymod. allow.cartesian is needed because the result is larger than either parent. drop locations not in a network.
-	dim(thesesppbymodnet) # 2,637,693? 5,816,336
+	dim(thesesppbymodnet) # 2,637,693? 5,816,336, now 8995646 (4/24/2016)
 	
 # summarize by unique species in each period in each MPA in each RCP in each model (pres or not)
 thesesppbynetbymod <- thesesppbymodnet[,max(pres),by="sppocean,period,network,rcp,model"] # DT aggregate function
@@ -710,7 +730,7 @@ write.csv(wdpaturnbynetbymod, paste('data/wdpaturnbynetbymod_', runtype, projtyp
 
 ###############################
 # Examine change within MPA networks
-# Across all models in the ensemble
+# Across each model in the ensemble
 ##############################
 wdpaturnbynetbymod <- as.data.table(read.csv(paste('data/wdpaturnbynetbymod_', runtype, projtype, '_rcp', rcp, '&', otherrcp, '.csv', sep=''), row.names=1)) # network results
 wdpaturnbyMPAbymod <- as.data.table(read.csv(paste('data/wdpaturnbyMPAbymod_', runtype, projtype, '_rcp', rcp, '&', otherrcp, '.csv', sep=''), row.names=1)) # individual MPA results
