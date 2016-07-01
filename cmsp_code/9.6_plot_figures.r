@@ -9,6 +9,9 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages (chron and ncdf4)
 	}
 # could add code for Lauren's working directory here
+if(Sys.info()["user"] == "lauren"){
+	setwd('~/backup/NatCap/proj_ranges/')
+	}
 
 #####################
 ## Useful functions
@@ -87,14 +90,14 @@ clim2$lon[clim2$lon>180] <- clim2$lon[clim2$lon>180] - 360
 	colfun <- colorRamp(colors = c('blue', 'white', 'red'))
 	
 	# quartz(width=8.7/2.54,height=6/2.54)
-	pdf(width=8.7/2.54,height=6/2.54, file=paste('cmsp_figures/study_regions_w_BT.pdf', sep=''))
+	pdf(width=8.7/2.54,height=6/2.54, file=paste('cmsp_figures/study_regions_w_BT_HiRes.pdf', sep=''))
 	par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.15, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
 	layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
 
 	# Add continent-scale map
 	with(clim[!is.na(clim$bottemp.clim.int),], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=0.1, xlab='', ylab='', main='', xaxt='n', xlim=c(170,320)))
 	axis(1, mgp=c(1.2, 0.02, 0), at=c(200,250,300), labels=c(-160, -110, -60))
-	map('world2Hires', add=TRUE, xlim=c(170,320), col=bcol, lwd=0.2)
+	map('world2Hires', add=TRUE, xlim=c(170,320), col=bcol, lwd=0.2, resolution=0)
 	addtemps(clim$bottemp.clim.int[!is.na(clim$bottemp.clim.int)], 'left')
 
 	# Add each region
@@ -103,14 +106,15 @@ clim2$lon[clim2$lon>180] <- clim2$lon[clim2$lon>180] - 360
 		if(regs[i] =='AFSC_Aleutians'){
 			with(clim[inds,], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=cexs[i], xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1))
 			axis(1, mgp=c(1.2, 0.02, 0), at=seq(170,195,by=5), labels=c('170', '', '180', '', '-170', ''))
-			mymap <- map('world2Hires', plot=FALSE, xlim=xlims[[i]])
-			mymap$x[mymap$x > xlims[[i]][2] | mymap$x < xlims[[i]][1]] <- NA
-			polygon(mymap, col=bcol, border=NA)
+			map('world2', add=T, col=bcol, fill=TRUE, border=FALSE, resolution=0) #chokes on hi-res for AI
+			# mymap <- map('world2Hires', plot=FALSE, xlim=xlims[[i]], resolution=0) 
+			# mymap$x[mymap$x > xlims[[i]][2] | mymap$x < xlims[[i]][1]] <- NA
+			# polygon(mymap, col=bcol, border=NA)
 			addtemps(clim$bottemp.clim.int[inds], pos[i])
 		}else{
 			with(clim2[inds,], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=cexs[i], xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1))
 			axis(1, mgp=c(1.2, 0.02, 0))
-			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE)
+			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0)
 			addtemps(clim$bottemp.clim.int[inds], pos[i], yfrac[i])
 		}
 	}
