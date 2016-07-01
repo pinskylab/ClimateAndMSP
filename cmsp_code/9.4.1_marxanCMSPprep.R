@@ -122,7 +122,7 @@ if(!dir.exists(outputfolder1)){
 		sppstokeep <- merge(sppstokeep, nspps)
 		summary(sppstokeep$nspp) #
 
-		sppstokeep <- sppstokeep[sppstokeep$ngrid> (nrow(pus)*0.05),] # trim to species found in at least 10% of grids
+		sppstokeep <- sppstokeep[sppstokeep$ngrid> (nrow(pus)*0.05),] # trim to species found in at least 5% of grids
 
 		length(unique(sppstokeep$sppocean)) # 67 (NEUS), 126 (EBS), 70 (Newf), 115 (WC), 140 (gmex), 48 (scot), 42 (sgulf), 115 (goa), 46 (ai)
 

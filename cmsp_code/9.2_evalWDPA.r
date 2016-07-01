@@ -470,7 +470,16 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 
 # Fraction of species lost
 	# all MPAs
-	wdpaturnbyMPAbymod[,.(mean=mean(flost,na.rm=TRUE)),by=c('rcp','model')][,.(mean=mean(mean), se=se(mean), min=min(mean), max=max(mean)),by='rcp'] # first mean is across MPAs within climate models
+	wdpaturnbyMPAbymod[,.(mean=mean(flost,na.rm=TRUE)),by=c('rcp','model')][,.(mean=mean(mean), se=se(mean), min=min(mean), max=max(mean)),by='rcp'] # first mean is across MPAs within climate models, then average across climate models
+
+	wdpaturnbyMPAbymod[,.(mean=mean(flost,na.rm=TRUE)),by=c('rcp','model','region.one')][,.(mean=mean(mean), se=se(mean), min=min(mean), max=max(mean)),by=c('rcp','region.one')] # first mean is across MPAs within climate models, then average within regions
+
+	mod<- wdpaturnbyMPAbymod[,.(mean=mean(flost,na.rm=TRUE)),by=c('model','region.one')][,lm(mean~region.one-1)] # first mean is across MPAs within climate models within regions, then do an anova
+		summary(mod)
+		length(mod$fitted.values) # number of data points
+
+	mod<- wdpaturnbyMPAbymod[,.(mean=mean(flost,na.rm=TRUE)),by=c('model','region.one')][,kruskal.test(x=mean, g=region.one)] # first mean is across MPAs within climate models within regions, then do a non-parametric Kruskal-Wallis Rank Sum Test
+		mod
 
 #	wdpaturnbyMPAbymod[,sd(flost,na.rm=TRUE),by=c('rcp','model')]
 #	wdpaturnbyMPAbymod[,min(flost,na.rm=TRUE),by=c('rcp','model')]
@@ -485,6 +494,15 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 # Fraction of species gained (fraction of final community)
 	# all MPAs
 	wdpaturnbyMPAbymod[,.(mean=mean(fgainedalt,na.rm=TRUE)),by=c('rcp','model')][,.(mean=mean(mean), se=se(mean), min=min(mean), max=max(mean)),by='rcp'] # first mean is across MPAs within climate models
+
+	wdpaturnbyMPAbymod[,.(mean=mean(fgainedalt,na.rm=TRUE)),by=c('rcp','model','region.one')][,.(mean=mean(mean), se=se(mean), min=min(mean), max=max(mean)),by=c('rcp','region.one')] # first mean is across MPAs within climate models, then average within regions
+
+	mod<- wdpaturnbyMPAbymod[,.(mean=mean(fgainedalt,na.rm=TRUE)),by=c('model','region.one')][,lm(mean~region.one-1)] # first mean is across MPAs within climate models within regions, then do an anova
+		summary(mod)
+		length(mod$fitted.values) # number of data points
+
+	mod<- wdpaturnbyMPAbymod[,.(mean=mean(fgainedalt,na.rm=TRUE)),by=c('model','region.one')][,kruskal.test(x=mean, g=region.one)] # first mean is across MPAs within climate models within regions, then do a non-parametric Kruskal-Wallis Rank Sum Test
+		mod
 
 #	b <- wdpaturnbyMPAbymod[,sd(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; b # sd across MPAs within climate models (rcp45 or rcp85)
 #		b[,mean(V1),by='rcp'] 
@@ -633,7 +651,7 @@ sum(ntk[wdpaturnbyMPAbymod$rcp==rcp & wdpaturnbyMPAbymod$model==1]) # 50 (43 in 
 		summary(mod)
 
 		mod <- turnbyMPA[, lm(asin(sqrt(beta_sor)) ~ latrng*delta_surf)]
-		mod2 <- turnbyMPA[, lm(asin(sqrt(beta_sor)) ~ latrng+delta_surf)]
+		mod2 <- turnbyMPA[, lm(asin(sqrt(beta_sor)) ~ latrng+delta_surf)] # used this in the paper
 		summary(mod)
 		summary(mod2)
 		anova(mod, mod2)

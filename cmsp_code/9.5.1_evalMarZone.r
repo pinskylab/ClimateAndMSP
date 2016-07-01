@@ -64,6 +64,22 @@ require(RColorBrewer)
 require(data.table)
 
 
+###############################################
+# Make table to fishery species in each region
+###############################################
+fsppsused <- data.frame(region=character(0), spp=character(0))
+
+for(i in 1:length(myregs)){
+	spec <- read.csv(paste(inputfolder1s[i], '/spec.dat', sep=''))
+	targ <- read.csv(paste(inputfolder1s[i], '/zonetarget.dat', sep=''))
+	
+	temp <- data.frame(region=myregs[i], spp=spec$name[spec$id %in% targ$speciesid[targ$zoneid==3]])
+	
+	fsppsused <- rbind(fsppsused, temp)
+}
+
+write.csv(fsppsused, file='cmsp_data/fisheryspps_used.csv')
+
 #######################################################
 # Read in results and simple prep
 #######################################################
@@ -496,19 +512,66 @@ write.csv(goalsmetbymod1out, file=paste('output/goalsmetbymod_', runtype, projty
 write.csv(goalsmetbymod2out, file=paste('output/goalsmetbymod_', runtype, projtype, '_', runname2out, '.csv', sep=''))
 
 
-#######################################################
-# Compare and plot the planning approaches against all models
-#######################################################
-goalsmetbymod1out <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname1out, '.csv', sep=''))
-goalsmetbymod2out <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname2out, '.csv', sep=''))
+######################################################################
+# Compare and plot the planning approaches against all climate models
+######################################################################
+goalsmetbymod1out <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname1out, '.csv', sep=''), row.names=1)
+goalsmetbymod2out <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname2out, '.csv', sep=''), row.names=1)
+
 
 myregs <- c('AFSC_Aleutians', 'AFSC_EBS', 'AFSC_GOA', 'DFO_NewfoundlandFall', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSSpring', 'SEFSC_GOMex')
 mods <- sort(unique(goalsmetbymod1out$model))
 rcps <- sort(unique(goalsmetbymod1out$rcp))
 regnames<-c('Aleutians Is.', 'E. Bering Sea', 'Gulf of AK', 'Newfoundland', 'Scotian Shelf', 'S. Gulf of St. Lawrence', 'Northeast US')
 
-# compare goals met
-	t.test(goalsmetbymod1$nmet[goalsmetbymod1$period=='2081-2100'], goalsmetbymod2$nmet[goalsmetbymod2$period=='2081-2100'])
+# add plan identifier
+goalsmetbymod1out$plan <- 'histonly'
+goalsmetbymod2out$plan <- '2per'
+
+
+# compare goals met across plans and time periods
+	goalmetbymodag <- with(rbind(goalsmetbymod1out, goalsmetbymod2out), aggregate(list(pmet=pmet), by=list(plan=plan, model=model, rcp=rcp, period=period), FUN=mean))
+	with(goalmetbymodag, aggregate(list(ave_goals=pmet), by=list(plan=plan, period=period), FUN=mean))
+	with(goalmetbymodag, aggregate(list(ave_goals=pmet), by=list(plan=plan, period=period), FUN=se))
+	with(goalmetbymodag, aggregate(list(ave_goals=pmet), by=list(plan=plan, period=period), FUN=length))
+
+
+# test whether histonly meets significantly fewer goals than 2per
+	all(goalsmetbymod1out$model == goalsmetbymod2out$model & goalsmetbymod1out$period == goalsmetbymod2out$period & goalsmetbymod1out$rcp == goalsmetbymod2out$rcp) # same order?
+
+	# simple t-test on number met (pseudoreplicates within regions)
+	t.test(goalsmetbymod1out$nmet[goalsmetbymod1out$period=='2081-2100'], goalsmetbymod2out$nmet[goalsmetbymod2out$period=='2081-2100'])
+
+	# simple t-test on proportions (should use logistic) (also pseudoreplicates within regions)
+	t.test(goalsmetbymod1out$pmet[goalsmetbymod1out$period=='2081-2100'], goalsmetbymod2out$pmet[goalsmetbymod2out$period=='2081-2100'], paired=FALSE)
+
+	# GLMM model (since proportion data) on 2006-2020
+	require(lme4)
+	require(car)
+	goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
+	mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ plan + (1|region/rcp/model), data=goalsmetbymod, family='binomial', subset=goalsmetbymod$period=='2006-2020')
+	summary(mod)
+	Anova(mod)
+
+	# GLMM model (since proportion data) on 2041-2060
+	require(lme4)
+	require(car)
+	goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
+	mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ plan + (1|region/rcp/model), data=goalsmetbymod, family='binomial', subset=goalsmetbymod$period=='2041-2060')
+	summary(mod)
+	Anova(mod)
+
+	# GLMM model (since proportion data) on 2081-2100
+	goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
+	mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ plan + (1|region/rcp/model), data=goalsmetbymod, family='binomial', subset=goalsmetbymod$period=='2081-2100')
+	summary(mod)
+	Anova(mod)
+
+	# GLMM model (since proportion data) across all time periods
+	goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
+	mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ plan + (1|region/rcp/model/period), data=goalsmetbymod, family='binomial')
+	summary(mod)
+	Anova(mod)
 
 
 # plot %goals met (solution #1)
@@ -579,3 +642,18 @@ regnames<-c('Aleutians Is.', 'E. Bering Sea', 'Gulf of AK', 'Newfoundland', 'Sco
 	mtext(side=2,text='Fraction goals met',line=0.3, outer=TRUE)
 	
 	dev.off()
+	
+	
+## probability of < 80% goals met by region, plan, and time period
+	# calcs
+	u80func <- function(x) return(sum(x<0.8)/length(x))	
+	u80 <- with(goalsmetbymod, aggregate(list(u80=pmet), by=list(region=region, period=period, plan=plan), FUN=u80func))
+
+	# examine
+	a<-aggregate(list(max_u80=u80$u80), by=list(region=u80$region, plan=u80$plan), FUN=max) # max probability of being under 80% of goals met
+		mean(a$max_u80[a$plan=='2per'])
+		mean(a$max_u80[a$plan=='histonly'])
+	
+	# plot
+	require(lattice)
+	xyplot(u80 ~ period | region, data=u80, groups=plan, type='l')
