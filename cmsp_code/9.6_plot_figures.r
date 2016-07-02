@@ -97,7 +97,7 @@ clim2$lon[clim2$lon>180] <- clim2$lon[clim2$lon>180] - 360
 	# Add continent-scale map
 	with(clim[!is.na(clim$bottemp.clim.int),], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=0.1, xlab='', ylab='', main='', xaxt='n', xlim=c(170,320)))
 	axis(1, mgp=c(1.2, 0.02, 0), at=c(200,250,300), labels=c(-160, -110, -60))
-	map('world2Hires', add=TRUE, xlim=c(170,320), col=bcol, lwd=0.2, resolution=0)
+	map('world2Hires', add=TRUE, xlim=c(170,320), col=bcol, lwd=0.2, resolution=0, fill=FALSE, wrap=TRUE) # annoying that turning fill=TRUE also draw big horizontal lines across the map
 	addtemps(clim$bottemp.clim.int[!is.na(clim$bottemp.clim.int)], 'left')
 
 	# Add each region
@@ -106,10 +106,9 @@ clim2$lon[clim2$lon>180] <- clim2$lon[clim2$lon>180] - 360
 		if(regs[i] =='AFSC_Aleutians'){
 			with(clim[inds,], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=cexs[i], xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1))
 			axis(1, mgp=c(1.2, 0.02, 0), at=seq(170,195,by=5), labels=c('170', '', '180', '', '-170', ''))
-			map('world2', add=T, col=bcol, fill=TRUE, border=FALSE, resolution=0) #chokes on hi-res for AI
-			# mymap <- map('world2Hires', plot=FALSE, xlim=xlims[[i]], resolution=0) 
-			# mymap$x[mymap$x > xlims[[i]][2] | mymap$x < xlims[[i]][1]] <- NA
-			# polygon(mymap, col=bcol, border=NA)
+			map('world2Hires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0, xlim=xlims[[i]], wrap=TRUE, ylim=c(60,70)) # only plot the upper part, since strange lines draw horizontally if we draw lower down
+			mymap <- map('world2Hires', plot=FALSE, resolution=0, xlim=xlims[[i]], ylim=c(40,60)) # draw in the islands separately. Can't do this for the whole plot because it plots Alaska and Russia inside out (colors outside the polygons)
+			polygon(mymap, col=bcol, border=NA)
 			addtemps(clim$bottemp.clim.int[inds], pos[i])
 		}else{
 			with(clim2[inds,], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=cexs[i], xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1))
