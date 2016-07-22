@@ -152,8 +152,8 @@ means.net <- with(wdpaturnbynetbymod, aggregate(list(flost=flost, fgainedalt=fga
 means.net.indiv <- with(wdpaturnbyMPAbymod[!is.na(wdpaturnbyMPAbymod$network),], aggregate(list(flost=flost, fgainedalt=fgainedalt, beta_sor=beta_sor), by=list(rcp=rcp, model=model), FUN=mean, na.rm=TRUE)) # mean 
 
 # combine network and individual MPA results
-means.net$type <- 'Net'
-means.net.indiv$type <- 'Ind'
+means.net$type <- 'Netwk'
+means.net.indiv$type <- 'Indiv'
 means.net <- rbind(means.net, means.net.indiv)
 
 	# means and SE
@@ -201,9 +201,9 @@ means.net.acrossmods <- with(wdpaturnbynetbymod, aggregate(list(flost=flost, fga
 	beanplot(beta_sor ~ rcp+type, data=means.net, what=c(0,1,1,0), at=c(5,6), side='both', col=cols, border=NA, wd=0.1, cut=0.01, add=TRUE) #similarity
 	mtext(side=3, text='d)', adj=0.05, line=-1, las=1, cex=0.7)
 
-	mtext(side=1, text='Lost', adj=0.12, line=1.4, las=1, cex=0.7)
-	mtext(side=1, text='Gained', adj=0.5, line=1.4, las=1, cex=0.7)
-	mtext(side=1, text='Sim.', adj=0.9, line=1.4, las=1, cex=0.7)
+	mtext(side=1, text='Lost', adj=0.12, line=2.1, las=1, cex=0.7)
+	mtext(side=1, text='Gained', adj=0.5, line=2.1, las=1, cex=0.7)
+	mtext(side=1, text='Sim.', adj=0.9, line=2.1, las=1, cex=0.7)
 	
 	dev.off()
 	
@@ -241,21 +241,23 @@ rcps <- sort(unique(goalsmetbymod1out$rcp))
 
 	
 # plot %goals met (solution #1 and #2)
-	colmat <- t(col2rgb(brewer.pal(6, 'RdBu'))) # dark red for histonly average, medium red for rcp85, and light red for rcp 45. dark blue for 2per average, medium blue for rcp85, and light blue for rcp45.
+	colmat <- t(col2rgb(brewer.pal(6, 'PuOr'))) # dark red for histonly average, medium red for rcp85, and light red for rcp 45. dark blue for 2per average, medium blue for rcp85, and light blue for rcp45.
 	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
 	yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 	xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
-	outfile <- paste('cmsp_figures/MarZone_allregs_goalsmetbymod_forfigure.pdf')
+#	outfile <- paste('cmsp_figures/MarZone_allregs_goalsmetbymod_forfigure_w2006.pdf') # with 2006,1
+	outfile <- paste('cmsp_figures/MarZone_allregs_goalsmetbymod_forfigure.pdf') # without
 		outfile
 	ylims <- c(0.3,1)
 
 	# quartz(width=8.7/2.54, height=8.7/2.54)
 	pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
-	par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, tcl=-0.3, mgp=c(2,0.7,0))
+	par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.ax=0.6, tcl=-0.3, mgp=c(2,0.7,0))
 
 	for(i in 1:length(myregs)){ # for each region
-		inds <- goalsmetbymod1out$model == mods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i]
-		plot(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], xlab='', ylab='', ylim=ylims, type='l', pch=16, las=1, col=cols[3], main=regnames[i], yaxt='n', xaxt='n')
+		inds <- goalsmetbymod1out$model == mods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i] & !(goalsmetbymod1out$period == '2006-2020')
+#		plot(c(2006, goalsmetbymod1out$mid[inds]), c(1, goalsmetbymod1out$pmet[inds]), xlab='', ylab='', ylim=ylims, xlim=c(2020,2090), type='l', pch=16, las=1, col=cols[3], main=regnames[i], yaxt='n', xaxt='n')  # with 2006,1
+		plot(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], xlab='', ylab='', ylim=ylims, xlim=c(2020,2090), type='l', pch=16, las=1, col=cols[3], main=regnames[i], yaxt='n', xaxt='n') # without
 		
 		if(yaxts[i]=='s'){
 			axis(2, mgp=c(2,0.6,0))
@@ -273,24 +275,31 @@ rcps <- sort(unique(goalsmetbymod1out$rcp))
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
 				if(!(k==1 & j==1)){
-					inds <- goalsmetbymod1out$model == mods[k] & goalsmetbymod1out$rcp == rcps[j] & goalsmetbymod1out$region==myregs[i]
+					inds <- goalsmetbymod1out$model == mods[k] & goalsmetbymod1out$rcp == rcps[j] & goalsmetbymod1out$region==myregs[i] & !(goalsmetbymod1out$period == '2006-2020')
+#					points(c(2006, goalsmetbymod1out$mid[inds]), c(1,goalsmetbymod1out$pmet[inds]), type='l', pch=16, col=cols[4-j]) # with 2006,1
 					points(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], type='l', pch=16, col=cols[4-j])
 				}
 			}
 		}
-		inds <- goalsmetbymod1out$region==myregs[i]
-		ensmean <- aggregate(list(nmet=goalsmetbymod1out$nmet[inds], pmet=goalsmetbymod1out$pmet[inds]), by=list(mid=goalsmetbymod1out$mid[inds]), FUN=mean)
-		lines(ensmean$mid, ensmean$pmet, col=cols[1], lwd=2)
 
 		# plot 2per
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
-				inds <- goalsmetbymod2out$model == mods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]
-				points(goalsmetbymod2out$mid[inds], goalsmetbymod2out$pmet[inds], type='l', pch=16, col=cols[3+j])
+				inds <- goalsmetbymod2out$model == mods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]  & !(goalsmetbymod2out$period == '2006-2020')
+#				points(c(2006, goalsmetbymod2out$mid[inds]), c(1, goalsmetbymod2out$pmet[inds]), type='l', pch=16, col=cols[3+j]) # with 2006,1
+				points(goalsmetbymod2out$mid[inds], goalsmetbymod2out$pmet[inds], type='l', pch=16, col=cols[3+j]) # without
 			}	
 		}
-		inds <- goalsmetbymod2out$region==myregs[i]
+
+		# average lines
+		inds <- goalsmetbymod1out$region==myregs[i] & !(goalsmetbymod1out$period == '2006-2020')
+		ensmean <- aggregate(list(nmet=goalsmetbymod1out$nmet[inds], pmet=goalsmetbymod1out$pmet[inds]), by=list(mid=goalsmetbymod1out$mid[inds]), FUN=mean)
+#		lines(c(2006, ensmean$mid), c(1, ensmean$pmet), col=cols[1], lwd=2) # with 2006,1
+		lines(ensmean$mid, ensmean$pmet, col=cols[1], lwd=2)
+
+		inds <- goalsmetbymod2out$region==myregs[i] & !(goalsmetbymod2out$period == '2006-2020')
 		ensmean2 <- aggregate(list(nmet=goalsmetbymod2out$nmet[inds], pmet=goalsmetbymod2out$pmet[inds]), by=list(mid=goalsmetbymod2out$mid[inds]), FUN=mean)
+#		lines(c(2006, ensmean2$mid), c(1, ensmean2$pmet), col=cols[6], lwd=2) # with 2006,1
 		lines(ensmean2$mid, ensmean2$pmet, col=cols[6], lwd=2)
 	}
 	
@@ -336,7 +345,7 @@ sum(a$nchange)/sum(c$ntot)
 # Make matrix of proportion in each zone in each region, for barplot
 mathist <- matrix(rep(NA,4*length(runname1s)), ncol=length(runname1s))
 colnames(mathist) <- sapply(strsplit(runname1s, split='_'), '[[', 2) # note: [[ is to index into the list
-rownames(mathist) <- 1:4
+rownames(mathist) <- c('free', 'conservation', 'fishery', 'energy')
 mat2per <- mathist
 mathistraw <- mathist
 mat2perraw <- mathist
@@ -381,3 +390,11 @@ legend(x=28.5, y=1, fill=cols[4:1], legend=c('Energy', 'Fishing', 'Conservation'
 legend(x=27, y=1, fill=cols[8:5], legend=rep("",4), cex=0.5, bty='n')
 
 dev.off()
+
+# make a table instead
+round(mathist[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')],2)
+
+round(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')],2)
+
+round(rowMeans(mathist[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')]),2)
+round(rowMeans(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')]),2)
