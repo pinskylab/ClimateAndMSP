@@ -126,8 +126,18 @@ if(!file.exists(paste(climgridfolder, 'climGrid_rcp', rcp, '.proj2_wrugos.RData'
 	
 } else {
 	print('climGrid with rugosity exists. Loading it')
-	load(paste(climgridfolder, 'climGrid_rcp', rcp, '.proj2_wrugos.RData', sep=''))
+	load(paste(climgridfolder, 'climGrid_rcp', rcp, '.proj2_wrugos.RData', sep='')) # has clim
 }
+
+###################################################################
+# Output grid for Thomas Froelicher to add temperature data to
+###################################################################
+
+out <- clim[!duplicated(clim[,c('lat', 'lon', 'depth', 'year')]),c('lat', 'lon', 'depth', 'year')]
+	dim(out)
+	sum(duplicated(out))
+write.csv(out, file=paste('data/clim_latlondates_forThomas_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+
 
 ############################################
 ## Project GAMS onto annual climate data  ##

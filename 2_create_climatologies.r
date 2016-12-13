@@ -8,9 +8,15 @@ load("data/trawl_allregionsforprojections_wSST_2015-06-02.RData") # loads dat
 	dat = dat[!is.na(dat$lat) & !is.na(dat$lon),]
 
 # output lat/lons from trawl tows for Lauren Roger to match against benthic habitat data
-#	outlatlons = dat[!duplicated(dat[,c('lat', 'lon', 'depth')]),c('lat', 'lon', 'depth')]
-#	outlatlons = outlatlons[order(outlatlons$lat, outlatlons$lon, outlatlons$depth),]
-#	write.csv(outlatlons, file=paste('data/trawl_latlons_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+#outlatlons = dat[!duplicated(dat[,c('lat', 'lon', 'depth')]),c('lat', 'lon', 'depth')]
+#outlatlons = outlatlons[order(outlatlons$lat, outlatlons$lon, outlatlons$depth),]
+#write.csv(outlatlons, file=paste('data/trawl_latlons_forLauren_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
+
+# output lat/lons/depth/date from trawl tows for Thomas Froelicher to match against temperature data
+#	outlatlons = dat[!duplicated(dat[,c('lat', 'lon', 'depth', 'year', 'month')]),c('lat', 'lon', 'depth', 'year', 'month')]
+#	outlatlons = outlatlons[order(outlatlons$lat, outlatlons$lon, outlatlons$depth, outlatlons$year, outlatlons$month),]
+#		dim(outlatlons)
+#	write.csv(outlatlons, file=paste('data/trawl_latlondates_forThomas_', Sys.Date(), '.csv', sep=''), row.names=FALSE)
 
 # Fix lon to only positive to match CMIP5
 	dat$lon[dat$lon < 0] = dat$lon[dat$lon < 0] + 360 # fix lons to only positive to match CMIP5 data
