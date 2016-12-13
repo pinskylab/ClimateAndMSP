@@ -1,0 +1,8 @@
+mggid	ship_code	ship	cruise	mgg_unique	contributor	original_ship	scientist	report_id	funding	project	title	date_entered	units_wet_unit_wt	units_sound_velocity	units_cohesion	units_compressive_strength	units_vane_size	units_vane_turn_rate	cruise_comments
+09995043	0936	Staten Island	ND00655	5001	NAVOCEANO	STATEN ISLAND					Data are in set MGGD09995043									
+09995001	0938	Eastwind	00568	5002	NHO	EASTWIND	Rohrhirsch				Data are part of MGGD09995001									
+09005062	0900	Unknown Platform	L.I. 154	5062	NAVOCEANO			Laboratory Item 154												
+09005002	0900	Unknown Platform	L.I. 244	5002	NAVOCEANO		Glover Hill	Laboratory Item 244												
+09005023	0900	Unknown Platform	L.I.1008	5023	NAVOCEANO		Coleman	Laboratory Item1008												
+09465001	0946	Lord Kelvin	KELVIN	5001	NAVOCEANO	LORD KELVIN													Silt-Clay Boundary at 0.00195mm	
+09995006	0935	Westwind	00616	5003	NAVOCEANO	WESTWIND					Data are part of MGGD09995006									

@@ -1,0 +1,47 @@
+mggid	ship_code	ship	cruise	mgg_unique	contributor	original_ship	scientist	report_id	funding	project	title	date_entered	units_wet_unit_wt	units_sound_velocity	units_cohesion	units_compressive_strength	units_vane_size	units_vane_turn_rate	cruise_comments
+09035008	0903	Silas Bent	BENT	5008	NCEL	USNS BENT														
+20995002	2026	Staten Island	SI689	5002	U. Washington	STATON ISL.	Roberts													
+20995002	2011	Surveyor	SU068	5002	U. Washington	SURVEYOR	Roberts													
+20995002	2001	Thomas G. Thompson	TT019	5002	U. Washington	THOMPSON	Roberts													
+20995002	2001	Thomas G. Thompson	TT020	5002	U. Washington	THOMPSON	Roberts													
+20995002	2001	Thomas G. Thompson	TT043	5002	U. Washington	THOMPSON	Roberts													
+09995043	0936	Staten Island	ND00655	5001	NAVOCEANO	STATEN ISLAND					Data are in set MGGD09995043									
+20995002	2099	Multiple	ANC69	5002	U. Washington	ANC	Roberts													
+20995002	2005	Brown Bear	BB236	5002	U. Washington	BROWN BEAR	Roberts													
+20995002	2024	Burton Island	BI060	5002	U. Washington	BURTON ISL.	Roberts													
+20995002	2029	John N. Cobb	COBB	5002	U. Washington	COBB	Roberts													
+20995002	2025	Northwind	NW063	5002	U. Washington	NORTHWIND	Roberts													
+20995002	2025	Northwind	NW161	5002	U. Washington	NORTHWIND	Roberts													
+20995002	2025	Northwind	NW162	5002	U. Washington	NORTHWIND	Roberts													
+20995002	2025	Northwind	NW261	5002	U. Washington	NORTHWIND	Roberts													
+09995009	0936	Staten Island	N00636	5004	NAVOCEANO	STATEN ISLA					Data are part of MGGD09995009									
+09995040	0937	Northwind	31501	5001	NAVOCEANO	NORTHWIND														
+09035004	0903	Silas Bent	L.I. 438	5004	NAVOCEANO	SILAS BENT	Loomis	Laboratory Item 438												
+06255005	0625	Discoverer	D481NS	5005	USGS, Menlo Park	DISCOVERER	Hampton	Open File Report 83-404			Geotechnical Framework Study of the North Bering Sea	19950118								
+06995003	0611	Sea Sounder	S777WG	5003	USGS, Menlo Park	SEA SOUNDER	Bouma Hampton													
+06995003	0611	Sea Sounder	S878WG	5003	USGS, Menlo Park	SEA SOUNDER	Bouma Hampton													
+41005002	4100	Unknown Platform	OCSSEDAN	5002	U. Alaska IMS	1977FIELD	Hoskin													
+41025001	4102	Miller Freeman	OCS818	5001	U. Alaska IMS	M. FREEMAN	Hoskin													
+41995001	4199	Multiple	RU529OCS	5001	U. Alaska IMS		Naidu													
+41995002	4199	Multiple	unknown	5002	U. Alaska IMS		Naidu													
+65005001	6500	Unknown Platform	ALASKAG	5001	U South Carolina		Hayes													
+06245001	0624	Townsend Cromwell	JPO 212	5001	USGS, Menlo Park	CROMWELL	Carlson													
+06995003	0611	Sea Sounder	S276WG	5003	USGS, Menlo Park	SEA SOUNDER	Bouma Hampton													
+06995003	0611	Sea Sounder	S376WG	5003	USGS, Menlo Park	SEA SOUNDER	Bouma Hampton													
+06995003	0611	Sea Sounder	S879WG	5003	USGS, Menlo Park	SEA SOUNDER	Bouma Hampton													
+41015001	4101	Discoverer	OCS808	5001	U. Alaska IMS	DISCOVERER	Hoskin													
+41055001	4105	Glacier	OCSRU529	5001	U. Alaska IMS	GLACIER	Naidu													
+20995002	2025	Northwind	NW362	5002	U. Washington	NORTHWIND	Roberts													
+20995002	2001	Thomas G. Thompson	TT018	5002	U. Washington	THOMPSON	Roberts													
+20995002	2001	Thomas G. Thompson	TT042	5002	U. Washington	THOMPSON	Roberts													
+20995002	2001	Thomas G. Thompson	TT051	5002	U. Washington	THOMPSON	Roberts													
+20995002	2025	Northwind	NW262	5002	U. Washington	NORTHWIND	Roberts													
+20995002	2099	Multiple	ANC68	5002	U. Washington	ANC	Roberts													
+20995002	2032	Tomcod	AWF68	5002	U. Washington	TOMCOD	Roberts													
+20995002	2027	Alpha II Ice Station	DISA2	5002	U. Washington	ALPHA II	Roberts													
+01995001	0103	Vema	V20	5001	LDEO	Vema	Horn	Tech Report # 3	NSF/ONR		Acoustic Provinces of the North Pacific.....	19950104	g/cm3	m/sec	g/cm2	g/cm2	cm	sec		
+01995001	0103	Vema	V21	5001	LDEO	Vema	Horn	Tech Report # 3	NSF/ONR		Acoustic Provinces of the North Pacific.....	19950106	g/cm3	m/sec	g/cm2	g/cm2	cm	sec		
+01995001	0101	Robert D. Conrad	RC10	5001	LDEO	Robert Conrad	Horn	Tech Report # 3	NSF/ONR		Acoustic Provinces of the North Pacific	19950120	g/cm3	m/sec	g/cm2	g/cm2	cm	sec		
+01995001	0101	Robert D. Conrad	RC11	5001	LDEO	Robert Conrad	Horn	Tech Report # 3	NSF/ONR		Acoustic Provinces of the North Pacific	19950126	g/cm3	m/sec	g/cm2	g/cm2	cm	sec		
+20995002	2005	Brown Bear	BB268	5002	U. Washington	BROWN BEAR	Roberts													
+20995002	2031	Virginia City	VC067	5002	U. Washington	V. CITY	Roberts													

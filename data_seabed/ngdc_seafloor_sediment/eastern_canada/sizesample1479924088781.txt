@@ -1,0 +1,43 @@
+mggid	ship	cruise	sample	device_code	device	year	month	day	time	latdeg	latmin	latminhun	ns	londeg	lonmin	lonminhun	lonew	latlon_orig	lat	lon	water_depth	core_length	device2	comments
+09005062	Unknown Platform	L.I. 154	7	401	core, gravity, phleger	1961	09	17		74	58	00	N	058	59	00	W	m	74.9667	-58.9833	356	50	PHLEGER CORE		
+09005062	Unknown Platform	L.I. 154	23	101	grab, orange peel	1961	10	02		57	45	00	N	060	00	00	W	m	57.75	-60	172		ORNGE PEEL GRAB		
+09005062	Unknown Platform	L.I. 154	18	101	grab, orange peel	1961	09	28		66	38	00	N	060	40	00	W	m	66.6333	-60.6667	516		ORNGE PEEL GRAB		
+09005062	Unknown Platform	L.I. 154	16	401	core, gravity, phleger	1961	09	27		69	12	00	N	060	05	00	W	m	69.2	-60.0833		36	PHLEGER CORE		
+09005062	Unknown Platform	L.I. 154	21	101	grab, orange peel	1961	10	01		61	57	00	N	064	00	00	W	m	61.95	-64	320		ORNGE PEEL GRAB		
+09465001	Lord Kelvin	KELVIN	OPC	100	grab, undifferentiated					48	25	10	N	052	42	00	W	m	48.4183	-52.7	278		GRAB SAMPLE		
+09465001	Lord Kelvin	KELVIN	OP934	100	grab, undifferentiated					49	29	00	N	050	45	52	W	m	49.4833	-50.7587	329		GRAB SAMPLE		
+09465001	Lord Kelvin	KELVIN	OP911	100	grab, undifferentiated					48	11	10	N	048	11	60	W	m	48.185	-48.1933	1176		GRAB SAMPLE		
+09465001	Lord Kelvin	KELVIN	OP926	100	grab, undifferentiated					43	18	00	N	055	57	00	W	m	43.3	-55.95	3358		GRAB SAMPLE		
+09995006	Westwind	00616	PH-4	401	core, gravity, phleger	1958	09	21		60	27	00	N	063	05	00	W	m	60.45	-63.0833	366		PHLEGER CORE		
+09995006	Westwind	00616	PH-19	401	core, gravity, phleger	1958	10	03		54	30	00	N	055	30	00	W	m	54.5	-55.5	256	58	PHLEGER CORE		
+09995006	Westwind	00616	PH-11	401	core, gravity, phleger	1958	09	24		57	00	00	N	056	37	00	W	m	57	-56.6167	2560	23	PHLEGER CORE		
+09995006	Westwind	00616	PH-8	401	core, gravity, phleger	1958	09	23		59	45	00	N	052	00	00	W	m	59.75	-52	3383	23	PHLEGER CORE		
+09005062	Unknown Platform	L.I. 154	20	401	core, gravity, phleger	1961	09	29		64	54	00	N	057	28	00	W	m	64.9	-57.4667	686	34	PHLEGER CORE		
+09005062	Unknown Platform	L.I. 154	19	401	core, gravity, phleger	1961	09	29		66	45	00	N	059	00	00	W	m	66.75	-59	814	24	PHLEGER CORE		
+09995001	Eastwind	00568	1	401	core, gravity, phleger	1957	10	07		61	48	00	N	057	00	00	W	m	61.8	-57	2652	64	PHLEGER CORE		
+09995006	Westwind	00616	PH-7	401	core, gravity, phleger	1958	09	23		60	20	00	N	050	00	00	W	m	60.3333	-50	5981	38	PHLEGER CORE		
+09995006	Westwind	00616	PH-18	401	core, gravity, phleger	1958	10	02		55	00	00	N	052	00	00	W	m	55	-52	2633	56	PHLEGER CORE		
+09005002	Unknown Platform	L.I. 244	10_15	100	grab, undifferentiated	1964	09	14		47	10	37	N	054	04	96	W	m	47.1728	-54.0827			GRAB SAMPLE		
+09005062	Unknown Platform	L.I. 154	22	101	grab, orange peel	1961	10	01		60	30	00	N	063	00	00	W	m	60.5	-63	320		ORNGE PEEL GRAB		
+09005062	Unknown Platform	L.I. 154	27	101	grab, orange peel	1961	10	04		52	57	00	N	054	55	00	W	m	52.95	-54.9167	201		ORNGE PEEL GRAB		
+09005062	Unknown Platform	L.I. 154	17	101	grab, orange peel	1961	09	28		68	30	00	N	065	05	00	W	m	68.5	-65.0833	86		ORNGE PEEL GRAB		
+09005002	Unknown Platform	L.I. 244	9_12	100	grab, undifferentiated	1964	09	14		47	10	30	N	054	05	25	W	m	47.1717	-54.0875			GRAB SAMPLE		
+09995043	Staten Island	ND00655	BS-19	100	grab, undifferentiated	1960	09	07		57	46	00	N	059	59	50	W	m	57.7667	-59.9917	164		GRAB SAMPLE		
+09465001	Lord Kelvin	KELVIN	OP931	100	grab, undifferentiated					48	21	00	N	053	57	00	W	m	48.35	-53.95	285		GRAB SAMPLE		
+09995006	Westwind	00616	PH-3	401	core, gravity, phleger	1958	09	21		62	25	00	N	063	15	00	W	m	62.4167	-63.25	302		PHLEGER CORE		
+09995006	Westwind	00616	PH-2	401	core, gravity, phleger	1958	09	20		63	40	00	N	056	45	00	W	m	63.6667	-56.75	1381	52	PHLEGER CORE		
+09995006	Westwind	00616	PH-10	100	grab, undifferentiated	1958	09	24		58	00	00	N	060	00	00	W	m	58	-60	311		GRAB SAMPLE		
+09005002	Unknown Platform	L.I. 244	9_6	100	grab, undifferentiated	1964	09	14		47	10	30	N	054	05	25	W	m	47.1717	-54.0875			GRAB SAMPLE		
+09005002	Unknown Platform	L.I. 244	12_29	100	grab, undifferentiated	1964	09	14		47	10	60	N	054	05	77	W	m	47.1767	-54.0962			GRAB SAMPLE		
+09005062	Unknown Platform	L.I. 154	15	401	core, gravity, phleger	1961	09	27		70	40	00	N	060	04	00	W	m	70.6667	-60.0667	630	40	PHLEGER CORE		
+09005062	Unknown Platform	L.I. 154	24	401	core, gravity, phleger	1961	10	03		56	52	00	N	056	40	00	W	m	56.8667	-56.6667	2413	27	PHLEGER CORE		
+09995006	Westwind	00616	PH-6	401	core, gravity, phleger	1958	09	22		61	59	00	N	051	56	00	W	m	61.9833	-51.9333		27	PHLEGER CORE		
+09005002	Unknown Platform	L.I. 244	11_25	100	grab, undifferentiated	1964	09	14		47	10	62	N	054	04	96	W	m	47.177	-54.0827			GRAB SAMPLE		
+09005023	Unknown Platform	L.I.1008	1	501	core, piston, kullenberg	1967	10	24		51	25	00	N	063	39	00	W	m	51.4167	-63.65	4618	366	KULLEN PISTON		
+09005062	Unknown Platform	L.I. 154	26	101	grab, orange peel	1961	10	04		54	34	00	N	055	08	00	W	m	54.5667	-55.1333	187		ORNGE PEEL GRAB		
+09995006	Westwind	00616	PH-1	401	core, gravity, phleger	1958	09	19		64	50	00	N	058	30	00	W	m	64.8333	-58.5	585	41	PHLEGER CORE		
+09995006	Westwind	00616	PH-12	401	core, gravity, phleger	1958	09	25		57	15	00	N	051	57	00	W	m	57.25	-51.95	3493	36	PHLEGER CORE		
+09465001	Lord Kelvin	KELVIN	OP924	100	grab, undifferentiated	1958	04	07		46	36	30	N	059	28	10	W	m	46.605	-59.4683	262		GRAB SAMPLE		
+09005062	Unknown Platform	L.I. 154	25	101	grab, orange peel	1961	10	03		55	09	00	N	056	58	00	W	m	55.15	-56.9667	187		ORNGE PEEL GRAB		
+09005062	Unknown Platform	L.I. 154	14	401	core, gravity, phleger	1961	09	27		71	30	00	N	065	08	00	W	m	71.5	-65.1333		67	PHLEGER CORE		
+09465001	Lord Kelvin	KELVIN	OP923	100	grab, undifferentiated	1958	04	16		46	16	60	N	060	10	80	W	m	46.2767	-60.18	18		GRAB SAMPLE		
