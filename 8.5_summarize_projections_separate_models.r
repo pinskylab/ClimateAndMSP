@@ -1,3 +1,6 @@
+# Summarize species distribution projections for each climate model, averaging within time periods
+
+
 ## Set working directories
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
 	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
@@ -96,7 +99,7 @@ for(i in 1:length(files)){ # takes a while (a couple hours ?)
 		for(j in 1:nt){ # for each time period
 			inds <- summproj$period == periods[j]
 			inds2 <- mymap$period == periods[j] & mymap$model == k
-			temp <- aggregate(list(wtcpue.proj = summproj[inds,thiscol]), by=list(region = summproj$region[inds], period = summproj$period[inds], lat = summproj$lat[inds], lon = summproj$lon[inds]), FUN=mean, na.rm=TRUE)
+			temp <- aggregate(list(wtcpue.proj = summproj[inds,thiscol]), by=list(region = summproj$region[inds], period = summproj$period[inds], lat = summproj$lat[inds], lon = summproj$lon[inds]), FUN=mean, na.rm=TRUE) # do the aggregation
 			temp <- temp[order(temp$region, temp$period, temp$lat, temp$lon),]
 
 			if(all(temp$region == mymap$region[inds2] & temp$period == mymap$period[inds2] & temp$lat == mymap$lat[inds2] & temp$lon == mymap$lon[inds2])){
