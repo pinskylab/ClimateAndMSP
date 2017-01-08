@@ -14,9 +14,8 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 #######################
 ## Process WDPA data ##
 #######################
-# Read in a shapefile of protecte area polygons
+# Read in a shapefile of protected area polygons
 # Calculate area in each grid cell
-# NEED TO TRIM WDPA TO RELEVANT MPAs of various types
 
 require(maptools)
 require(RColorBrewer)
@@ -41,7 +40,7 @@ clim = read.csv('data/climGrid.csv', row.names=1, stringsAsFactors=FALSE) # the 
 	# sort by region
 	clim <- clim[order(clim$region),]
 
-# read in the LMEs
+# read in the MPAs
 wdpa = readShapePoly('data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp', proj4string = CRS('+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs'))
 	# plot(wdpa) # very slow
 	wdpa = wdpa[wdpa$marine == 1,] # trim to only marine (remove 20 of 3023)
