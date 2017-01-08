@@ -18,6 +18,10 @@ if(Sys.info()["user"] == "lauren"){
 #####################
 require(maps)
 require(mapdata) # for hires world map
+require(maptools)
+require(rgdal)
+require(rgeos)
+require(raster)
 #require(rworldmap)
 #require(rworldxtra)
 require(lattice)
@@ -398,3 +402,76 @@ round(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'go
 
 round(rowMeans(mathist[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')]),2)
 round(rowMeans(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')]),2)
+
+
+#####################
+# Plot the MPAs
+#####################
+wdpashp = readShapePoly('cmsp_data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp', proj4string = CRS('+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs')) # load the MPA data
+	wdpashp = wdpashp[wdpashp$marine == 1,] # trim to only marine (remove 20 of 3023)
+	wdpashp@data$wdpapolyID <- as.numeric(sapply(wdpashp@polygons, FUN=slot, name='ID')) # extract polygon ID
+
+wdpaturnbyMPAbymod <- as.data.table(read.csv(paste('data/wdpaturnbyMPAbymod_fitallreg_xreg_rcp85&45.csv', sep=''), row.names=1)) # to get a list of MPAs to examine
+
+	dim(wdpashp)
+wdpashp <- wdpashp[wdpashp$wdpapolyID %in% wdpaturnbyMPAbymod$wdpapolyID,] # trim shapefile to MPAs the we analyzed
+	dim(wdpashp) # 562
+
+# transform to 0-360 coordinates
+bb1 <- as(extent(c(0,360,0,90)), "SpatialPolygons") # bounding box for part 1 (Aleutians)
+bb2 <- as(extent(c(-180,0,0,90)), "SpatialPolygons") # part 2
+proj4string(bb1) = proj4string(wdpashp) # set the coordinate system
+proj4string(bb2) = proj4string(wdpashp)
+w1 <- gIntersection(wdpashp, bb1, byid = T) # split out part 1
+w2 <- gIntersection(wdpashp, bb2, byid = T) # part 2
+w3 <- elide(w1, shift=c(-360,0)) # move part 1 west by 360°
+
+
+# set regions and expansion for dots
+regs <- c('AFSC_EBS', 'AFSC_Aleutians', 'AFSC_GOA', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'NEFSC_NEUSSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'DFO_NewfoundlandFall')
+regsnice = c('Eastern Bering Sea', 'Aleutian Islands', 'Gulf of Alaska', 'West Coast U.S.', 'Gulf of Mexico', 'Northeast U.S.', 'Scotian Shelf', 'So. Gulf of St. Lawrence', 'Newfoundland')
+regsniceabbrev = c('(EBS)', '(AI)', '(GoA)', '(WC)', '(GoM)', '(Neast)', '(SS)', '(SGoSL)', '(Newf)')
+ylabs = c('Latitude (°N)', '', '', '', 'Latitude (°N)', '', '', 'Latitude (°N)', '')
+xlabs = c('', '', '', 'Longitude (°E)', '', '', 'Longitude (°E)', 'Longitude (°E)', 'Longitude (°E)')
+ylims = list(ebs = c(54,62.5), al = c(50, 57), goa = c(50, 65), wc = c(32.2, 48.5), gom = c(25.5,30.5), ne = c(33, 45), ss = c(41, 48), sl = c(45.5, 49.5), nf = c(42, 62))
+xlims = list(ebs = c(-179.5,-154), al = c(169, 198), goa = c(-171, -132), wc = c(-126.5, -117), gom = c(-97.5,-86.5), ne = c(-77, -64.5), ss = c(-69, -56), sl = c(-66, -60), nf = c(-65, -43))
+pos <- c('right', 'right', 'right', 'left', 'right', 'right', 'right', 'left', 'right')
+bcol <- 'dark grey' # background color
+
+# plot map
+	col = rgb(0.5,0,0, 1)
+	
+	# quartz(width=8.7/2.54,height=6/2.54)
+	pdf(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.pdf')
+	# png(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.png', res=100, units='in')
+	par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.15, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
+	layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
+
+	# Add continent-scale map
+	plot(w2, border=NA, col=col, xlim=c(-190,-40), ylim=c(20,70))
+	plot(w3, add=TRUE, border=NA, col=col)
+	map('worldHires', add=TRUE, col=bcol, lwd=0.02, resolution=0, fill=FALSE, wrap=TRUE) # annoying that turning fill=TRUE also draw big horizontal lines across the map
+	axis(1, mgp=c(1.2, 0.02, 0), at=c(-160,-110,-60))
+
+	# Add each region
+	for(i in 1:length(regs)){
+		print(i)
+		if(regs[i] =='AFSC_Aleutians'){
+			plot(w2, border=NA, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1)
+			plot(w3, add=TRUE, border=NA, col=col)
+			axis(1, mgp=c(1.2, 0.02, 0), at=seq(-190,-165,by=5), labels=c('170', '', '180', '', '-170', ''))
+			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0, xlim=xlims[[i]], wrap=TRUE, ylim=c(60,70)) # only plot the upper part, since strange lines draw horizontally if we draw lower down
+			mymap <- map('worldHires', plot=FALSE, resolution=0, xlim=xlims[[i]], ylim=c(40,60)) # draw in the islands separately. Can't do this for the whole plot because it plots Alaska and Russia inside out (colors outside the polygons)
+			polygon(mymap, col=bcol, border=NA)
+		}else{
+			plot(w2, border=NA, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1)
+			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0)
+			axis(1, mgp=c(1.2, 0.02, 0))
+		}
+	}
+	mtext('Longitude (°E)', side=1, outer=TRUE, cex=0.5)
+	mtext('Latitude (°N)', side=2, outer=TRUE, cex=0.5, las=0, line=0.3)
+
+	
+	dev.off()
+	
