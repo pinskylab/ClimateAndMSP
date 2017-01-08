@@ -58,6 +58,32 @@ wmean <- function(x){ # values in col 1, weights in col 2
 }
 
 
+###########################################
+# Examine MPA size relative to grid size
+###########################################
+wdpaturnbyMPAbymod <- as.data.table(read.csv(paste('data/wdpaturnbyMPAbymod_', runtype, projtype, '_rcp', rcp, '&', otherrcp, '.csv', sep=''), row.names=1)) # to get a list of MPAs to examine
+
+wdpashp <- readShapePoly('cmsp_data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp', proj4string = CRS('+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs')) # load the MPA data
+
+wdpashp@data$area_deg <- sapply(slot(wdpashp, 'polygons'), slot, 'area') # extract area in degrees (since lat/lon projection)
+wdpashp@data$wdpapolyID <- as.numeric(sapply(wdpashp@polygons, FUN=slot, name='ID')) # extract polygon ID
+
+	dim(wdpashp)
+wdpashp <- wdpashp[wdpashp$wdpapolyID %in% wdpaturnbyMPAbymod$wdpapolyID,] # trim shapefile to MPAs the we analyzed
+	dim(wdpashp) # 562
+	
+summary(wdpashp@data$area_deg)
+
+# plot vs. grid size
+hist(log10(wdpashp@data$area_deg))
+abline(v=log10(1/16), col='red')
+
+# number > grid size
+nrow(wdpashp)
+sum(wdpashp@data$area_deg >= 1/16)
+sum(wdpashp@data$area_deg >= 1/16 * 1/16)
+
+
 #############################################
 # Examine turnover within MPAs
 # Examine all climate models individually
