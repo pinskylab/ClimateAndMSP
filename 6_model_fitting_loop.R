@@ -17,7 +17,7 @@ if(Sys.info()["user"] == "lauren"){
 
 
 # Loop through species and fit models.
-library(mgcv);library(ROCR)
+library(mgcv);library(dismo)
 
 runname <- "fitallreg" # use all regions in each fit that are from the same ocean
 
@@ -34,7 +34,7 @@ load("data/dat_selectedspp.Rdata")
 
 allspp = sort(unique(dat$sppocean))
 n = rep(NA, length(allspp))
-modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, auc=n, auc.tt=n, tss=n, tss.tt=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
+modeldiag = data.frame(sppocean=n, npres=n, npres.tr=n, npres.te=n, ntot=n, thresh=n, thresh.tt=n, auc=n, auc.tt=n, tss=n, tss.tt=n, tssmax=n, tssmax.tt=n, acc=n, acc.tt=n, accmax=n, accmax.tt=n, sens=n, sens.tt=n, spec=n, spec.tt=n, kappa=n, kappa.tt=n, kappamax=n, kappamax.tt=n, rpb=n, r2.biomass=n, r2.biomass.tt=n, r2.all=n, r2.all.tt=n, r2.pres.1deg=n, r2.abun.1deg=n, dev.pres=n, dev.biomass=n,dev.pres.null=n, dev.biomass.null=n, stringsAsFactors=FALSE) # tt is for training/testing model
 
 
 ## small test to see which species are only marginally present in Newfoundland or WCAnn surveys
@@ -257,7 +257,7 @@ for(i in 1:length(allspp)){
 
 	try2 <- tryCatch({
 		mygam1<-gam(mypresmod,family="binomial",data=spdata)
-		mygam2<-gam(myabunmod,data=spdata[spdata$presfit.pad,]) # only fit where spp is present
+		mygam2<-gam(myabunmod,data=spdata[spdata$presfit.pad,], na.action='na.exclude') # only fit where spp is present
 		mygam1null<-gam(mynullpresmod,family="binomial",data=spdata)
 		mygam2null<-gam(mynullabunmod,data=spdata[spdata$presfit.pad,]) # only fit where spp is present
 	
@@ -282,8 +282,8 @@ for(i in 1:length(allspp)){
 	####################################################
 
 	# For FULL model
-	preds1 <- predict(mygam1,spdata,type="response") #can also use mygam1$fitted.values
-	preds2 <- exp(predict(mygam2, newdata = spdata, type='response')) # abundance predictions
+	preds1 <- mygam1$fitted.values
+	preds2 <- exp(predict(mygam2, newdata = spdata, type='response', na.action='na.pass')) # abundance predictions
 	smear = mean(exp(mygam2$residuals)) # smearing estimator for re-transformation bias (see Duan 1983, http://www.herc.research.va.gov/include/page.asp?ID=cost-regression)
 	preds <- preds1*preds2*smear # adds the bias correction as well
 	preds[preds<0] = 0
@@ -314,35 +314,59 @@ for(i in 1:length(allspp)){
 	modeldiag$ntot[i] = dim(spdata)[1]
 	# fill in myregions and myseasons too? would be useful for projections
 
-	# calculate performance using AUC (in part using ROCR)
-	preds1.rocr = prediction(predictions=as.numeric(preds1), labels=spdata$presfit)
-	modeldiag$auc[i] = performance(preds1.rocr, 'auc')@y.values[[1]] # area under the ROC curve
+	# evaluate model (use dismo package)
+	# pick a treshold for pres/abs model evaluation (where needed)
+	e <- evaluate(p=as.vector(preds1[spdata$presfit]), a=as.vector(preds1[!spdata$presfit]))
+	modeldiag$thresh[i] <- threshold(e, stat='prevalence')
+	e.ind <- which(e@t == modeldiag$thresh[i]) # index for the chosen threshold
+	conf <- as.data.frame(e@confusion) # confusion matrices (all thresholds)
+
 	if(length(testindsp)>0 & fittrain){ # need presences in the test dataset
-		preds1tt.rocr = prediction(predictions=as.numeric(preds1tt), labels=spdata$presfit[testinds])
-		modeldiag$auc.tt[i] = performance(preds1tt.rocr, 'auc')@y.values[[1]] #
+		e.tt <- evaluate(p=as.vector(preds1tt[spdata$presfit[testinds]]), a=as.vector(preds1tt[!spdata$presfit[testinds]]))
+		modeldiag$thresh.tt[i] <- threshold(e.tt, stat='prevalence') # for testing/training
+		e.ind.tt <- which(e.tt@t == modeldiag$thresh.tt[i]) # index for the chosen threshold
+		conf.tt <- as.data.frame(e.tt@confusion) # confusion matrices (all thresholds)
 	}
 
-	# true skill statistic
-	a = performance(preds1.rocr, 'tpr')@y.values[[1]] # true positive
-	b = performance(preds1.rocr, 'fnr')@y.values[[1]] # false negative
-	c = performance(preds1.rocr, 'fpr')@y.values[[1]] # false pos
-	d = performance(preds1.rocr, 'tnr')@y.values[[1]] # true neg
-	modeldiag$tss[i] = 	max((a*d - b*c)/((a+c)*(b+d)), na.rm=TRUE)
+	# pres/abs model diagnostics (no threshold needed)
+	modeldiag$dev.pres[i] = summary(mygam1)$dev.expl
+	modeldiag$auc[i] <- e@auc
+	modeldiag$tssmax[i] <- max(with(conf, (tp*tn - fn*fp)/((tp+fp)*(fn+tn))), na.rm=TRUE) # maximum TSS (any threshold)
+	modeldiag$accmax[i] <- max(with(conf, (tp+tn)/(tp+fp+fn+tn)), na.rm=TRUE) # maximum overall accuracy
+	modeldiag$kappamax[i] <- max(e@kappa, na.rm=TRUE) # maximum kappa
+	modeldiag$rpb[i] <- cor(preds1, spdata$presfit) # point biserial correlation
+
 	if(length(testindsp)>0 & fittrain){ # need presences in the test dataset
-		preds1tt.rocr = prediction(predictions=as.numeric(preds1tt), labels=spdata$presfit[testinds])
-		a = performance(preds1tt.rocr, 'tpr')@y.values[[1]] # true positive
-		b = performance(preds1tt.rocr, 'fnr')@y.values[[1]] # false negative
-		c = performance(preds1tt.rocr, 'fpr')@y.values[[1]] # false pos
-		d = performance(preds1tt.rocr, 'tnr')@y.values[[1]] # true neg
-		modeldiag$tss.tt[i] = max((a*d - b*c)/((a+c)*(b+d)), na.rm=TRUE)
+		modeldiag$auc.tt[i] <- e.tt@auc
+		modeldiag$tssmax.tt[i] <- max(with(conf.tt, (tp*tn - fn*fp)/((tp+fp)*(fn+tn))), na.rm=TRUE) # maximum TSS (any threshold)
+		modeldiag$accmax.tt[i] <- max(with(conf.tt, (tp+tn)/(tp+fp+fn+tn)), na.rm=TRUE) # maximum overall accuracy
+		modeldiag$kappamax.tt[i] <- max(e.tt@kappa, na.rm=TRUE) # maximum kappa
+	}
+		
+	# true skill statistic, accuracy, kappa, and other stats that require a threshold
+	modeldiag$tss[i] = 	with(conf[e.ind,], (tp*tn - fn*fp)/((tp+fp)*(fn+tn))) # TSS for chosen threshold
+	modeldiag$acc[i] = 	with(conf[e.ind,], (tp+tn)/(tp+fp+fn+tn)) # overall accuracy
+	modeldiag$sens[i] = with(conf[e.ind,], (tp)/(tp+fn)) # sensitivity: fraction of correctly predicted presences
+	modeldiag$spec[i] = with(conf[e.ind,], (tn)/(tn+fp)) # specificity: fraction of correctly predicted absences
+	modeldiag$kappa[i] = e@kappa[e.ind] # Cohen's kappa
+	if(length(testindsp)>0 & fittrain){ # need presences in the test dataset
+		modeldiag$tss.tt[i] = with(conf.tt[e.ind.tt,], (tp*tn - fn*fp)/((tp+fp)*(fn+tn)))
+		modeldiag$acc.tt[i] = with(conf.tt[e.ind.tt,], (tp+tn)/(tp+fp+fn+tn)) # overall accuracy
+		modeldiag$sens.tt[i] = with(conf.tt[e.ind.tt,], (tp)/(tp+fn)) # sensitivity: fraction of correctly predicted presences
+		modeldiag$spec.tt[i] = with(conf.tt[e.ind.tt,], (tn)/(tn+fp)) # specificity: fraction of correctly predicted absences
+		modeldiag$kappa.tt[i] = e.tt@kappa[e.ind.tt]
 	}
 
+	# abundance model diagnostics
+	modeldiag$dev.biomass[i] = summary(mygam2)$dev.expl
 	modeldiag$r2.biomass[i] = cor(log(preds2[spdata$presfit]), spdata$logwtcpue[spdata$presfit])^2 # correlation of log(biomass) where present
-	if(length(testindsp)>0 & fittrain) modeldiag$r2.biomass.tt[i] = cor(preds2tt[which(testinds %in% testindsp)], spdata$logwtcpue[testindsp])^2 # only if presences exist in the test dataset
+	if(length(testindsp)>0 & fittrain){
+		modeldiag$r2.biomass.tt[i] = cor(preds2tt[which(testinds %in% testindsp)], spdata$logwtcpue[testindsp])^2 # only if presences exist in the test dataset
+	}
+
+	# full model diagnostics
 	modeldiag$r2.all[i] = cor(preds, spdata$wtcpue)^2 # overall biomass correlation
 	if(length(testindsp)>0 & fittrain) modeldiag$r2.all.tt[i] = cor(predstt, spdata$wtcpue[testinds])^2 # overall biomass correlation. only makes sense to do this if the species is present at least once in the testing dataset
-	modeldiag$dev.pres[i] = summary(mygam1)$dev.expl
-	modeldiag$dev.biomass[i] = summary(mygam2)$dev.expl
 	
 	#Compare to models without temperature to ultimately calculation %explained by temp terms
 	modeldiag$dev.pres.null[i] = summary(mygam1null)$dev.expl
