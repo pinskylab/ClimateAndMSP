@@ -433,40 +433,53 @@ regsnice = c('Eastern Bering Sea', 'Aleutian Islands', 'Gulf of Alaska', 'West C
 regsniceabbrev = c('(EBS)', '(AI)', '(GoA)', '(WC)', '(GoM)', '(Neast)', '(SS)', '(SGoSL)', '(Newf)')
 ylabs = c('Latitude (°N)', '', '', '', 'Latitude (°N)', '', '', 'Latitude (°N)', '')
 xlabs = c('', '', '', 'Longitude (°E)', '', '', 'Longitude (°E)', 'Longitude (°E)', 'Longitude (°E)')
-ylims = list(ebs = c(54,62.5), al = c(50, 57), goa = c(50, 65), wc = c(32.2, 48.5), gom = c(25.5,30.5), ne = c(33, 45), ss = c(41, 48), sl = c(45.5, 49.5), nf = c(42, 62))
-xlims = list(ebs = c(-179.5,-154), al = c(169, 198), goa = c(-171, -132), wc = c(-126.5, -117), gom = c(-97.5,-86.5), ne = c(-77, -64.5), ss = c(-69, -56), sl = c(-66, -60), nf = c(-65, -43))
+ylims = list(ebs = c(54,62.5), al = c(50, 57), goa = c(52, 60), wc = c(32.2, 48.5), gom = c(25.5,30.5), ne = c(33, 45), ss = c(41, 46), sl = c(46, 49), nf = c(46, 51))
+xlims = list(ebs = c(-179.5,-154), al = c(-191, -162), goa = c(-160, -133), wc = c(-126.5, -117), gom = c(-97.5,-86.5), ne = c(-77, -64.5), ss = c(-68, -59), sl = c(-66, -61), nf = c(-57, -52))
 pos <- c('right', 'right', 'right', 'left', 'right', 'right', 'right', 'left', 'right')
 bcol <- 'dark grey' # background color
+col = rgb(0.7,0,0, 1)
+bdcol = rgb(0.3,0,0, 1) # border color
 
 # plot map
-	col = rgb(0.5,0,0, 1)
 	
 	# quartz(width=8.7/2.54,height=6/2.54)
 	pdf(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.pdf')
-	# png(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.png', res=100, units='in')
-	par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.15, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
+	# png(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.png', res=100, units='in') # freezes
+	# jpeg(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.jpg', res=100, units='in') # freezes
+	par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.25, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
 	layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
 
 	# Add continent-scale map
-	plot(w2, border=NA, col=col, xlim=c(-190,-40), ylim=c(20,70))
-	plot(w3, add=TRUE, border=NA, col=col)
+	plot(w2, border=bdcol, col=col, xlim=c(-190,-40), ylim=c(20,70))
+	plot(w3, add=TRUE, border=bdcol, col=col)
 	map('worldHires', add=TRUE, col=bcol, lwd=0.02, resolution=0, fill=FALSE, wrap=TRUE) # annoying that turning fill=TRUE also draw big horizontal lines across the map
-	axis(1, mgp=c(1.2, 0.02, 0), at=c(-160,-110,-60))
+	axis(1, mgp=c(1.2, 0.02, 0), at=c(-160,-110,-60), cex.axis=0.4, lwd=0.5)
+	axis(2, mgp=c(1.2, 0.4, 0), cex.axis=0.4, lwd=0.5)
 
 	# Add each region
 	for(i in 1:length(regs)){
 		print(i)
 		if(regs[i] =='AFSC_Aleutians'){
-			plot(w2, border=NA, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1)
-			plot(w3, add=TRUE, border=NA, col=col)
-			axis(1, mgp=c(1.2, 0.02, 0), at=seq(-190,-165,by=5), labels=c('170', '', '180', '', '-170', ''))
+			plot(w2, border=bdcol, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', lwd=0.5)
+			plot(w3, add=TRUE, border=bdcol, col=col, lwd=0.5)
+			axis(1, mgp=c(1.2, 0.02, 0), at=seq(-190,-165,by=10), labels=c('170', '180', '-170'), cex.axis=0.4, lwd=0.5)
+			axis(2, mgp=c(1.2, 0.4, 0), cex.axis=0.4, lwd=0.5)
 			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0, xlim=xlims[[i]], wrap=TRUE, ylim=c(60,70)) # only plot the upper part, since strange lines draw horizontally if we draw lower down
 			mymap <- map('worldHires', plot=FALSE, resolution=0, xlim=xlims[[i]], ylim=c(40,60)) # draw in the islands separately. Can't do this for the whole plot because it plots Alaska and Russia inside out (colors outside the polygons)
 			polygon(mymap, col=bcol, border=NA)
-		}else{
-			plot(w2, border=NA, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1)
+		}
+		if(regs[i] %in% c('DFO_NewfoundlandFall', 'DFO_ScotianShelf', 'DFO_SoGulf')){
+			plot(w2, border=bdcol, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', lwd=0.5)
+			map('worldHires', col=bcol, fill=TRUE, border=FALSE, resolution=0, add=TRUE)
+			plot(w2, add=TRUE, border=bdcol, col=col, lwd=0.5)
+			axis(1, mgp=c(1.2, 0.02, 0), cex.axis=0.4, lwd=0.5)
+			axis(2, mgp=c(1.2, 0.4, 0), cex.axis=0.4, lwd=0.5)
+		}
+		if(!(regs[i] %in% c('AFSC_Aleutians', 'DFO_NewfoundlandFall', 'DFO_ScotianShelf', 'DFO_SoGulf'))){
+			plot(w2, border=bdcol, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', lwd=0.5)
 			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0)
-			axis(1, mgp=c(1.2, 0.02, 0))
+			axis(1, mgp=c(1.2, 0.02, 0), cex.axis=0.4, lwd=0.5)
+			axis(2, mgp=c(1.2, 0.4, 0), cex.axis=0.4, lwd=0.5)
 		}
 	}
 	mtext('Longitude (°E)', side=1, outer=TRUE, cex=0.5)
