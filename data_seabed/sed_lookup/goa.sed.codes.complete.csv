@@ -1,0 +1,195 @@
+NOSSedCode,Definition,num.rec,FOLKCODE,Standard.Sediment,Quality,Color
+sft,soft,2624,,soft,soft,
+hrd,hard,2298,R,rock,hard,
+rky,rocky,11593,R,rock,hard,
+crs gy S,coarse gray sand,74,S,sand,coarse,gray
+bu M,blue mud,144,M,mud,,blue
+fne bk S,fine black sand,138,S,sand,fine,black
+fne gy S,fine gray sand,771,S,sand,fine,gray
+gy S,gray sand,540,S,sand,,gray
+gy M,gray mud,830,M,mud,,gray
+crs bk S,coarse black sand,64,S,sand,coarse,black
+crs S,coarse sand,147,S,sand,coarse,
+brk Sh,broken shells,349,,shells,broken,
+fne S,fine sand,214,S,sand,fine,
+S,sand,2828,S,sand,,
+bk M,black mud,65,M,mud,,black
+hrd S,hard sand,109,S,sand,,hard
+rk,rock,9982,R,rock,,
+M,mud,4918,M,mud,,
+fne bk G,fine black gravel,56,G,gravel,fine,black
+G,gravel,1681,G,gravel,,
+*rk, ,1670,R,rock,,
+stk,sticky,460,,,sticky,
+Sh,shell,295,,shells,,
+rky,Rocky,390,R,rock,,
+stky,Sticky,380,,,sticky,
+bk S,black sand,378,S,sand,,black
+crs G,coarse gravel,23,G,gravel,coarse,
+stky,sticky,56,,,sticky,
+Co,coral,104,,coral,,
+crs bk G,coarse black gravel,21,G,gravel,coarse,black
+bk G,black gravel,252,G,gravel,,black
+M G,mud gravel,123,gM,mud,,
+M Sh,mud shells,29,M,mud,,
+S G,sand gravel,101,gS,sand,,
+S Sh,sand shells,99,S,sand,,
+G Sh,gravel shells,60,G,gravel,,
+rky Sh,rocky shells,124,R,rock,,
+stk M,sticky mud,67,M,mud,sticky,
+Awash at MLLW, ,61,,,,
+Sh G,shells gravel,38,,shells,,
+fne G,fine gravel,45,G,gravel,fine,
+,Hard,34,R,rock,hard,
+,Sticky,49,,,sticky,
+,Rocky,59,R,rock,rocky,
+,Gray sand,24,S,sand,,gray
+rk,,10121,R,rock,rocky,
+rky,,13233,R,rock,rocky,
+sft,,1106,,soft,soft,
+hrd,,4648,R,rock,hard,
+rk awash lw,,21,R,rock,,
+*rk,,5851,R,rock,,
+gn M,green mud,112,M,mud,,green
+gy S Sh,gray sand shells,31,S,sand,,gray
+Bares 2' MLLW, ,26,,,,
+Bares 3' MLLW, ,34,,,,
+Bares 6' MLLW, ,56,,,,
+rky Co,rocky coral,47,R,rock,,
+Sh rky,shells rocky,37,,shells,,
+Bares 4' MLLW, ,41,,,,
+wh S,white sand,44,,sand,,white
+Bare 6' at MLLW, ,43,,,,
+Bare 5' at MLLW, ,50,,,,
+Bare 4' at MLLW, ,50,,,,
+Bare 2' at MLLW, ,43,,,,
+Bare 3' at MLLW, ,70,,,,
+Bare 11' at MLLW, ,25,,,,
+bk Gr.,black gravel,28,G,gravel,,black
+Gr.,gravel,25,G,gravel,,
+S gy M,sand gray mud,21,mS,sand,,gray
+fne gy S brk Sh,fine gray sand broken shells,23,S,sand,fine,gray
+Sh,shells,23,,shells,,
+bk G brk Sh,black gravel broken shells,35,G,gravel,,black
+*rk,rock,124,R,rock,,
+gy S brk Sh, ,23,S,sand,,gray
+rky brk Sh,rocky broken shells,75,R,rock,,
+bares 5ft MLLW, ,24,,,,
+Bares 5' MLLW, ,40,,,,
+Bares 7' MLLW, ,43,,,,
+Bares 8' MLLW, ,25,,,,
+fne wh S,fine white sand,66,S,sand,fine,white
+kelp,kelp,52,,kelp,,
+bu S,blue sand,31,S,sand,,blue
+,sand,212,S,sand,,
+,rocky,108,R,rock,,
+,mud,158,M,mud,,
+,sticky,28,,,sticky,
+fne yl S,fine yellow sand,68,S,sand,fine,yellow
+yl S,yellow sand,35,S,sand,,yellow
+vol ash,volcanic ash,69,,volcanic,,
+rk (0),rock,33,R,rock,,
+rk (4),rocks,22,R,rock,,
+rk (2),rocks,26,R,rock,,
+rk (6),rocks,24,R,rock,,
+bare rock, ,21,R,rock,,
+*rock,rock,293,R,rock,,
+stk,,989,,,,
+hrd S,,365,S,sand,hard,
+S,,5334,S,sand,,
+M,,4859,M,mud,,
+G,,2758,G,gravel,,
+stk M,,64,M,mud,sticky,
+R,,22,R,rock,,
+gy M,,1966,M,mud,,gray
+crs S,,70,S,sand,coarse,
+fne gy S,,1414,S,sand,fine,gray
+gy S,,879,S,sand,,gray
+brk Sh S,,51,S,shells,broken,
+sft M,,65,M,mud,soft,
+bk G,,378,G,gravel,,black
+S M,,45,mS,sand,,
+P,,239,P,pebbles,,
+crs gy S,,38,S,sand,coarse,gray
+crs bk S,,29,S,sand,coarse,black
+S G,,921,gS,sand,,
+Crl,,27,,,,
+Sh,,623,,shells,,
+fne S,,172,S,sand,,fine
+M G,,26,gM,mud,,
+bk M,,54,M,mud,,black
+G Sh,,63,G,gravel,,
+rky Sh,,54,R,rock,,
+fne bk G,,72,G,gravel,fine,black
+crs G,,39,G,gravel,coarse,
+gy Silt,,66,M,silt,,gray
+fne bk S,,105,S,sand,fine,black
+gy Oz,,47,,ooze,,gray
+bk S,,158,S,sand,,black
+gn Oz,,32,,ooze,,green
+Oz,,283,,ooze,,
+gn M,,311,M,mud,,green
+bu gy M,,38,M,mud,,
+brk Sh,,113,,shells,broken,
+bu M,,204,M,mud,,blue
+Sh G,,99,,shells,,
+fne G,,28,G,gravel,fine,
+gy S G,,28,gS,sand,,gray
+Cl,,314,C,clay,,
+Co,,154,,coral,,
+gy M G,,49,gM,mud,,gray
+gy M S,,40,sM,mud,,gray
+Sh rky,,40,,shells,,
+S Sh,,98,S,sand,,
+gy M Sh,,46,M,mud,,gray
+awash lw,,24,,,,
+M S,,37,sM,mud,,
+awash hw,,22,,,,
+rky Co,,22,R,rock,,
+Sh S,,22,,shells,,
+Awash MLLW,,25,,,,
+gy M brk Sh,,44,M,mud,,gray
+fne gy M,,27,M,mud,fine,gray
+bk G Sh,,35,G,gravel,,black
+blk S,,24,S,sand,,black
+Bares 4' MLLW,,22,,,,
+Bares 11' MLLW,,36,,,,
+Blds,,36,B,boulders,,
+sand,,34,S,sand,,
+gy M P,,63,gM,mud,,gray
+sft gy M,,201,M,mud,soft,gray
+rock,,27,R,rock,,
+Awash MHW,,22,,,,
+dk gn M,,23,M,mud,,
+Rk,,64,R,rock,,
+cov 1ft at MLLW,,35,,,,
+*rk (not verified),,35,,,,
+rk (not verified),,41,,,,
+cov 1ft MLLW,,22,,,,
+rk (less than class 1 sources),,23,,,,
+*rk (less than class 1 sources),,32,,,,
+fne gn S,,94,S,sand,fine,green
+kelp,,35,,kelp,,
+Clay,,86,C,clay,,
+wh S,,37,S,sand,,white
+Awash HW,,28,,,,
+Awash LW,,26,,,,
+Awash half tide,,26,,,,
+Boulders,,24,B,boulders,,
+Lava Ash,,22,,lava,,
+awash at half tide,,22,,,,
+stky,,44,,,sticky,
+crs S Sh,,31,S,sand,coarse,
+gn M S,,46,sM,mud,,green
+fne gn S brk Sh,,66,S,sand,fine,green
+fne gn S brk Sh P,,32,S,sand,fine,green
+crs gn S M,,28,mS,sand,coarse,green
+crs S M,,40,mS,sand,coarse,
+rocks,,27,R,rock,,
+Gravel,,27,G,gravel,,
+Hard,,340,R,rock,hard,
+Soft,,62,,soft,soft,
+Sand,,331,S,sand,,
+Rocky,,124,R,rock,rocky,
+*rk awash h.w.,,24,,,,
+*rk awash H.W.,,27,,,,
