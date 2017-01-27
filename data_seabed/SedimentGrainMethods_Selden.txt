@@ -17,6 +17,29 @@ Sources:
 ## https://catalog.data.gov/dataset/conmapsg-continental-margin-mapping-program-conmap-sediments-grainsize-distribution-for-the-uni
 ## http://pubs.usgs.gov/of/2005/1001/data/surficial_sediments/ecstdb2005.zip
 
+D) Gulf of St. Lawrence. 
+Georeferenced and Digitized sediment descriptions from Chart 2 in pdf of Morphology and Sediments of the Gulf of St. Lawrence by Horing, DH, and Nota, DJG (1973) Bulletin of the Fisheries Research Board of Canada, 182, Fisheries and Marine Service, Ottawa.
+http://www.dfo-mpo.gc.ca/Library/1493.pdf
+According to the legend, fractional notations are used when surface units are thin; upper numbers apply to thin or discontinuous surface units, the lower numbers to the principal underlying units
+Example: 3c/R1 = Gravelly well sorted Sand covering R1 bedrock
+
+For two codes separated by a dash, I assumed the value for the first listed.
+Example: 3-3c would be classified as the value for 3. This matches the color-coding of the original shapes on the paper map. "Colour tints and symbols as used in legend represent the first component only when referring to the unit identifications on the chart"
+
+Particle diameters (mm):
+	Clay < 0.002
+	Silt 0.002 - 0.05
+	Very Fine Sand 0.05-0.125
+	Fine Sand 0.125 - 0.25
+	Medium Sand 0.25 - 0.5
+	Coarse Sand 0.5 - 2.0
+	Gravel > 2.0
+Nomenclature:
+	5-30% by Weight: Pelitic, Sandy, Gravelly
+	>30% by Weight: Pelite, Sand, Gravel	
+	If two components represent more than 30% each, the finer grained component 	is indicated by its noun, the other with an adjective with adverb very. e.g. 	very sandy pelite
+
+
 
 Step 2: Classify habitat at haul locations
 US Atlantic Shelf (including western-most hauls in Scotian Shelf Spring survey)
