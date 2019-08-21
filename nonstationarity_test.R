@@ -1,4 +1,5 @@
 ## Script to test whether thermal envelopes change through time (non-stationarity)
+## This is part 1: fits models to beginning and end of dataset
 
 ## Set working directories depending on computer
 if(Sys.info()["nodename"] == "pinsky-macbookair"){
@@ -192,7 +193,6 @@ for(i in 1:length(allspp)){
 	}
 	
 	# make sure we have at least 6 unique levels for each variable (necessary to fit gam with 4 knots)
-	# look at training presence indices, since the most constraining (for mygam2tt)
 	levs1 <- apply(spdata[firstindsp,c('bottemp', 'surftemp', 'logrugosity')], 2, FUN=function(x) length(unique(x)))
 	levs2 <- apply(spdata[lastindsp,c('bottemp', 'surftemp', 'logrugosity')], 2, FUN=function(x) length(unique(x)))
 	if(any(levs1 < 6)){
@@ -214,9 +214,8 @@ for(i in 1:length(allspp)){
 	####################################################
 
 	#Default models. Leave out region factor if necessary
-	# since fitallreg, using all regions in an ocean
-	# note that biomassmean is now linear (not smoothed)
-	# null model doesn't include first/half distinction
+	# null model doesn't include first/half distinction: NO NEED TO FIT THIS (also don't need to fit abunmod)
+	# could simplify presmod so it doesn't have an interaction on logrugosity or biomassmean
 	if(length(levels(spdata$regionfact))==1){
 			mypresmod<-formula(presfit ~ s(bottemp,k=6,by=half)+s(surftemp,k=6,by=half)+s(logrugosity,k=4,by=half)+biomassmean*half)
 			myabunmod<-formula(logwtcpue.pad ~ s(bottemp,k=6,by=half)+s(surftemp,k=6,by=half)+s(logrugosity,k=4,by=half)+biomassmean*half)

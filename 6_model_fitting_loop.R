@@ -394,6 +394,9 @@ for(i in 1:length(allspp)){
 	#### Save models for later projections
 	####################################################
 
+#	mygam1$model <- NA # trim out the data to save disk space?
+#	mygam2$model <- NA # trim out the data to save disk space?
+
 	mods = list(mygam1=mygam1, mygam2 = mygam2)
 	
 	sp <- gsub('/', '', sp) # would mess up saving the file

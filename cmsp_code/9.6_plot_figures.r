@@ -290,7 +290,7 @@ rcps <- sort(unique(goalsmetbymod1out$rcp))
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
 				inds <- goalsmetbymod2out$model == mods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]  & !(goalsmetbymod2out$period == '2006-2020')
-#				points(c(2006, goalsmetbymod2out$mid[inds]), c(1, goalsmetbymod2out$pmet[inds]), type='l', pch=16, col=cols[3+j]) # with 2006,1
+	#				points(c(2006, goalsmetbymod2out$mid[inds]), c(1, goalsmetbymod2out$pmet[inds]), type='l', pch=16, col=cols[3+j]) # with 2006,1
 				points(goalsmetbymod2out$mid[inds], goalsmetbymod2out$pmet[inds], type='l', pch=16, col=cols[3+j]) # without
 			}	
 		}
