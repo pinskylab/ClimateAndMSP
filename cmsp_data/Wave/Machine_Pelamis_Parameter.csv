@@ -1,4 +1,0 @@
-NAME,VALUE,NOTE
-CapMax ,750,Maximum capacity of device [kW].
-HsMax,10.0,Upper limit of wave height for device operation [m]: this device shuts down when wave height is bigger than HsMax.
-TpMax ,20.0,Upper limit of wave period for device operation [sec]: this device shuts down when wave period is longer than TpMax.

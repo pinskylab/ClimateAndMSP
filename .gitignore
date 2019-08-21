@@ -1,4 +1,10 @@
-
+# R files
 .Rapp.history
-
 .Rhistory
+
+# Odd Mac files
+
+# Downloaded data files and temporary files
+dataDL/
+temp/
+temp_figures/
