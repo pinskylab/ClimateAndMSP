@@ -1,29 +1,12 @@
 # evaluate protected areas against shifts in species distribution
 # calculate species gains, losses, turnover, etc.
 
-## Set working directories
-if(Sys.info()["nodename"] == "pinsky-macbookair"){
-	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	presmapbymodfolder <- '../data/'
-	}
-if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-	setwd('~/Documents/range_projections/')
-	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
-	presmapbymodfolder <- 'data/'
-	}
-# could add code for Lauren's working directory here
 
 ############
 ## Flags
 ############
 
 ## choose which runs to use
-## runtype refers to how the Species Distribution Models (SDMs) were fit
-## projtype refers to how the SDM projections were done
-#runtype <- 'test'; projtype=''
-#runtype <- ''; projtype=''`
-#runtype <- 'testK6noSeas'; projtype='_xreg'
-runtype <- 'fitallreg'; projtype='_xreg'
 
 # choose the rcp
 rcp <- 85
@@ -169,7 +152,7 @@ pickone <- function(x){
 ## Load and set up data
 ###########################
 
-wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1) # shows wich MPAs are in which grid cells. each line is a unique grid cell-MPA combination.
+wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1) # shows which MPAs are in which grid cells. each line is a unique grid cell-MPA combination.
 	wdpa$lon[wdpa$lon<0] <- wdpa$lon[wdpa$lon<0] + 360 # convert lon to positive
 
 	wdpa <- as.data.table(wdpa)
