@@ -18,10 +18,10 @@ periods <- c('2006-2020', '2081-2100')
 ####################
 ## helper functions
 ####################
-require(Hmisc)
+#require(Hmisc)
 require(data.table)
-require(lme4) # for mixed-effects models
-require(car) # for testing ME models
+#require(lme4) # for mixed-effects models
+#require(car) # for testing ME models
 
 
 lu <- function(x) return(length(unique(x)))
@@ -152,40 +152,25 @@ pickone <- function(x){
 ## Load and set up data
 ###########################
 
-wdpa <- read.csv('data/wdpa_cov_by_grid0.25.csv', row.names=1) # shows which MPAs are in which grid cells. each line is a unique grid cell-MPA combination.
+wdpa <- read.csv(gzfile('output/wdpa_cov_by_grid0.05.csv.gz')) # shows which MPAs are in which grid cells. each line is a unique grid cell-MPA combination.
 	wdpa$lon[wdpa$lon<0] <- wdpa$lon[wdpa$lon<0] + 360 # convert lon to positive
 
 	wdpa <- as.data.table(wdpa)
 
 	# set up MPA networks
-	wdpa[sub_loc == 'US-CA' & mang_auth == 'California Department of Fish and Game',network:='mlpa']
-	wdpa[(sub_loc %in% c('US-DE', 'US-FL', 'US-GA', 'US-MA', 'US-MD', 'US-ME', 'US-NC', 'US-NJ', 'US-NY', 'US-RI', 'US-SC', 'US-VA')) & (lon > 280), network:='eastcoast'] # by choosing by state, this won't include federal water closures
-	wdpa[(sub_loc %in% c('US-AK')), network:='ak'] # by choosing by state, this won't include federal water closures
+	wdpa[SUB_LOC == 'US-CA' & MANG_AUTH == 'State Fish and Wildlife',network:='mlpa']
+	wdpa[(SUB_LOC %in% c('US-DE', 'US-FL', 'US-GA', 'US-MA', 'US-MD', 'US-ME', 'US-NC', 'US-NJ', 'US-NY', 'US-RI', 'US-SC', 'US-VA')) & (lon > 280), network:='eastcoast'] # by choosing by state, this won't include federal water closures
+	wdpa[(SUB_LOC %in% c('US-AK')), network:='ak'] # by choosing by state, this won't include federal water closures
 	
-	# choose one and only one region per MPA, assing to a new column
-	wdpa[,region.one:=pickone(region),by=wdpapolyID]
-
 	# calculate mpa extent
-	wdpa[, ':=' (lat_min=min(lat), lat_max=max(lat)), by=wdpapolyID]
+	wdpa[, ':=' (lat_min=min(lat), lat_max=max(lat)), by=WDPA_PID]
 
-#	wdpanets[network=='mlpa',plot(lon,lat)]
-#	wdpanets[network=='eastcoast',plot(lon,lat)]
-#	wdpanets[network=='ak',plot(lon,lat)]
+#	wdpa[network=='mlpa',plot(lon,lat)]
+#	wdpa[network=='eastcoast',plot(lon,lat)]
+#	wdpa[network=='ak',plot(lon,lat)]
 #	require(maps); map(database='world2',add=TRUE)
 
 
-# load ensemble mean distributions (both rcps)
-#load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep=''))
-#	presmap.1 <- presmap
-#	presmap.1$rcp <- rcp
-#	dim(presmap.1)
-#load(paste('data/presmap_', runtype, projtype, '_rcp', otherrcp, '.RData', sep=''))
-#	presmap$rcp <- otherrcp
-#	dim(presmap)
-#	presmap <- rbind(presmap.1, presmap)
-#	dim(presmap)
-#	rm(presmap.1)
-#
 # load presmap for all model runs, a bit slow (large files)
 load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load).
 	presmapbymod.1 <- as.data.table(presmapbymod) # seems to remove presmapbymod as well?
