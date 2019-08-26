@@ -41,7 +41,8 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 
 	# Write out
 	saveRDS(wdpacov, file=paste('output/grid', gridsz, '_cov_by_wdpa.rds', sep=''))
-
+    write.csv(wdpacov, file=gzfile(paste('output/grid', gridsz, '_cov_by_wdpa.csv.gz', sep='')))
+	
 # Calculate the fraction of each PA in each grid cell
     # get area of each WDPA piece in each grid cell
 	wdpagrid2 <- st_transform(wdpagrid, crs='+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs') # North America Albers Equal Area Conic from https://epsg.io/102008
@@ -65,4 +66,5 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 	
 # write out
 	saveRDS(wdpa.by.grid, file=paste('output/wdpa_cov_by_grid', gridsz, '.rds', sep=''))
+	write.csv(wdpa.by.grid, file=gzfile(paste('output/wdpa_cov_by_grid', gridsz, '.csv.gz', sep='')))
 	
