@@ -40,7 +40,7 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 	wdpacov = wdpacov[order(wdpacov$gridpolyID),]
 
 	# Write out
-	saveRDS(wdpacov, file=paste('output/grid', gridsz, '_cov_by_wdpa.rds', sep=''))
+	#saveRDS(wdpacov, file=paste('output/grid', gridsz, '_cov_by_wdpa.rds', sep=''))
     write.csv(wdpacov, file=gzfile(paste('output/grid', gridsz, '_cov_by_wdpa.csv.gz', sep='')))
 	
 # Calculate the fraction of each PA in each grid cell
@@ -48,7 +48,7 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 	wdpagrid2 <- st_transform(wdpagrid, crs='+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs') # North America Albers Equal Area Conic from https://epsg.io/102008
 	wdpagrid2$area_wdpa=st_area(wdpagrid2) # area of each intersected wdpa piece
 	
-	# get area of each WDPA PA and each grid cell
+	# get area of each WDPA PA and area of each grid cell
 	wdpa = st_read('dataDL/WDPA/WDPA_Aug2019_marine-shapefile/WDPA_Aug2019_marine-shapefile-polygons.shp')
 	wdpa2 <- st_transform(wdpa, crs='+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs') # North America Albers Equal Area Conic from https://epsg.io/102008
 	wdpa2$area_fullwdpa <- st_area(wdpa2)
@@ -56,7 +56,7 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 		dim(wdpa.by.grid)
 		dim(wdpagrid2) # should match
 		head(wdpa.by.grid)
-	wdpa.by.grid <-	merge(wdpa.by.grid, st_drop_geometry(SPsf3[,c('gridpolyID', 'area_grid')]), by='gridpolyID')
+	wdpa.by.grid <-	merge(wdpa.by.grid, st_drop_geometry(SPsf3[,c('gridpolyID', 'area_grid')]), by='gridpolyID') # merge in grid cell area (need SPsf3 from above)
 
 	# fraction of each PA in each grid cell
 	wdpa.by.grid$prop_grid <- as.numeric(wdpa.by.grid$area_wdpa/wdpa.by.grid$area_fullwdpa) # fraction of each PA that is in each grid cell
@@ -64,9 +64,9 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 	wdpa.by.grid$prop_grid[wdpa.by.grid$prop_grid>1] <- 1 # fix the cases that are slightly >1
 
 	# fraction of each grid cell in each PA
-	wdpa.by.grid$prop_wdpa <- as.numeric(wdpa.by.grid$area_wdpa/wdpa.by.grid$area_fullwdpa) # fraction of each PA that is in each grid cell
-	summary(wdpa.by.grid$prop_grid) # max is very slightly above 1, which must be a mistake
-	wdpa.by.grid$prop_grid[wdpa.by.grid$prop_grid>1] <- 1 # fix the cases that are slightly >1
+	wdpa.by.grid$prop_wdpa <- as.numeric(wdpa.by.grid$area_wdpa/wdpa.by.grid$area_grid) # fraction of each PA that is in each grid cell
+	summary(wdpa.by.grid$prop_wdpa) # max is very slightly above 1, which must be a mistake
+	wdpa.by.grid$prop_wdpa[wdpa.by.grid$prop_wdpa>1] <- 1 # fix the cases that are slightly >1
 	
 			
 	# re-order
@@ -74,6 +74,6 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 		head(wdpa.by.grid)
 	
 # write out
-	saveRDS(wdpa.by.grid, file=paste('output/wdpa_cov_by_grid', gridsz, '.rds', sep=''))
-	write.csv(wdpa.by.grid, file=gzfile(paste('output/wdpa_cov_by_grid', gridsz, '.csv.gz', sep='')))
+	# saveRDS(wdpa.by.grid, file=paste('output/wdpa_cov_by_grid', gridsz, '.rds', sep=''))
+	write.csv(wdpa.by.grid, file=gzfile(paste0('output/wdpa_cov_by_grid', gridsz, '.csv.gz')))
 	
