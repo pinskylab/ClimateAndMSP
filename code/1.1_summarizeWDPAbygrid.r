@@ -6,7 +6,7 @@ library(sf)
 wdpagrid <- readRDS('temp/wdpa_by_grid0.05_intersect.rds'); gridsz <- 0.05
 SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 	
-# Calc fraction of each grid covered by a PA
+# Calc fraction of each grid covered by any PA
 	# Merge together wdpa pieces in the same grid cell
 	out2 <- aggregate(x=wdpagrid[,'gridpolyID'], by=list(ID=wdpagrid$gridpolyID), FUN=unique, na.rm=TRUE) # do the merge by grid cell ID (=rowname in SP)
 
@@ -46,9 +46,9 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 # Calculate the fraction of each PA in each grid cell
     # get area of each WDPA piece in each grid cell
 	wdpagrid2 <- st_transform(wdpagrid, crs='+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs') # North America Albers Equal Area Conic from https://epsg.io/102008
-	wdpagrid2$area_wdpa=st_area(wdpagrid2) # area of all intersected wdpa pieces
+	wdpagrid2$area_wdpa=st_area(wdpagrid2) # area of each intersected wdpa piece
 	
-	# get area of each WDPA PA
+	# get area of each WDPA PA and each grid cell
 	wdpa = st_read('dataDL/WDPA/WDPA_Aug2019_marine-shapefile/WDPA_Aug2019_marine-shapefile-polygons.shp')
 	wdpa2 <- st_transform(wdpa, crs='+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs') # North America Albers Equal Area Conic from https://epsg.io/102008
 	wdpa2$area_fullwdpa <- st_area(wdpa2)
@@ -56,10 +56,19 @@ SPsf2 <- readRDS('temp/SPsf2.rds') # the analysis grid
 		dim(wdpa.by.grid)
 		dim(wdpagrid2) # should match
 		head(wdpa.by.grid)
-	wdpa.by.grid$prop_grid <- as.numeric(wdpa.by.grid$area_wdpa/wdpa.by.grid$area_fullwdpa)
+	wdpa.by.grid <-	merge(wdpa.by.grid, st_drop_geometry(SPsf3[,c('gridpolyID', 'area_grid')]), by='gridpolyID')
+
+	# fraction of each PA in each grid cell
+	wdpa.by.grid$prop_grid <- as.numeric(wdpa.by.grid$area_wdpa/wdpa.by.grid$area_fullwdpa) # fraction of each PA that is in each grid cell
 		summary(wdpa.by.grid$prop_grid) # max is very slightly above 1, which must be a mistake
 	wdpa.by.grid$prop_grid[wdpa.by.grid$prop_grid>1] <- 1 # fix the cases that are slightly >1
-		
+
+	# fraction of each grid cell in each PA
+	wdpa.by.grid$prop_wdpa <- as.numeric(wdpa.by.grid$area_wdpa/wdpa.by.grid$area_fullwdpa) # fraction of each PA that is in each grid cell
+	summary(wdpa.by.grid$prop_grid) # max is very slightly above 1, which must be a mistake
+	wdpa.by.grid$prop_grid[wdpa.by.grid$prop_grid>1] <- 1 # fix the cases that are slightly >1
+	
+			
 	# re-order
 	wdpa.by.grid <- wdpa.by.grid[order(wdpa.by.grid$WDPA_PID, wdpa.by.grid$gridpolyID),]
 		head(wdpa.by.grid)
