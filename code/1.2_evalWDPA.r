@@ -43,7 +43,7 @@ wdpagrid <- fread('gunzip -c output/wdpa_cov_by_grid0.05.csv.gz', drop = 1) # sh
 
 	# set up MPA networks
 	wdpagrid[SUB_LOC == 'US-CA' & MANG_AUTH == 'State Fish and Wildlife',network := 'mlpa']
-	wdpagrid[(SUB_LOC %in% c('US-DE', 'US-FL', 'US-GA', 'US-MA', 'US-MD', 'US-ME', 'US-NC', 'US-NJ', 'US-NY', 'US-RI', 'US-SC', 'US-VA')) & (lon > 280), network := 'eastcoast'] # by choosing by state, this won't include federal water closures
+	wdpagrid[grepl('US-DE|US-FL|US-GA|US-MA|US-MD|US-ME|US-NC|US-NJ|US-NY|US-RI|US-SC|US-VA', SUB_LOC) & !grepl('US-N/A', SUB_LOC) & (lon > -100), network := 'eastcoast'] # by exluding US-N/A, this won't include federal water closures
 	wdpagrid[(SUB_LOC %in% c('US-AK')), network := 'ak'] # by choosing by state, this won't include federal water closures
 	
 	# calculate mpa extent
@@ -54,13 +54,14 @@ wdpagrid <- fread('gunzip -c output/wdpa_cov_by_grid0.05.csv.gz', drop = 1) # sh
 #	wdpagrid[network=='ak',plot(lon,lat)]
 #	require(maps); map(database='world2',add=TRUE)
 
-wdpa <- wdpagrid[!duplicated(WDPA_PID), ] # the list of MPAs. Turnover data will be added as columns to this
-wdpa[,c('gridpolyID', 'lat', 'lon', 'area_wdpa', 'area_grid', 'prop_grid', 'prop_wdpa') := NULL] # remove gridcell-specific columns
 	
 ##############################################################
 # Load in pres/abs results for each RCP and each species
-# and calculate summary statistics by grid cell
+# and calculate summary statistics by MPA
 ##############################################################
+wdpa <- wdpagrid[!duplicated(WDPA_PID), ] # the list of MPAs. Turnover data will be added as columns to this
+wdpa[,c('gridpolyID', 'lat', 'lon', 'area_wdpa', 'area_grid', 'prop_grid', 'prop_wdpa') := NULL] # remove gridcell-specific columns
+
 
 projcols <- c('lat', 'lon', paste0('mean', 1:NMODS)) # names of columns in pred.agg to use (the projections)
 for (i in 1:length(RCPS)) {
@@ -68,7 +69,6 @@ for (i in 1:length(RCPS)) {
     files <- list.files(path = PRESABSPATH, pattern = paste('*rcp', RCPS[i], '*', sep = ''), full.names = TRUE)
 
     # load presmap for each model run and process the results
-    # modify this to read in files from /local/home/jamesm/Documents/range_projections/CEmodels_proj_PresAbs_May2018/ instead
     # then calculate change in p(occur)
     for (j in 1:length(files)) {
         cat(paste0(' ', j))
@@ -107,7 +107,7 @@ for (i in 1:length(RCPS)) {
             # merge wpda with sppbyMPA (latter has results from the current species)
             wdpa <- merge(wdpa, sppbyMPA, by = 'WDPA_PID')
             
-            # calculate summary stats by MPA and add this species onto results from previous species
+            # calculate summary stats by network and add this species onto results from previous species
             if (!(paste0('ninit.', RCPS[i], '.', m) %in% colnames(wdpa))) { # if output column in wdpa doesn't yet exist, create it
                 wdpa[, (paste0('ninit.', RCPS[i], '.', m)) := pinit]
                 wdpa[, (paste0('nfinal.', RCPS[i], '.', m)) := pfinal]
@@ -147,48 +147,88 @@ write.csv(wdpa, file = gzfile('temp/wdpaturnbyMPAbymod.csv.gz'))
 
 ##############################################
 # Calculate turnover within select MPA networks
-# Across all models in the ensemble
+# For each model in the ensemble
 ##############################################
-
-# merge in MPAnetwork ID (using data.tables)
-wdpanets <- wdpa[!is.na(network),] # trim out non-network rows
-setkey(wdpanets, lat, lon)
-setkey(thesesppbymod, lat, lon)
-thesesppbymodnet <- wdpanets[thesesppbymod,.(sppocean, period, rcp, model, pres, network, lat, lon), allow.cartesian=TRUE, nomatch=0] # datatable join, using the keys set in each dt. the order specifies to keep all rows of thesesppbymod. allow.cartesian is needed because the result is larger than either parent. drop locations not in a network.
-	dim(thesesppbymodnet) # 2,637,693? 5,816,336, now 8995646 (4/24/2016)
-	
-# summarize by unique species in each period in each MPA in each RCP in each model (pres or not)
-thesesppbynetbymod <- thesesppbymodnet[,max(pres),by="sppocean,period,network,rcp,model"] # DT aggregate function
-	thesesppbynetbymod[,pres:=as.logical(V1)]
-	thesesppbynetbymod[,V1:=NULL] # drop V1
-	dim(thesesppbynetbymod) # 30,077
-
-# calculate turnover by MPA, rcp, and model. very quick.
-thesesppbynetbymod[,nstart:=nstart(period, sppocean, pres, periods), by="network,rcp,model"]
-thesesppbynetbymod[,nend:=nend(period, sppocean, pres, periods), by="network,rcp,model"]
-thesesppbynetbymod[,nlost:=nlost(period, sppocean, pres, periods), by="network,rcp,model"]
-thesesppbynetbymod[,ngained:=ngained(period, sppocean, pres, periods), by="network,rcp,model"]
-thesesppbynetbymod[,flost:=flost(period, sppocean, pres, periods), by="network,rcp,model"]
-thesesppbynetbymod[,fgained:=fgained(period, sppocean, pres, periods), by="network,rcp,model"]
-thesesppbynetbymod[,fgainedalt:=fgainedalt(period, sppocean, pres, periods), by="network,rcp,model"]
-thesesppbynetbymod[,beta_sor:=beta_sor(period, sppocean, pres, periods), by="network,rcp,model"]
-
-# trim out duplicate rows within an mpa/rcp/model
-setkey(thesesppbynetbymod, network,rcp,model)
-wdpaturnbynetbymod <- unique(thesesppbynetbymod)
-	dim(wdpaturnbynetbymod) # 78 (3 networks x 13 models x 2 scenarios)
-	wdpaturnbynetbymod[,c('sppocean','period','pres'):=NULL]
-	
-# merge in mpa metadata
-setkey(wdpanets, network)
-uwdpanets <- unique(wdpanets) # only the lines with unique mpas
-	dim(uwdpanets) # 3
-setkey(uwdpanets, network)
-setkey(wdpaturnbynetbymod, network,rcp,model)
-wdpaturnbynetbymod <- uwdpanets[wdpaturnbynetbymod, .(network,rcp,model,nstart,nend,nlost,ngained,flost,fgained,fgainedalt,beta_sor)]
-	dim(wdpaturnbynetbymod) # 78
+wdpanet <- wdpagrid[!is.na(network), .(lat = mean(lat), lon = mean(lon), area = sum(area_fullwdpa)), by = network ] # the list of MPA networks. Turnover data will be added as columns to this
 
 
-# write out wdpaturnbyMPA
-write.csv(wdpaturnbynetbymod, paste('data/wdpaturnbynetbymod_', runtype, projtype, '_rcp', rcp, '&', otherrcp, '.csv', sep=''))
+projcols <- c('lat', 'lon', paste0('mean', 1:NMODS)) # names of columns in pred.agg to use (the projections)
+for (i in 1:length(RCPS)) {
+    print(paste0(Sys.time(), ' On RCP ', RCPS[i], '. Species: '))
+    files <- list.files(path = PRESABSPATH, pattern = paste('*rcp', RCPS[i], '*', sep = ''), full.names = TRUE)
+
+    # load presmap for each model run and process the results
+    # then calculate change in p(occur)
+    for (j in 1:length(files)) {
+        cat(paste0(' ', j))
+        load(files[j]) # loads pred.agg data.frame
+        pred.agg <- as.data.table(pred.agg)
+        
+        # round lat lon to nearest 0.05 so that merging is successful with WDPA
+        pred.agg[, lat := floor(latitude*20)/20 + 0.025] # assumes 0.05 grid size
+        pred.agg[, lon := floor(longitude*20)/20 + 0.025] # assumes 0.05 grid size
+        setkey(pred.agg, lat, lon)
+        
+        # scale up from tow to grid area: not done
+        # D <- 365*20/(20/60/24) # number of tows in 20 years (currently hard-coded for NEUS 20 minutes)
+        # pred.agg[, Agrid := 2*pi*6371^2*abs(sin((latitude - 0.025)*pi/180) - sin(pi/180*(latitude + 0.025)))*0.05/360] # area of each 0.05 grid in km2. See http://mathforum.org/library/drmath/view/63767.html
+        # pred.agg[, A := Agrid/0.0384] # number of tows in one 0.05 grid cell (currently hard-coded for NEUS)
+        # for (m in 1:NMODS) { # for each climate model
+        #     pred.agg[, (paste0('scaled', m)) := 1 - (1 - get(paste0('mean', m)))^A] # 1-(1-p)^D^A
+        # }
+ 
+        # reorganize so that time 2 and time 1 are separate columns, rows are locations
+        presbyloc <- merge(pred.agg[year_range == PERIODS[1], ..projcols], pred.agg[year_range == PERIODS[2], ..projcols], by = c('lat', 'lon'), suffixes = c('.t1', '.t2'))
+
+        # merge pres/abs data with WDPA grid data and calculate summary stats about species change through time
+        # summary stat column names are of form [sumstatname].[RCP].[modnumber]
+        wdpagridspp <- merge(wdpagrid, presbyloc, all.x = TRUE, by = c('lat', 'lon'))
+        for (m in 1:NMODS) { # for each climate model
+            wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t1')]]), (paste0('mean', m, '.t1')) := 0] # set NAs to 0 (species not present)
+            wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t2')]]), (paste0('mean', m, '.t2')) := 0]
+
+            # aggregate p(occur) across grid cells into full MPA networks
+            sppbynet <- wdpagridspp[!is.na(network), .(pinit = 1 - prod(1 - get(paste0('mean', m, '.t1'))*prop_wdpa), # p(occur whole MPA) at initial timepoint as 1 - prod(1-p(occur per grid))
+                                 pfinal = 1 - prod(1 - get(paste0('mean', m, '.t2'))*prop_wdpa)
+                                 ), by = network]
+            #print(dim(sppbynet))
+            
+            # merge wpda with sppbynet (latter has results from the current species)
+            wdpanet <- merge(wdpanet, sppbynet, by = 'network')
+            
+            # calculate summary stats and add this species onto results from previous species
+            if (!(paste0('ninit.', RCPS[i], '.', m) %in% colnames(wdpanet))) { # if output column in wdpanet doesn't yet exist, create it
+                wdpanet[, (paste0('ninit.', RCPS[i], '.', m)) := pinit]
+                wdpanet[, (paste0('nfinal.', RCPS[i], '.', m)) := pfinal]
+                wdpanet[, (paste0('nshared.', RCPS[i], '.', m)) := pinit*pfinal]
+                wdpanet[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', m)) := pinit - pfinal]
+                wdpanet[pinit <= pfinal, (paste0('nlost.', RCPS[i], '.', m)) := 0]
+                wdpanet[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', m)) := pfinal - pinit]
+                wdpanet[pinit >= pfinal, (paste0('ngained.', RCPS[i], '.', m)) := 0]
+            } else {# if columns already exist, add the new species' values onto the existing values
+                wdpanet[, (paste0('ninit.', RCPS[i], '.', m)) := get(paste0('ninit.', RCPS[i], '.', m)) + pinit]
+                wdpanet[, (paste0('nfinal.', RCPS[i], '.', m)) := get(paste0('nfinal.', RCPS[i], '.', m)) + pfinal]
+                wdpanet[, (paste0('nshared.', RCPS[i], '.', m)) := get(paste0('nshared.', RCPS[i], '.', m)) + pinit*pfinal]
+                wdpanet[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', m)) := get(paste0('nlost.', RCPS[i], '.', m)) + pinit - pfinal]
+                wdpanet[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', m)) := get(paste0('ngained.', RCPS[i], '.', m)) + pfinal - pinit]
+            }
+            wdpanet[, c('pinit', 'pfinal') := NULL] # delete the species-specific columns now that we have the summaries we need
+        }
+        # wdpanet[,print(max(get(paste0('ninit.', RCPS[i], '.1'))))] # a test that cumulative sums are being calculated. Should increase through the loop
+    }
+}
+print(Sys.time())
+
+dim(wdpanet) # 923 x 127
+
+# how many rows are zero?
+wdpanet[, .(sum(ninit.26.1 == 0), sum(ninit.85.1 == 0))]
+wdpanet[, .(sum(ninit.26.1 > 0), sum(ninit.85.1 > 0))]
+    # wdpanet[ninit.26.1 > 0, plot(lon_max, lat_max, cex = 0.1, xlim=c(-190, 0))]
+    # wdpanet[ninit.26.1 == 0, points(lon_max, lat_max, cex = 0.5, col = 'red')]
+
+# write out species data 
+write.csv(wdpanet, file = gzfile('temp/wdpaturnbynetbymod.csv.gz'), row.names = FALSE)
+
+# wdpanet <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # don't read the row numbers
 
