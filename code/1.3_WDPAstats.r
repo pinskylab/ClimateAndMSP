@@ -180,72 +180,63 @@ wdpalong[measure == 'beta_sor', .(beta_sor = mean(val, na.rm = TRUE), latsize = 
 # Examine change within MPA networks and the component MPAs
 # Across each model in the ensemble
 ################################################################
-wdpaturnbynetbymod <- as.data.table(read.csv(paste('data/wdpaturnbynetbymod_', runtype, projtype, '_rcp', rcp, '&', otherrcp, '.csv', sep=''), row.names=1)) # network results
-wdpaturnbyMPAbymod <- as.data.table(read.csv(paste('data/wdpaturnbyMPAbymod_', runtype, projtype, '_rcp', rcp, '&', otherrcp, '.csv', sep=''), row.names=1)) # individual MPA results
-
+wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # network results
+# also need wdpalong from above section
+		
 # Size of networks
-	wdpaturnbyMPAbymod[!is.na(network),.(num_mpas=length(unique(wdpapolyID))), by=network]
-	wdpaturnbyMPAbymod[!is.na(network) & lat_min>=35.25 & network=='eastcoast',.(num_mpas=length(unique(wdpapolyID))), by=network] # correct eastcoast to only north of Cape Hatteras (where we have data)
+	wdpaturnbyMPAbymod[!is.na(network),.(num_mpas=length(unique(WDPA_PID))), by=network]
+
+# calculate Sorenson turnover and fractional change
+for (r in c(26, 85)) {
+    for (m in 1:18) {
+        wdpaturnbynetbymod[, (paste0('beta_sor.', r, '.', m)) := 
+                               2*get(paste0('nshared.', r, '.', m)) /
+                               (2*get(paste0('nshared.', r, '.', m)) + get(paste0('ngained.', r, '.', m)) + get(paste0('ngained.', r, '.', m)))]
+        wdpaturnbynetbymod[, (paste0('flost.', r, '.', m)) := 
+                               get(paste0('nlost.', r, '.', m)) /
+                               get(paste0('ninit.', r, '.', m))]
+        wdpaturnbynetbymod[, (paste0('fgained.', r, '.', m)) := 
+                               get(paste0('ngained.', r, '.', m)) /
+                               get(paste0('nfinal.', r, '.', m))]
+    }
+}
+
+# convert to long format
+wdpanetlong <- melt(wdpaturnbynetbymod, id.vars = c('network', 'lat', 'lon', 'area'), 
+                 measure.vars = patterns('26|85'), variable.name = 'measure', value.name = 'val')
+wdpanetlong[, c('measure', 'rcp', 'model') := tstrsplit(measure, '.', fixed = TRUE)] # split name of turnover measure apart from RCP and model #
+    dim(wdpanetlong) # 864 x 8
 
 # Fraction of species lost
 	# all MPA networks
-	a <- wdpaturnbynetbymod[,mean(flost,na.rm=TRUE),by=c('rcp','model')]; a
-		a[,range(V1),by='rcp'] # 4%-19% or 11%-27% min
-		a[,mean(V1),by='rcp'] # 10% or 21% mean flost (rcp45 or rcp85)
-		a[,median(V1),by='rcp'] # 
-		a[,se(V1),by='rcp'] # 1.3% or 1.2% se across models (rcp45 or rcp85)
-	wdpaturnbyMPAbymod[,sd(flost,na.rm=TRUE),by=c('rcp','model')]
-	wdpaturnbyMPAbymod[,min(flost,na.rm=TRUE),by=c('rcp','model')]
-	wdpaturnbyMPAbymod[,max(flost,na.rm=TRUE),by=c('rcp','model')]
+wdpanetlong[measure == 'flost', .(mean = mean(val,na.rm = TRUE)), 
+         by = c('rcp','network')][, .(mean = mean(mean), se = se(mean), min = min(mean), max = max(mean)), 
+                                by = 'rcp'] # first mean is across climate models within networks x RCPs, then average across networks
 
 	# within the individual MPAs of these networks
-	a <- wdpaturnbyMPAbymod[!is.na(network),mean(flost,na.rm=TRUE),by=c('rcp','model')]; a
-		a[,range(V1),by='rcp'] # 
-		a[,mean(V1),by='rcp'] # 
-		a[,median(V1),by='rcp'] # 
-		a[,se(V1),by='rcp'] # 
-	
-	# average across GCMs and RCPs, keep networks separate
-	a <- wdpaturnbynetbymod[,mean(flost,na.rm=TRUE),by=network]; a
+wdpalong[measure == 'flost' & !is.na(network), .(mean = mean(val,na.rm = TRUE)), 
+         by = c('rcp','WDPA_PID')][, .(mean = mean(mean), se = se(mean), min = min(mean), max = max(mean)), 
+                                by = 'rcp'] # first mean is across climate models within MPAs x RCPs, then average across MPAs
 
 # Fraction of species gained (fraction of final community)
-	# average across all MPA networks, keep rcps and gcms separate
-	a <- wdpaturnbynetbymod[,mean(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; a
-		a[,mean(V1),by='rcp'] # 
-		a[,se(V1),by='rcp'] # 
-		a[,range(V1),by='rcp'] # 
-		a[,median(V1),by='rcp'] # 
-		a[,sd(V1),by='rcp'] # 
-	b <- wdpaturnbyMPAbymod[,sd(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; b
-		b[,mean(V1),by='rcp'] # 
+	# all MPA networks
+wdpanetlong[measure == 'fgained', .(mean = mean(val,na.rm = TRUE)), 
+         by = c('rcp','network')][, .(mean = mean(mean), se = se(mean), min = min(mean), max = max(mean)), 
+                                by = 'rcp'] # first mean is across climate models within networks x RCPs, then average across networks
 
 	# within the individual MPAs of these networks
-	a <- wdpaturnbyMPAbymod[!is.na(network),mean(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; a
-		a[,mean(V1),by='rcp'] # 
-		a[,se(V1),by='rcp'] # 
-		a[,range(V1),by='rcp'] # 
-		a[,median(V1),by='rcp'] # 
-
-	# average across GCMs and RCPs, keep networks separate
-	a <- wdpaturnbynetbymod[,mean(fgainedalt,na.rm=TRUE),by=network]; a
-
-	# average across GCMs, keep networks and RCPs separate
-	a <- wdpaturnbynetbymod[,mean(fgainedalt,na.rm=TRUE),by=c('network','rcp')]; a
+wdpalong[measure == 'fgained' & !is.na(network), .(mean = mean(val,na.rm = TRUE)), 
+         by = c('rcp','WDPA_PID')][, .(mean = mean(mean), se = se(mean), min = min(mean), max = max(mean)), 
+                                by = 'rcp'] # first mean is across climate models within MPAs x RCPs, then average across MPAs
 
 # Similarity (Sorenson)
 	# all MPA networks
-	a <- wdpaturnbynetbymod[,mean(beta_sor,na.rm=TRUE),by=c('rcp','model')]; a
-		a[,mean(V1),by='rcp'] # 
-		a[,se(V1),by='rcp'] # 
-		a[,range(V1),by='rcp'] # 
-		a[,median(V1),by='rcp'] # 
-		a[,sd(V1),by='rcp'] # 
-	b <- wdpaturnbyMPAbymod[,sd(fgainedalt,na.rm=TRUE),by=c('rcp','model')]; b
-		b[,mean(V1),by='rcp'] # 
+wdpanetlong[measure == 'beta_sor', .(mean = mean(val,na.rm = TRUE)), 
+         by = c('rcp','network')][, .(mean = mean(mean), se = se(mean), min = min(mean), max = max(mean)), 
+                                by = 'rcp'] # first mean is across climate models within networks x RCPs, then average across networks
 
 	# within the individual MPAs of these networks
-	a <- wdpaturnbyMPAbymod[!is.na(network),mean(beta_sor,na.rm=TRUE),by=c('rcp','model')]; a
-		a[,mean(V1),by='rcp'] # 
-		a[,se(V1),by='rcp'] # 
-		a[,range(V1),by='rcp'] # 
-		a[,median(V1),by='rcp'] # 
+wdpalong[measure == 'beta_sor' & !is.na(network), .(mean = mean(val,na.rm = TRUE)), 
+         by = c('rcp','WDPA_PID')][, .(mean = mean(mean), se = se(mean), min = min(mean), max = max(mean)), 
+                                by = 'rcp'] # first mean is across climate models within MPAs x RCPs, then average across MPAs
+
