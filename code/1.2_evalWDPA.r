@@ -1,5 +1,6 @@
-# evaluate protected areas against shifts in species distribution
+# evaluate protected areas and networks against shifts in species distribution
 # calculate species gains, losses, turnover, etc.
+# also output table of species p(occur) by MPA in the current time-period (2007-2020)
 
 
 ############
@@ -57,7 +58,7 @@ wdpagrid <- fread('gunzip -c output/wdpa_cov_by_grid0.05.csv.gz', drop = 1) # sh
 	
 ##############################################################
 # Load in pres/abs results for each RCP and each species
-# and calculate summary statistics by MPA
+# and calculate summary statistics on species turnover by MPA
 ##############################################################
 wdpa <- wdpagrid[!duplicated(WDPA_PID), ] # the list of MPAs. Turnover data will be added as columns to this
 wdpa[,c('gridpolyID', 'lat', 'lon', 'area_wdpa', 'area_grid', 'prop_grid', 'prop_wdpa') := NULL] # remove gridcell-specific columns
@@ -107,7 +108,7 @@ for (i in 1:length(RCPS)) {
             # merge wpda with sppbyMPA (latter has results from the current species)
             wdpa <- merge(wdpa, sppbyMPA, by = 'WDPA_PID')
             
-            # calculate summary stats by network and add this species onto results from previous species
+            # calculate summary stats by MPA and add this species onto results from previous species
             if (!(paste0('ninit.', RCPS[i], '.', m) %in% colnames(wdpa))) { # if output column in wdpa doesn't yet exist, create it
                 wdpa[, (paste0('ninit.', RCPS[i], '.', m)) := pinit]
                 wdpa[, (paste0('nfinal.', RCPS[i], '.', m)) := pfinal]
@@ -142,6 +143,63 @@ wdpa[, .(sum(ninit.26.1 > 0), sum(ninit.85.1 > 0))]
 write.csv(wdpa, file = gzfile('temp/wdpaturnbyMPAbymod.csv.gz'))
 
 # wdpa <- fread('gunzip -c temp/wdpaturnbyMPAbymod.csv.gz', drop = 1) # don't read the row numbers
+
+
+################################################################################
+# Load in pres/abs results for each RCP and each species
+# and aggregate p(occur) for each species in each MPA for current time-period
+# for comparison against observations
+################################################################################
+
+projcols <- c('lat', 'lon', paste0('mean', 1:NMODS)) # names of columns in pred.agg to use (the projections)
+for (i in 1:length(RCPS)) {
+    print(paste0(Sys.time(), ' On RCP ', RCPS[i], '. Species: '))
+    files <- list.files(path = PRESABSPATH, pattern = paste('*rcp', RCPS[i], '*', sep = ''), full.names = TRUE)
+
+    # load presmap for each model run and process the results
+    # then calculate change in p(occur)
+    for (j in 1:length(files)) {
+        cat(paste0(' ', j))
+        load(files[j]) # loads pred.agg data.frame
+        thisspp <- gsub(paste0(PRESABSPATH, '/|_Atl|_Pac|_rcp26|_rcp85|_jas_PresAbs_projection_AGG.RData'), '', files[j])
+        pred.agg <- as.data.table(pred.agg)
+        
+        # round lat lon to nearest 0.05 so that merging is successful with WDPA
+        pred.agg[, lat := floor(latitude*20)/20 + 0.025] # assumes 0.05 grid size
+        pred.agg[, lon := floor(longitude*20)/20 + 0.025] # assumes 0.05 grid size
+        setkey(pred.agg, lat, lon)
+        
+        # trim to 2007-2020
+        pred.agg <- pred.agg[year_range == '2007-2020',]
+
+        # merge pres/abs data with WDPA grid data
+        wdpagridspp <- merge(wdpagrid, pred.agg, by = c('lat', 'lon')) # don't include all MPAs, to drop MPAs for which this species wasn't projected (e.g., Atl vs Pac)
+        
+        # calculate summary stats about species p(occur) by MPA for each climate model
+        for (m in 1:NMODS) { # for each climate model
+
+            # aggregate p(occur) across grid cells into full MPAs
+            sppbyMPA <- wdpagridspp[, .(spp = thisspp, rcp = RCPS[i], model = m, poccur = 1 - prod(1 - get(paste0('mean', m))*prop_wdpa)), by = WDPA_PID] # p(occur whole MPA) at initial timepoint as 1 - prod(1-p(occur per grid))
+                #print(dim(sppbyMPA))
+            
+            # add this species/model/rcp onto the output data.table
+            if(!exists('wdpa_by_spp_projnow')) { # create the output table if it doesn't exist
+                wdpa_by_spp_projnow <- sppbyMPA
+            } else {
+                wdpa_by_spp_projnow <- rbind(wdpa_by_spp_projnow, sppbyMPA)
+            }
+            
+        }
+    }
+}
+print(Sys.time())
+
+dim(wdpa_by_spp_projnow) #
+
+
+# write out species data 
+saveRDS(wdpa_by_spp_projnow, file = 'temp/wdpa_by_spp_projnow.rds')
+
 
 
 
