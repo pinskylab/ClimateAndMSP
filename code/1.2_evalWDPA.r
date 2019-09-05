@@ -18,17 +18,18 @@ NMODS <- 18
 # path to the pres-abs projection results from Morley et al. 2018. At 0.05 grid size.
 PRESABSPATH <- '/local/shared/pinsky_lab/projections_PlosOne2018/CEmodels_proj_PresAbs_May2018' 
 
-# set default rounding (2 bytes) so that data.table will merge numeric values appropriately
-# see https://rdrr.io/rforge/data.table/man/setNumericRounding.html
-setNumericRounding(2)
 
 ####################
 ## helper functions
 ####################
-#require(Hmisc)
 require(data.table)
+# set default rounding (2 bytes) so that data.table will merge numeric values appropriately
+# see https://rdrr.io/rforge/data.table/man/setNumericRounding.html
+setNumericRounding(2)
+
 #require(lme4) # for mixed-effects models
 #require(car) # for testing ME models
+#require(Hmisc)
 
 
 
@@ -59,10 +60,11 @@ wdpagrid <- fread('gunzip -c output/wdpa_cov_by_grid0.05.csv.gz', drop = 1) # sh
 # Load in pres/abs results for each RCP and each species
 # and calculate summary statistics by MPA
 ##############################################################
-wdpa <- wdpagrid[!duplicated(WDPA_PID), ] # the list of MPAs. Turnover data will be added as columns to this
+# the list of MPAs. Turnover data will be added as columns to this
+wdpa <- wdpagrid[!duplicated(WDPA_PID), ] 
 wdpa[,c('gridpolyID', 'lat', 'lon', 'area_wdpa', 'area_grid', 'prop_grid', 'prop_wdpa') := NULL] # remove gridcell-specific columns
 
-
+# step through each species' projections
 projcols <- c('lat', 'lon', paste0('mean', 1:NMODS)) # names of columns in pred.agg to use (the projections)
 for (i in 1:length(RCPS)) {
     print(paste0(Sys.time(), ' On RCP ', RCPS[i], '. Species: '))
