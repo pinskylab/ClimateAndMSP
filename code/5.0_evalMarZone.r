@@ -1,18 +1,5 @@
-# Set up a Marxan with Zones run for CMSP
+# Evaluate the MarZone solutions
 
-## Set working directories
-if(Sys.info()["nodename"] == "pinsky-macbookair"){
-	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	marxfolder <- '../MarZone_runs/'
-	presmapbymodfolder <- '../data/'
-	}
-if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-	setwd('~/Documents/range_projections/')
-	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
-	marxfolder <- 'MarZone_runs/'
-	presmapbymodfolder <- 'data/'
-	}
-# could add code for Lauren's working directory here
 
 
 ############

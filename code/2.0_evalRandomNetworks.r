@@ -1,17 +1,6 @@
 # evaluate protected areas against shifts in species distribution
 # calculate species gains, losses, turnover, etc.
 
-## Set working directories
-if(Sys.info()["nodename"] == "pinsky-macbookair"){
-	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	presmapbymodfolder <- '../data/'
-	}
-if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-	setwd('~/Documents/range_projections/')
-	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
-	presmapbymodfolder <- 'data/'
-	}
-# could add code for Lauren's working directory here
 
 ############
 ## Flags
@@ -240,6 +229,7 @@ thesesppbymod[,gridID:=paste(lat,lon)]
 #########################################################
 # Calc stats for pre-defined MPA networks
 # use grid cells (doesn't account for overlapping MPAs
+# USE temp/wdpaturnbynetbymod.csv.gz FROM 1.2_evalWDPA.r INSTEAD?
 #########################################################
 climGrid <- as.data.table(read.csv('data/climGrid.csv', row.names=1)) # for temperature climatology and depth
 
@@ -286,6 +276,7 @@ write.csv(stats, file='cmsp_data/MPA_network_stats.csv')
 #########################################################
 # Calc stats for pre-defined MPA networks
 # use shape files to account for overlapping MPAs
+# USE temp/wdpaturnbynetbymod.csv.gz FROM 1.2_evalWDPA.r INSTEAD?
 #########################################################
 require(maptools)
 require(rgeos)

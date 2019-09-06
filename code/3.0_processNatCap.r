@@ -1,18 +1,4 @@
-## Set working directories
-if(Sys.info()["nodename"] == "pinsky-macbookair"){
-	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	projfolder <- '../CEmodels_proj' # holds model projections (outside Git)
-	modfolder <- '../CEModels' # holds the models (outside Git)
-	climgridfolder <- '../data/'
-	}
-if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-	setwd('~/Documents/range_projections/')
-	projfolder <- 'CEmodels_proj'
-	modfolder <- 'CEmodels'
-	climgridfolder <- 'data/'
-	}
-# could add code for Lauren's working directory here
-
+# Would need updating to run for full 2018 projections grid
 
 ##############################
 ## Process NatCap Wind data ##
@@ -20,12 +6,12 @@ if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
 require(rgdal)
 
 # read in data
-wind_AKw <- readGDAL('cmsp_data/Wind/output/npv_US_millions_Alaska_west1050.tif') # read in SpatialGridDataFrame
+wind_AKw <- readGDAL('temp/Wind/output/npv_US_millions_Alaska_west1050.tif') # read in SpatialGridDataFrame
 	# image(wind_AKw)
-wind_AKe <- readGDAL('./cmsp_data/Wind/output/npv_US_millions_Alaska_east1050.tif') # read in SpatialGridDataFrame
-wind_WC <- readGDAL('./cmsp_data/Wind/output/npv_US_millions_WestCoast1050.tif')
-wind_GM <- readGDAL('./cmsp_data/Wind/output/npv_US_millions_GoMex1050.tif')
-wind_NE <- readGDAL('./cmsp_data/Wind/output/npv_US_millions_Northeast1050.tif')
+wind_AKe <- readGDAL('temp/Wind/output/npv_US_millions_Alaska_east1050.tif') # read in SpatialGridDataFrame
+wind_WC <- readGDAL('temp/Wind/output/npv_US_millions_WestCoast1050.tif')
+wind_GM <- readGDAL('temp/Wind/output/npv_US_millions_GoMex1050.tif')
+wind_NE <- readGDAL('temp/Wind/output/npv_US_millions_Northeast1050.tif')
 	# image(wind_NE)
 
 load(paste(climgridfolder, 'climGrid_rcp85.proj2.RData', sep='')) # loads clim. has the grid cells we want to summarize to
@@ -89,7 +75,7 @@ wind.out$keep[paste(wind.out$lat, wind.out$lon) %in% paste(clim$lat, clim$lon)] 
 wind.out <- wind.out[wind.out$keep, c('lat', 'lon', 'wind_npv')]
 
 # write out
-write.csv(wind.out, 'cmsp_data/wind_npv.csv')
+write.csv(wind.out, 'temp/wind_npv.csv')
 
 ##############################
 ## Process NatCap Wave data ##
@@ -97,13 +83,13 @@ write.csv(wind.out, 'cmsp_data/wind_npv.csv')
 require(rgdal)
 
 # read in data
-wave_AKw <- readGDAL('cmsp_data/Wave/output/npv_usd_Alaska_west.tif') # read in SpatialGridDataFrame
-wave_AKe <- readGDAL('./cmsp_data/Wave/output/npv_usd_Alaska_east.tif') # read in SpatialGridDataFrame
-wave_WC <- readGDAL('./cmsp_data/Wave/output/npv_usd_WestCoast.tif')
-wave_GM <- readGDAL('./cmsp_data/Wave/output/npv_usd_GoMex.tif')
-wave_GMg <- readGDAL('./cmsp_data/Wave/output/npv_usd_GoMex_global.tif') # with global wave data
-wave_NE <- readGDAL('./cmsp_data/Wave/output/npv_usd_Northeast.tif')
-wave_NEg <- readGDAL('./cmsp_data/Wave/output/npv_usd_Northeast_global.tif') # with global wave data
+wave_AKw <- readGDAL('temp/Wave/output/npv_usd_Alaska_west.tif') # read in SpatialGridDataFrame
+wave_AKe <- readGDAL('temp/Wave/output/npv_usd_Alaska_east.tif') # read in SpatialGridDataFrame
+wave_WC <- readGDAL('temp/Wave/output/npv_usd_WestCoast.tif')
+wave_GM <- readGDAL('temp/Wave/output/npv_usd_GoMex.tif')
+wave_GMg <- readGDAL('temp/Wave/output/npv_usd_GoMex_global.tif') # with global wave data
+wave_NE <- readGDAL('temp/Wave/output/npv_usd_Northeast.tif')
+wave_NEg <- readGDAL('temp/Wave/output/npv_usd_Northeast_global.tif') # with global wave data
 	# image(wave_AKw)
 	# image(wave_AKe)
 	# image(wave_WC)
@@ -241,4 +227,4 @@ wave.out <- wave.out[!dups,]
 	nrow(wave.out) # 4596
 
 # write out
-write.csv(wave.out, 'cmsp_data/wave_npv.csv')
+write.csv(wave.out, 'temp/wave_npv.csv')

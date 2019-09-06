@@ -1,16 +1,6 @@
 # Set up a Marxan with Zones run
+# Only examine conservation goals
 
-## Set working directories
-if(Sys.info()["nodename"] == "pinsky-macbookair"){
-	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	marxfolder <- '../MarZone_runs/'
-	}
-if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-	setwd('~/Documents/range_projections/')
-	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
-	marxfolder <- 'MarZone_runs/'
-	}
-# could add code for Lauren's working directory here
 
 
 ############
