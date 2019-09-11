@@ -81,74 +81,71 @@ for(i in 1:nrow(climpolyb)){
 ## Make land and grid connection points
 #######################################
 # set parameters
-crs <- CRS('+proj=lcc +lat_1=32 +lat_2=44 +lat_0=40 +lon_0=-96 +datum=WGS84')
-crslatlong = CRS("+init=epsg:4326")
+crs <- '+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs' # North America Albers Equal Area Conic from https://epsg.io/102008
+crslatlong = "+init=epsg:4326"
 
 # read in files
-coastlines <- readOGR(dsn=natcapfolder, layer='NAmainland_lines') # global coast layer from NatCap
-#	plot(coastlines)
-towns <- readOGR(dsn=paste(natcapfolder, 'ne_10m_populated_places', sep='/'), layer='ne_10m_populated_places') # populated places layer from Natural Earth data
-#	plot(towns, pch=16, cex=0.2)
-	# plot(towns, pch=16, cex=0.2, add=TRUE) # to add to coastlines plot
+coastlines <- st_read('data/natcap/NAmainland_lines.shp') # global coast layer from NatCap, trimmed to North America
+#	plot(coastlines['id'], axes=TRUE)
+towns <- st_read('dataDL/naturalearth/ne_10m_populated_places.shp') # populated places layer from Natural Earth data
+#	plot(towns['NAME'], pch=16, cex=0.2, axes=TRUE)
+#   plot(st_geometry(towns), add=TRUE, col='red') # to add to coastlines plot. Not working for some reason.
 
-# calculate coastline length
-ln <- SpatialLinesLengths(coastlines, longlat=TRUE) # returns answer in km for each line
-	ln
+# project to North American Albers
+coastlinesp <- st_transform(coastlines, crs = crs)
+townsp <- st_transform(towns, crs = crs)
+    plot(st_geometry(coastlinesp), lwd=0.2, axes=TRUE)
+    plot(st_geometry(townsp), pch=16, cex=0.5, add=TRUE, col='blue') # plots on top of NA well
 	
 # trim towns to those >1000 people
-towns1000 <- towns[which(towns@data$POP_MAX >= 1000),]
-	length(towns) # 7343
-	length(towns1000) # 6933
+towns1000 <- townsp[which(towns$POP_MAX >= 1000),]
+	dim(towns) # 7343
+	dim(towns1000) # 6933
 	
-# convert shps to planar coordinates for spatial sampling
-coastlines.p <- spTransform(coastlines, CRSobj=crs)
-	plot(coastlines.p, lwd=0.2, axes=TRUE)
-towns.p <- spTransform(towns1000, CRSobj=crs)
-#	plot(towns.p, pch=16) # odd plot: some towns seem to have extreme coordinats
-	plot(towns.p, pch=16, cex=0.5, add=TRUE, col='blue') # but plots on top of NA well
-
-# trim town to those <20km from the NA coast
-nearcoast <- gWithinDistance(coastlines.p, towns.p, byid=TRUE, dist=50*1000) # slow (a few min). units in meters (50km). returns a matrix with columns corresponding to each coastline (includes a few major islands)
+# trim town to those <50km from the NA coast
+nearcoast <- st_is_within_distance(towns1000, coastlinesp, dist = 50*1000, sparse = FALSE) # slow (a few min). units in meters (50km). returns a matrix with columns corresponding to each coastline (includes a few major islands)
 nearcoastany <- rowSums(nearcoast) > 0 # sum across rows: we don't care which coast a town is close to
-	sum(nearcoast) # 370
-	sum(nearcoastany) # 347. shows that some towns were close to multiple coastlines
-	points(towns.p[which(nearcoastany),], col='red', pch=16, cex=1) # adds to the plot before
+	sum(nearcoast) # 379
+	sum(nearcoastany) # 354. shows that some towns were close to multiple coastlines
+	plot(st_geometry(towns1000[which(nearcoastany),]), col='red', pch=16, cex=1, add=TRUE) # adds to the plot before
 
-towns.nearcoast <- towns.p[which(nearcoastany),]
+towns1000nearcoast <- towns1000[which(nearcoastany),]
 
 
-# add points along the coastline. 1 every km
-landpts <- spsample(coastlines.p, type='regular', n=round(ln))
-	plot(coastlines.p, lwd=0.2, axes=TRUE)
-	points(landpts, col='red', pch=16, cex=0.2)	
+# calculate coastline length
+ln <- st_length(coastlinesp) # returns answer in km for each line
+	ln
+
+# find nearest point on the coastline to each town. So much faster than the old method of sampling!
+#coastpoint.near <- st_as_sf(rgeos::gNearestPoints(as(towns1000nearcoast,"Spatial"), as(coastlinesp,"Spatial"))[2,]) # from https://gis.stackexchange.com/questions/288570/find-nearest-point-along-polyline-using-sf-package-in-r. But only returns one point. Would have to implement in a loop
+towncoastlines <- st_nearest_points(towns1000nearcoast, coastlinesp) # returns LINESTRINGS from first to second geometry
+towncoastlengths <- st_length(towncoastlines) # length of each line, so that we can find the closest coastline to each town
+nearestptinds <- aggregate(list(ind = towncoastlengths), by = list(town = rep(1:nrow(towns1000nearcoast), each = nrow(coastlinesp))), FUN = function(x) which.min(x)) # find index of shortest line from town to a coast. Works because st_nearest_points returns a vector where y cycles fastest and x cycles slowest
+nearestptinds2 <- nearestptinds$ind + seq(0, length.out = nrow(nearestptinds), by = nrow(coastlinesp)) # convert to an index into towncoastlines
+pts <- st_cast(towncoastlines[nearestptinds2], "POINT") # gives all start (towns) & end (coastlines) points, alternating
+coastpts <- pts[seq(2, length(pts), 2)] # just the end points (on coastlines)
+	length(coastpts)
 	
-	plot(coastlines.p, lwd=0.2, axes=TRUE, ylim=c(0, 6e5), xlim=c(-2.4e6, -2e6)) # zoom in on CA coast
-	points(landpts, col='red', pch=16, cex=0.2)	
+    #plot(st_geometry(towns1000nearcoast[1:10,]), axes = TRUE, col = 'blue') # to plot a few towns
+	#plot(st_geometry(towns1000nearcoast), axes = TRUE, col = 'blue', xlim = c(-2.3e6, -1.8e6), ylim = c(-4e5, 0)) # to plot a few towns
+	#plot(st_geometry(towns1000nearcoast[1:100,]), axes = TRUE, col = 'blue') # to plot many towns
+	plot(st_geometry(coastlinesp), add = TRUE)
+    plot(st_geometry(coastpts), add = TRUE, col = 'red')
 
-# find nearest landpt to each town
-landdist <- gDistance(landpts, towns.nearcoast, byid=TRUE) # takes a couple minutes. rows are towns. cols are landpts
-
-# project back to latlong in order to make a table for NatCap
-landpts.ll <- spTransform(landpts, crslatlong)
-towns.nearcoast.ll <- spTransform(towns.nearcoast, crslatlong)
+# project back to latlong in order to make a table for NatCap InVEST
+coastpts.ll <- st_transform(coastpts, crs = crslatlong)
+towns1000nearcoast.ll <- st_transform(towns1000nearcoast, crs = crslatlong)
 
 # make output table of town and nearest landing point locations
-towns.coords <- coordinates(towns.nearcoast.ll)
-land.coords <- coordinates(landpts.ll)
+towns.coords <- st_coordinates(towns1000nearcoast.ll)
+coast.coords <- st_coordinates(coastpts.ll)
 
-n <- numeric(nrow(landdist))
-outgrid <- data.frame(ID=1:nrow(landdist), LAT=towns.coords[,2], LONG=towns.coords[,1], TYPE='GRID', LOCATION=towns.nearcoast.ll@data$NAME)
-outland <- data.frame(ID=1:nrow(landdist), LAT=n, LONG=n, TYPE='LAND', LOCATION=towns.nearcoast.ll@data$NAME)
-
-for(i in 1:nrow(landdist)){ # fill in nearest landpt for each town
-	j <- which.min(landdist[i,]) # index for nearest landpt
-	outland$LAT[i] <- land.coords[j,2]
-	outland$LONG[i] <- land.coords[j,1]
-}
+outgrid <- data.frame(id=1:nrow(towns.coords), lat=towns.coords[,2], lon=towns.coords[,1], type='GRID', loc=towns1000nearcoast.ll$NAME)
+outland <- data.frame(id=1:nrow(towns.coords), lat=coast.coords[,2], lon=coast.coords[,1], type='LAND', loc=towns1000nearcoast.ll$NAME)
 
 	# make sure it looks OK
-	plot(outland$LONG, outland$LAT, pch=16, cex=0.5)
-	points(outgrid$LONG, outgrid$LAT, col='red', pch=16, cex=0.5) # the towns
+	plot(outland$lon, outland$lat, pch=16, cex=0.5)
+	points(outgrid$lon, outgrid$lat, col='red', pch=16, cex=0.5) # the towns
 	
 # combine town and landings points
 out <- rbind(outland, outgrid)
@@ -157,4 +154,4 @@ out <- rbind(outland, outgrid)
 	tail(out)
 	
 # write out
-write.csv(out, file='cmsp_data/LandGridPts_NorthAmerica.csv', row.names=FALSE)
+write.csv(out, file='output/landgridpts_northamerica.csv', row.names=FALSE)
