@@ -28,8 +28,8 @@ sum(is.na(climgrid$AOI)) # 0
 #    plot(climgrid['AOI'], lwd=0.001, axes=TRUE) # Aleutians are on the far right
 #    plot(climgrid['AOI'], lwd=0.5, xlim=c(-70, -69), ylim=c(41,42), axes=TRUE) # zoom in (Cape Cod)
 
-# project to North American Albers
-climgridp <- st_transform(climgrid, crs='+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=NAD83 +units=m +no_defs') # North America Albers Equal Area Conic from https://epsg.io/102008
+# project to North American Albers, but in WGS84 rather than NAD83
+climgridp <- st_transform(climgrid, crs='+proj=aea +lat_1=20 +lat_2=60 +lat_0=40 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +datum=WGS84 +units=m +no_defs') # North America Albers Equal Area Conic from https://epsg.io/102008, except with WGS84
 #    plot(climgridp['AOI'], lwd=0.001, axes=TRUE) # Aleutians are on the far right
 
 # buffer slightly (1000 m) to aid merging the grid cells together
@@ -86,35 +86,45 @@ crslatlong = "+init=epsg:4326"
 
 # read in files
 coastlines <- st_read('data/natcap/NAmainland_lines.shp') # global coast layer from NatCap, trimmed to North America
-#	plot(coastlines['id'], axes=TRUE)
-towns <- st_read('dataDL/naturalearth/ne_10m_populated_places.shp') # populated places layer from Natural Earth data
-#	plot(towns['NAME'], pch=16, cex=0.2, axes=TRUE)
-#   plot(st_geometry(towns), add=TRUE, col='red') # to add to coastlines plot. Not working for some reason.
+#	plot(coastlines['id'], axes=TRUE) # a bit slow
+townsUS <- st_read('dataDL/usgs/citiesx020_nt00007/citiesx020.shp') # US National Map cites and towns
+    st_crs(townsUS) <- 4269 # set CRS to NAD83
+#	plot(townsUS['NAME'], pch=16, cex=0.2, axes=TRUE)
+#   plot(st_geometry(townsUS), add=TRUE, col='red') # to add to coastlines plot. Not working for some reason.
+townsCan <- st_read('dataDL/statcan/lpc_000b16a_e/lpc_000b16a_e.shp') # Canadian census population centres
+
+
 
 # project to North American Albers
 coastlinesp <- st_transform(coastlines, crs = crs)
-townsp <- st_transform(towns, crs = crs)
+townsUSp <- st_transform(townsUS, crs = crs)
+townsCanp <- st_transform(townsCan, crs = crs)
+    
+# find centroids for Canada
+townsCanpc <- st_centroid(townsCanp)
+        
     plot(st_geometry(coastlinesp), lwd=0.2, axes=TRUE)
-    plot(st_geometry(townsp), pch=16, cex=0.5, add=TRUE, col='blue') # plots on top of NA well
-	
-# trim towns to those >1000 people
-towns1000 <- townsp[which(towns$POP_MAX >= 1000),]
-	dim(towns) # 7343
-	dim(towns1000) # 6933
-	
+    plot(st_geometry(townsUSp), pch=16, cex=0.1, add=TRUE, col='blue') # plots on top of NA well
+    plot(st_geometry(townsCanpc), pch=16, cex=0.1, add=TRUE, col='green') # plots on top of NA well
+
+# trim US towns to those >1000 people (Canada is already trimmed)
+townsUS1000 <- townsUSp[which(townsUSp$POP_2000 >= 1000),]
+	dim(townsUSp) # 35432
+	dim(townsUS1000) # 9992
+
+# combine US and Canada
+names(townsCanpc)[names(townsCanpc)=='PCNAME'] <- 'NAME'
+towns1000 <- rbind(townsUS1000[,c('NAME', 'geometry')], townsCanpc[,c('NAME', 'geometry')])
+		
 # trim town to those <50km from the NA coast
 nearcoast <- st_is_within_distance(towns1000, coastlinesp, dist = 50*1000, sparse = FALSE) # slow (a few min). units in meters (50km). returns a matrix with columns corresponding to each coastline (includes a few major islands)
 nearcoastany <- rowSums(nearcoast) > 0 # sum across rows: we don't care which coast a town is close to
-	sum(nearcoast) # 379
-	sum(nearcoastany) # 354. shows that some towns were close to multiple coastlines
+	sum(nearcoast) # 2233
+	sum(nearcoastany) # 1873. shows that some towns were close to multiple coastlines
 	plot(st_geometry(towns1000[which(nearcoastany),]), col='red', pch=16, cex=1, add=TRUE) # adds to the plot before
 
 towns1000nearcoast <- towns1000[which(nearcoastany),]
 
-
-# calculate coastline length
-ln <- st_length(coastlinesp) # returns answer in km for each line
-	ln
 
 # find nearest point on the coastline to each town. So much faster than the old method of sampling!
 #coastpoint.near <- st_as_sf(rgeos::gNearestPoints(as(towns1000nearcoast,"Spatial"), as(coastlinesp,"Spatial"))[2,]) # from https://gis.stackexchange.com/questions/288570/find-nearest-point-along-polyline-using-sf-package-in-r. But only returns one point. Would have to implement in a loop
@@ -127,7 +137,7 @@ coastpts <- pts[seq(2, length(pts), 2)] # just the end points (on coastlines)
 	length(coastpts)
 	
     #plot(st_geometry(towns1000nearcoast[1:10,]), axes = TRUE, col = 'blue') # to plot a few towns
-	#plot(st_geometry(towns1000nearcoast), axes = TRUE, col = 'blue', xlim = c(-2.3e6, -1.8e6), ylim = c(-4e5, 0)) # to plot a few towns
+	plot(st_geometry(towns1000nearcoast), axes = TRUE, col = 'blue', xlim = c(-2.3e6, -1.8e6), ylim = c(-4e5, 0)) # to plot a few towns
 	#plot(st_geometry(towns1000nearcoast[1:100,]), axes = TRUE, col = 'blue') # to plot many towns
 	plot(st_geometry(coastlinesp), add = TRUE)
     plot(st_geometry(coastpts), add = TRUE, col = 'red')
@@ -137,21 +147,35 @@ coastpts.ll <- st_transform(coastpts, crs = crslatlong)
 towns1000nearcoast.ll <- st_transform(towns1000nearcoast, crs = crslatlong)
 
 # make output table of town and nearest landing point locations
+# format as specified by NatCap InVEST Wave
 towns.coords <- st_coordinates(towns1000nearcoast.ll)
 coast.coords <- st_coordinates(coastpts.ll)
 
-outgrid <- data.frame(id=1:nrow(towns.coords), lat=towns.coords[,2], lon=towns.coords[,1], type='GRID', loc=towns1000nearcoast.ll$NAME)
-outland <- data.frame(id=1:nrow(towns.coords), lat=coast.coords[,2], lon=coast.coords[,1], type='LAND', loc=towns1000nearcoast.ll$NAME)
+outgrid <- data.frame(ID=1:nrow(towns.coords), LAT=towns.coords[,2], LONG=towns.coords[,1], TYPE='GRID', LOCATION=towns1000nearcoast.ll$NAME)
+outland <- data.frame(ID=(1+nrow(towns.coords)):(nrow(towns.coords)+nrow(coast.coords)), LAT=coast.coords[,2], LONG=coast.coords[,1], TYPE='LAND', LOCATION=towns1000nearcoast.ll$NAME)
 
 	# make sure it looks OK
-	plot(outland$lon, outland$lat, pch=16, cex=0.5)
-	points(outgrid$lon, outgrid$lat, col='red', pch=16, cex=0.5) # the towns
+	plot(outland$LONG, outland$LAT, pch=16, cex=0.5)
+	points(outgrid$LONG, outgrid$LAT, col='red', pch=16, cex=0.5) # the towns
 	
-# combine town and landings points
-out <- rbind(outland, outgrid)
+    # combine town and landings points
+    out <- rbind(outgrid, outland)
 
-	head(out)
-	tail(out)
+    head(out[out$TYPE == 'GRID', ])
+    head(out[out$TYPE == 'LAND', ])
+    tail(out[out$TYPE == 'GRID', ])
+    tail(out[out$TYPE == 'LAND', ])
 	
-# write out
-write.csv(out, file='output/landgridpts_northamerica.csv', row.names=FALSE)
+    # write out
+    write.csv(out, file='output/landgridpts_northamerica.csv', row.names=FALSE)
+
+# make output table of town and nearest landing point locations
+# format as specified by NatCap InVEST Wind
+out2 <- out[, c('ID', 'TYPE', 'LAT', 'LONG')]
+names(out2)[names(out2)=='LAT'] <- 'LATI'
+    head(out2)
+    tail(out2)
+    
+    # write out
+    write.csv(out2, file='output/landgridpts_northamerica_wind.csv', row.names=FALSE)
+    
