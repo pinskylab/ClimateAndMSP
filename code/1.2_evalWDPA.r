@@ -159,7 +159,6 @@ for (i in 1:length(RCPS)) {
     files <- list.files(path = PRESABSPATH, pattern = paste('*rcp', RCPS[i], '*', sep = ''), full.names = TRUE)
 
     # load presmap for each model run and process the results
-    # then calculate change in p(occur)
     for (j in 1:length(files)) {
         cat(paste0(' ', j))
         load(files[j]) # loads pred.agg data.frame

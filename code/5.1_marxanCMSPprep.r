@@ -1,18 +1,9 @@
 # Set up a Marxan with Zones run for CMSP
 
 
-
 ############
 ## Flags
 ############
-
-## choose which runs to use
-## runtype refers to how the Species Distribution Models (SDMs) were fit
-## projtype refers to how the SDM projections were done
-#runtype <- 'test'; projtype=''
-#runtype <- ''; projtype=''`
-#runtype <- 'testK6noSeas'; projtype='_xreg'
-runtype <- 'fitallreg'; projtype='_xreg'
 
 # choose the rcp (for runs using just one)
 rcp <- 85
@@ -26,18 +17,19 @@ cost <- 0.01
 zonecosts <- c(0.75, 1, 1, 1) # cost multipliers for available, conservation, fishery, and energy zones
 fpf <- 10
 
-# choose region and name this run
-#myreg <- 'NEFSC_NEUSSpring'; runname1 <- 'cmsphistonly_neus'; runname2 <- 'cmsp2per_neus'
-#myreg <- 'AFSC_EBS'; runname1 <- 'cmsphistonly_ebs'; runname2 <- 'cmsp2per_ebs'
-#myreg <- 'DFO_NewfoundlandFall'; runname1 <- 'cmsphistonly_newf'; runname2 <- 'cmsp2per_newf'
-#myreg <- 'SEFSC_GOMex'; runname1 <- 'cmsphistonly_gmex'; runname2 <- 'cmsp2per_gmex'
-#myreg <- 'DFO_ScotianShelf'; runname1 <- 'cmsphistonly_scot'; runname2 <- 'cmsp2per_scot'
-#myreg <- 'DFO_SoGulf'; runname1 <- 'cmsphistonly_sgulf'; runname2 <- 'cmsp2per_sgulf'
-#myreg <- 'AFSC_GOA'; runname1 <- 'cmsphistonly_goa'; runname2 <- 'cmsp2per_goa'
-myreg <- 'AFSC_Aleutians'; runname1 <- 'cmsphistonly_ai'; runname2 <- 'cmsp2per_ai'
+# choose region and name these runs
+myreg <- 'ebs'; runname1 <- 'hist_ebs'; runname2 <- '2per_ebs'
+#myreg <- 'goa'; runname1 <- 'hist_goa'; runname2 <- '2per_goa'
+#myreg <- 'bc'; runname1 <- 'hist_bc'; runname2 <- '2per_bc'
+#myreg <- 'wc'; runname1 <- 'hist_wc'; runname2 <- '2per_wc'
+#myreg <- 'gmex'; runname1 <- 'hist_gmex'; runname2 <- '2per_gmex'
+#myreg <- 'seus'; runname1 <- 'hist_seus'; runname2 <- '2per_seus'
+#myreg <- 'neus'; runname1 <- 'hist_neus'; runname2 <- '2per_neus'
+#myreg <- 'maritime'; runname1 <- 'hist_maritime'; runname2 <- '2per_maritime'
+#myreg <- 'newf'; runname1 <- 'hist_newf'; runname2 <- '2per_newf'
 
 # which time periods to use in the multi-period planning
-planningperiods <- c('2006-2020', '2081-2100')
+planningperiods <- c('2007-2020', '2081-2100')
 
 # folders
 inputfolder1 <- paste(marxfolder, runname1, '_input', sep='')
@@ -53,9 +45,9 @@ outputfolder2 <- paste(marxfolder, runname2, '_output', sep='')
 
 load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information
 	sort(unique(presmap$region))
-windnpv <- read.csv('cmsp_data/wind_npv.csv', row.names=1)
-wavenpv <- read.csv('cmsp_data/wave_npv.csv', row.names=1)
-fisheryspps <- read.csv('cmsp_data/fishery_spps.csv', row.names=1) # which spp to include in fishery goal in each region
+windnpv <- read.csv('output/wind_npv.csv', row.names=1)
+wavenpv <- read.csv('output/wave_npv.csv', row.names=1)
+fisheryspps <- read.csv('output/fishery_spps.csv', row.names=1) # which spp to include in fishery goal in each region
 
 # Trim to just one region
 presmap <- presmap[presmap$region==myreg,]
@@ -269,7 +261,7 @@ write.table(t(input), file=paste(inputfolder1, '/input.dat', sep=''), row.names=
 
 ##################################################################
 ## Set up a Marxan run on 2006-2020 and ensemble mean 2081-2100
-## This assumes that the historical-only code has been run and is loaded in memory
+## This assumes that the historical-only code (previous section) has been run and is loaded in memory
 ##################################################################
 # Create directory for input and output if missing
 if(!dir.exists(inputfolder2)){
