@@ -7,7 +7,7 @@ require(raster)
 require(sf)
 require(data.table)
 
-gridsize = 0.05 # size of grid of the climate data, in degrees
+gridsize = 0.25 # size of grid for the CMPS analysis, in degrees
 
 
 # read in data
@@ -33,25 +33,28 @@ wind_east_dt <- data.table(cbind(coordinates(wind_east.t), npv=extract(x=wind_ea
 wind_west_dt <- data.table(cbind(coordinates(wind_west.t), npv=extract(x=wind_west.t, y=extent(wind_west.t))))
 wind_dt <- rbind(wind_east_dt, wind_west_dt) # concatenate
 
-wind_dt[, latgrid := floor(y/gridsize)*gridsize + gridsize/2] # round to nearest climate grid center
+wind_dt[, latgrid := floor(y/gridsize)*gridsize + gridsize/2] # round to nearest CMSP grid center
 wind_dt[, longrid := floor(x/gridsize)*gridsize + gridsize/2]
 
 wind_sum <- wind_dt[, .(npv = mean(npv, na.rm = TRUE)), by = c('latgrid', 'longrid')] # average by climate grid cell
 
 # plot to make sure it worked
 wind_sum[, plot(longrid, latgrid, col=c('red', 'blue')[1+(npv > 0)], pch=16, cex=0.05)] # plots of <> a threshold
+wind_sum[, plot(longrid, latgrid, col=c('red', 'blue')[1+(npv > 0)], pch=16, cex=0.5, xlim=c(-80, -60), ylim=c(40, 45))] # zoom in
 
 
 # mark which grids are in climate grid
-grid$latgrid <- floor(grid$lat/gridsize)*gridsize + gridsize/2 # round to nearest climate grid center (to fix some rounding errors)
+grid$latgrid <- floor(grid$lat/gridsize)*gridsize + gridsize/2 # round to nearest CMSP grid center (to fix some rounding errors)
 grid$longrid <- floor(grid$lon/gridsize)*gridsize + gridsize/2
+    plot(grid$longrid, grid$latgrid, pch=16, cex=0.05) # check it
 
 wind_sum[, keep := FALSE] # set up a column to mark the ones to keep
 wind_sum[paste(latgrid, longrid) %in% paste(grid$latgrid, grid$longrid), keep := TRUE] # keep if in the climate grid
     wind_sum[, sum(keep)]
     wind_sum[, sum(!keep)]
 
-    wind_sum[keep == TRUE, plot(longrid, latgrid, col=c('red', 'blue')[1+(npv > 0)], pch=16, cex=0.05)] # plots of <> a threshold
+    wind_sum[keep == TRUE, plot(longrid, latgrid, col=c('red', 'blue')[1+(npv > 0)], pch=16, cex=0.25)] # plots of <> a threshold
+    wind_sum[, plot(longrid, latgrid, col=c('red', 'blue')[keep+1], pch=16, cex=0.25)] # plots of not keep/keep
     
 # remove grids not in clim
 wind.out <- wind_sum[keep == TRUE, .(lat = latgrid, lon = longrid, npv = npv)]
@@ -60,7 +63,7 @@ wind.out <- wind_sum[keep == TRUE, .(lat = latgrid, lon = longrid, npv = npv)]
 minnpv <- wind.out[!is.na(npv), min(npv)]
 wind.out[is.na(npv), npv := minnpv]
 
-    wind.out[, plot(lon, lat, col=c('red', 'blue')[1+(npv > 0)], pch=16, cex=0.05)] # plots of <> a threshold
+    wind.out[, plot(lon, lat, col=c('red', 'blue')[1+(npv > 0)], pch=16, cex=0.25)] # plots of <> a threshold
 
 # are all climate grid cells in the wind object?
 missing <- !(paste(grid$latgrid, grid$longrid) %in% wind.out[, paste(lat, lon)])
@@ -77,7 +80,7 @@ require(raster)
 require(sf)
 require(data.table)
 
-gridsize = 0.05 # size of grid of the climate data, in degrees
+gridsize = 0.25 # size of grid of the climate data, in degrees
 
 # read in data
 wave_west <- raster('../NatCap_temp/westcoastwave/output/npv_usd.tif')
@@ -126,6 +129,7 @@ wave_sum[, sum(keep)]
 wave_sum[, sum(!keep)]
 
 wave_sum[keep == TRUE, plot(longrid, latgrid, col=c('red', 'blue')[1+(npv > 0)], pch=16, cex=0.05)] # plots of <> a threshold
+wave_sum[, plot(longrid, latgrid, col=c('red', 'blue')[1+keep], pch=16, cex=0.05)] # keep?
 
 # remove grids not in clim
 wave.out <- wave_sum[keep == TRUE, .(lat = latgrid, lon = longrid, npv = npv)]
