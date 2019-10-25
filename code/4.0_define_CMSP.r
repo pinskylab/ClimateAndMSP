@@ -1,61 +1,70 @@
-# Choose which species count as 'commercial' o
+# Define planning regions and choose which species count as important to fisheries
 
-## Set working directories
-if(Sys.info()["nodename"] == "pinsky-macbookair"){
-	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	marxfolder <- '../MarZone_runs/'
-	}
-if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-	setwd('~/Documents/range_projections/')
-	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages
-	marxfolder <- 'MarZone_runs/'
-	}
-# could add code for Lauren's working directory here
 
-############
-## Flags
-############
-runtype <- 'fitallreg'; projtype='_xreg'
+###########################
+## Define planning regions
+###########################
+require(data.table)
+require(sf)
 
-# choose the rcp (for runs using just one)
-rcp <- 85
+# read in data
+grid <- readRDS('temp/SPsf2.rds') # analysis grid
+eez <- st_read('dataDL/marineregions/World_EEZ_v10_20180221/eez_v10.shp')
+# coast <- st_read('dataDL/natcap/Marine/Land/global_polyline.shp') # useful for checking success by making maps
 
-# sort regions by ocean
-pacregs <- c('AFSC_Aleutians', 'AFSC_EBS', 'AFSC_GOA', 'AFSC_WCTri', 'NWFSC_WCAnn')
-atlregs <- c('DFO_NewfoundlandFall', 'DFO_NewfoundlandSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSFall', 'NEFSC_NEUSSpring', 'SEFSC_GOMex')
+# get ready to define regions
+indsCAN <- st_intersects(eez[eez$Pol_type == '200NM' & eez$Territory1 == 'Canada',], grid, sparse = FALSE) # slow...
+grid$region <- NA
 
-#################
-# Load functions
-#################
-## Install rfishbase if needed
-#install.packages("rfishbase", repos = c("http://packages.ropensci.org", "http://cran.rstudio.com"), type="source")
-#require('rfishbase')
+# define each region (order is important, as later ones build off earlier ones)
+# NEUS
+grid$region[grid$lat > 35.6 & grid$lat < 45 & grid$lon > - 100 & grid$lon < -60 & !indsCAN] <- 'neus'
 
+# Newfoundland
+grid$region[(indsCAN & grid$lon > -100 & (grid$lon > -53 | (grid$lat > 49 & grid$lon > -57) | (grid$lat > 52) | (grid$lat > 47.8 & grid$lon > -54) | (grid$lat > 47 & grid$lon > -53.5))) | (grid$lon > -53 & grid$lon < -40)] <- 'newf'
+
+# maritime Canada (including French waters around St. Pierre & Miquelon)
+grid$region[(indsCAN & is.na(grid$region) & grid$lon > -100) | (grid$lat > 44 & grid$lat < 48 & grid$lon > -57.2 & grid$lon < -55)] <- 'maritime'
+
+# SEUS
+grid$region[(grid$lon > -80.6 | (grid$lon > -82.3 & grid$lat > 28)) & grid$lat <= 35.6] <- 'seus'
+
+# GoMex
+grid$region[grid$lon > -100 & grid$lat < 31 & is.na(grid$region)] <- 'gomex'
+
+# west coast US
+grid$region[grid$lon < -100 & grid$lat < 50 & !indsCAN] <- 'wc'
+
+# British Columbia
+grid$region[grid$lon < -100 & indsCAN] <- 'bc'
+
+# GoAK
+grid$region[grid$lon < -100 & grid$lon > -156 & is.na(grid$region)] <- 'goa'
+
+# EBS and Aleutians
+grid$region[grid$lon <= -156 | grid$lon > 0] <- 'ebs'
+
+# any missing?
+sum(is.na(grid$region))
+    with(grid[is.na(grid$region), ], plot(lon, lat, cex=0.1))
+
+
+# plot
+with(grid[grid$region == 'newf', ], plot(lon, lat, cex=0.1))
+with(grid[grid$region == 'maritime', ], plot(lon, lat, cex=0.1))
+with(grid[grid$region == 'neus', ], plot(lon, lat, cex=0.1))
+with(grid[grid$region == 'seus', ], plot(lon, lat, cex=0.1))
+with(grid[grid$region == 'gomex', ], plot(lon, lat, cex=0.1))
+with(grid[grid$region == 'wc', ], plot(lon, lat, cex=0.1))
+with(grid[grid$region == 'bc', ], plot(lon, lat, cex=0.1))
+with(grid[grid$region == 'goa', ], plot(lon, lat, cex=0.1)) # odd chunk out of SW corner?
+with(grid[grid$region == 'ebs', ], plot(lon, lat, cex=0.1))
+
+# write out
+saveRDS(grid, 'output/region_grid.rds')
 
 ###########################################################
-# Determine which species are commercial or recreational
-# from FishBase
-###########################################################
-#
-## get list of projected species
-#load(paste('data/taxthresh_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads biomassavemap data.frame
-#	head(taxthresh)
-#spps <- gsub('_Atl|_Pac', '', taxthresh$sppocean)
-#
-## validate names (a few minutes)
-#spps_fish <- validate_names(spps) # will return warnings for any inverts
-#spps_invert <- validate_names(spps, server='http://fishbase.ropensci.org/sealifebase')
-#
-## did we get them all?
-#length(spps_fish)
-#length(spps_invert)
-#length(spps) == length(spps_fish) + length(spps_invert) # NO. lists are missing some species.
-#
-#species(spps_fish[1], fields=c('Importance')) # Importance seems very broad and not useful to me
-
-
-###########################################################
-# Determine which species are commercial or recreational
+# Determine which species are of fishery importance
 # from Sea Around Us
 ###########################################################
 ## get list of projected species
