@@ -7,6 +7,8 @@
 require(data.table)
 require(sf)
 
+gridsz <- 0.25 # grid size for the CMSP analysis
+
 # read in data
 grid <- readRDS('temp/SPsf2.rds') # analysis grid
 eez <- st_read('dataDL/marineregions/World_EEZ_v10_20180221/eez_v10.shp')
@@ -46,24 +48,29 @@ grid$region[grid$lon <= -156 | grid$lon > 0] <- 'ebs'
 
 # any missing?
 sum(is.na(grid$region))
-    with(grid[is.na(grid$region), ], plot(lon, lat, cex=0.1))
+    with(grid[is.na(grid$region), ], plot(lon, lat, cex=0.1)) # plot the missing points
 
+# summarize into CMSP analysis grids
+grid$latgrid <- floor(grid$lat/gridsz)*gridsz + gridsz/2
+grid$longrid <- floor(grid$lon/gridsz)*gridsz + gridsz/2
+gridcmsp <- as.data.table(grid)[, .(region = names(sort(table(region), decreasing = TRUE))[1], nregion = length(unique(region))), by = c('latgrid', 'longrid')] # take the most common region in each grid cell
 
 # plot
-with(grid[grid$region == 'newf', ], plot(lon, lat, cex=0.1))
-with(grid[grid$region == 'maritime', ], plot(lon, lat, cex=0.1))
-with(grid[grid$region == 'neus', ], plot(lon, lat, cex=0.1))
-with(grid[grid$region == 'seus', ], plot(lon, lat, cex=0.1))
-with(grid[grid$region == 'gomex', ], plot(lon, lat, cex=0.1))
-with(grid[grid$region == 'wc', ], plot(lon, lat, cex=0.1))
-with(grid[grid$region == 'bc', ], plot(lon, lat, cex=0.1))
-with(grid[grid$region == 'goa', ], plot(lon, lat, cex=0.1)) # odd chunk out of SW corner? but nearly all is land
-    plot(st_geometry(coast), add=TRUE)
-with(grid[grid$region == 'ebs', ], plot(lon, lat, cex=0.1))
+gridcmsp[region == 'newf', plot(longrid, latgrid, cex=0.1)]
+gridcmsp[region == 'maritime', plot(longrid, latgrid, cex=0.1)]
+gridcmsp[region == 'neus', plot(longrid, latgrid, cex=0.1)]
+gridcmsp[region == 'seus', plot(longrid, latgrid, cex=0.1)]
+gridcmsp[region == 'gomex', plot(longrid, latgrid, cex=0.1)]
+gridcmsp[region == 'wc', plot(longrid, latgrid, cex=0.1)]
+gridcmsp[region == 'bc', plot(longrid, latgrid, cex=0.1)]
+gridcmsp[region == 'goa', plot(longrid, latgrid, cex=0.1)] # odd chunk out of SW corner? but nearly all is land
+    # plot(st_geometry(coast), add=TRUE) # bit slow
+gridcmsp[region == 'ebs', plot(longrid, latgrid, cex=0.1)]
 
 # write out
-saveRDS(grid, 'output/region_grid.rds')
+write.csv(gridcmsp, gzfile('output/region_grid.csv.gz'))
 
+# gridcmsp <- fread('gunzip -c output/region_grid.csv.gz')
 
 ###########################################################
 # Determine which species are of fishery importance
