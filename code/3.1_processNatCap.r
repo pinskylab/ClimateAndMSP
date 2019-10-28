@@ -20,7 +20,7 @@ grid <- readRDS('temp/SPsf2.rds') # the analysis grid
 
 # project to LL
 wind_east.t <- projectRaster(wind_east, crs=crs(grid))
-wind_west.t <- projectRaster(wind_west, crs=crs(grid))
+wind_west.t <- projectRaster(wind_west, crs=crs(grid)) # slow step
 
 # extract from raster to the grid cells: VERY SLOW approach
 # wind_east_df <- extract(x=wind_east.t, y=as(grid[grid$lon > -100,], 'Spatial'), method='bilinear', fun=mean, na.rm=TRUE) # get raster values by climate grid cell
@@ -70,7 +70,7 @@ missing <- !(paste(grid$latgrid, grid$longrid) %in% wind.out[, paste(lat, lon)])
 sum(missing) # 0 
     
 # write out
-saveRDS(wind.out, 'output/wind_npv.rds')
+write.csv(wind.out, gzfile('output/wind_npv.csv.gz'))
 
 
 ##############################
@@ -145,5 +145,5 @@ missing <- !(paste(grid$latgrid, grid$longrid) %in% wave.out[, paste(lat, lon)])
 sum(missing) # 0 
 
 # write out
-saveRDS(wave.out, 'output/wave_npv.rds')
+write.csv(wave.out, gzfile('output/wave_npv.csv.gz'))
 
