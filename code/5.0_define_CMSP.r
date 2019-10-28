@@ -72,8 +72,8 @@ saveRDS(grid, 'output/region_grid.rds')
 require(data.table)
 
 ## get list of projected species
-wdpa_by_spp_projnow <- readRDS('temp/wdpa_by_spp_projnow.rds') # from 1.2_evalWDPA.r. A convenient summary of species.
-projspps <- wdpa_by_spp_projnow[, sort(unique(as.character(spp)))]
+files <- list.files(path = '/local/shared/pinsky_lab/projections_PlosOne2018/CEmodels_proj_Biomass_BCODMO', full.names = FALSE) # find relevant projection files
+projspps <- unique(gsub(paste0('/|_Atl|_Pac|_rcp26|_rcp85|_jas_prediction_AGG.RData'), '', files))
 
 # get tables of landings by LME from Sea Around Us
 ebs <- fread('dataDL/sau/SAU LME 1 v47-1.csv')
@@ -108,10 +108,9 @@ sppston[, scientific_name := tolower(scientific_name)]
 sppston[, projname := as.character(NA)]
 
 # match names from SAU to names from projections
-options(warn=1)
-for(j in 1:nrow(sppston)){
+for (j in 1:nrow(sppston)){
 	ind <- agrep(sppston[j, scientific_name], projspps) # find index into spps
-	if(length(ind)==1) sppston[j, projname := projspps[ind]] # only enter if exactly one match
+	if (length(ind) == 1) sppston[j, projname := projspps[ind]] # only enter if exactly one match
 }
 
 # order by decreasing landings
@@ -119,6 +118,13 @@ setkey(sppston, region, tonnes)
 
 # manually fix any that agrep missed or filled in mistakenly (checked by eye)
 sppston[scientific_name == 'clupea pallasii pallasii', projname := 'clupea pallasii']
+sppston[scientific_name == 'theragra chalcogramma', projname := 'gadus chalcogrammus']
+sppston[scientific_name == 'farfantepenaeus duorarum', projname := 'penaeus duorarum']
+sppston[scientific_name == 'litopenaeus setiferus', projname := 'penaeus setiferus']
+sppston[scientific_name == 'farfantepenaeus aztecus', projname := 'penaeus aztecus']
+sppston[scientific_name == 'doryteuthis pealeii', projname := 'doryteuthis pealeii'] # agrep also gets doryteuthis pleii
+sppston[scientific_name == 'stomolophus', projname := NA] # agrep mistakenly pulls a species name
+sppston[scientific_name == 'harengula', projname := NA] # agrep mistakenly pulls a species name
 
 
 # rank the remaining species and remove those that aren't in the projections
