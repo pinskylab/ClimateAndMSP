@@ -12,10 +12,12 @@ rcp <- 85
 consgoal <- 0.1 # proportion of presences to capture in conservation
 energygoal <- 0.2 # proportion of NPV
 fishgoal <- 0.5 # proportion of biomass
-amountcolnm <- 'pres' # either pres or wtcpue.proj
-cost <- 0.01
-zonecosts <- c(0.75, 1, 1, 1) # cost multipliers for available, conservation, fishery, and energy zones
-fpf <- 10
+cost <- 0.01 # basic cost of including each planning unit in a given zone
+zonecosts <- c(0.1, 1, 1, 1) # cost multipliers for available, conservation, fishery, and energy zones
+fpf <- 10 # feature penalty factor
+
+# poccur threshold: how high does the probability of occurrence in the projections need to be to consider the species "present"?
+poccurthresh <- 0.1
 
 # choose region and name these runs
 myreg <- 'ebs'; runname1 <- 'hist_ebs'; runname2 <- '2per_ebs'
@@ -32,35 +34,84 @@ myreg <- 'ebs'; runname1 <- 'hist_ebs'; runname2 <- '2per_ebs'
 planningperiods <- c('2007-2020', '2081-2100')
 
 # folders
-inputfolder1 <- paste(marxfolder, runname1, '_input', sep='')
-inputfolder2 <- paste(marxfolder, runname2, '_input', sep='')
-outputfolder1 <- paste(marxfolder, runname1, '_output', sep='')
-outputfolder2 <- paste(marxfolder, runname2, '_output', sep='')
+marxfolder <- 'marzone_runs/'
+
+######################
+# Functions
+######################
+require(data.table)
 
 
+#################
+# Set up
+#################
+
+# set up input and output folders
+inputfolder1 <- paste0(marxfolder, runname1, '_input')
+inputfolder2 <- paste0(marxfolder, runname2, '_input')
+outputfolder1 <- paste0(marxfolder, runname1, '_output')
+outputfolder2 <- paste0(marxfolder, runname2, '_output')
+
+# define ocean
+if (myreg %in% c('wc', 'bc', 'goa', 'ebs')) myocean <- 'Pac'
+if (myreg %in% c('gmex', 'seus', 'neus', 'maritime', 'newf')) myocean <- 'Atl'
+if (!(myreg %in% c('gmex', 'seus', 'neus', 'maritime', 'newf', 'wc', 'bc', 'goa', 'ebs'))) stop('myreg not an existing region')
 
 #####################
 ## Load data
 #####################
 
-load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information
-	sort(unique(presmap$region))
-windnpv <- read.csv('output/wind_npv.csv', row.names=1)
-wavenpv <- read.csv('output/wave_npv.csv', row.names=1)
-fisheryspps <- read.csv('output/fishery_spps.csv', row.names=1) # which spp to include in fishery goal in each region
+# loads presence/absence and biomass data
+presmap <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcp, '.csv.gz'), drop = 1) 
+biomassmap <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcp, '.csv.gz'), drop = 1) 
 
-# Trim to just one region
-presmap <- presmap[presmap$region==myreg,]
-fisheryspps <- fisheryspps[fisheryspps$region==myreg,]
-	dim(presmap)
-	dim(fisheryspps)
+# load NatCap calculations
+windnpv <- fread(cmd = 'gunzip -c output/wind_npv.csv.gz', drop = 1)
+wavenpv <- fread(cmd = 'gunzip -c output/wave_npv.csv.gz', drop = 1)
+
+setnames(windnpv, c('lat', 'lon'), c('latgrid', 'longrid'))
+setnames(wavenpv, c('lat', 'lon'), c('latgrid', 'longrid'))
+
+# definition of fishery species by region
+fisheryspps <- fread('output/fishery_spps.csv', drop = 1) # which spp to include in fishery goal in each region
+
+# region definitions
+regiongrid <- fread(cmd = 'gunzip -c output/region_grid.csv.gz', drop = 1)
 
 ############################################
-## Set up a Marxan run just on 2006-2020
+## Set up a MarZone run just on 2006-2020
 ## use just one rcp
 ############################################
 
-# Create directory for input and output if missing
+# Fix lon in regiongrid to match presmap (-360 to 0)
+regiongrid[longrid > 0, longrid := longrid - 360] 
+
+# Add region information to presmap
+setkey(presmap, latgrid, longrid)
+setkey(regiongrid, latgrid, longrid)
+presmap <- merge(presmap, regiongrid[, .(latgrid, longrid, region)], all.x = TRUE) # add region information
+    presmap[is.na(region) & !duplicated(presmap[,.(latgrid, longrid)]), .N] # 0 missing region: good!
+    # presmap[is.na(region) & !duplicated(presmap[,.(latgrid, longrid)]), ]
+    # presmap[is.na(region) & !duplicated(presmap[,.(latgrid, longrid)]), plot(longrid, latgrid)]
+    
+# Add region information to biomassmap
+setkey(biomassmap, latgrid, longrid)
+setkey(regiongrid, latgrid, longrid)
+biomassmap <- merge(biomassmap, regiongrid[, .(latgrid, longrid, region)], all.x = TRUE) # add region information
+    biomassmap[is.na(region) & !duplicated(biomassmap[,.(latgrid, longrid)]), .N] # 0 missing region: good!
+
+# Trim to just one region
+presmap <- presmap[region == myreg, ]
+biomassmap <- biomassmap[region == myreg, ]
+fisheryspps <- fisheryspps[region == myreg, ]
+	dim(presmap)
+	dim(biomassmap)
+	dim(fisheryspps)
+
+# Fix species names
+presmap[spp == 'theragra chalcogramma', spp := 'gadus chalcogrammus']
+	
+# Create directories for input and output if they are missing
 if(!dir.exists(inputfolder1)){
 	dir.create(inputfolder1)
 }
@@ -70,135 +121,146 @@ if(!dir.exists(outputfolder1)){
 
 # pu.dat
 # planning features are each 1/4 deg square
-	pus <- presmap[,c('lat', 'lon')]
+	pus <- presmap[,c('latgrid', 'longrid')]
 	pus <- pus[!duplicated(pus),]
-		dim(pus) # 552 (neus), (ebs), 1342 (newf), 229 (wc), 245 (gmex), 396 (scot), 186 (sgulf), 795 (goa), 231 (ai)
-	pus <- pus[order(pus$lat, pus$lon),]
+		dim(pus) # 2195 (ebs), 795 (goa), (bc), 229 (wc), 245 (gmex), (seus), 552 (neus), 396 (maritime), 1342 (newf)
+	pus <- pus[order(pus$latgrid, pus$longrid),]
 	pus$id <- 1:nrow(pus)
 	pus$dummycost <- rep(cost, nrow(pus)) # set the same cost in each planning unit. can add separate costs for each zone.
 
-	pu.dat<-pus[,c('id', 'dummycost')] # the version to write out for Marxan
+	pu.dat <- pus[,c('id', 'dummycost')] # the version to write out for Marxan
 
-	save(pus, file=paste(inputfolder1, '/pus.Rdata', sep=''))	
-	write.csv(pu.dat, file=paste(inputfolder1, '/pu.dat', sep=''), row.names=FALSE, quote=FALSE)
+	write.csv(pus, file = paste0(inputfolder1, '/pus.csv'))	
+	write.csv(pu.dat, file = paste0(inputfolder1, '/pu.dat'), row.names = FALSE, quote = FALSE)
 
 # spec.dat (takes the place of feat.dat?)
-# id and name for each species
+# id, fpf, and name for each species
 # not documented in 1.0.1 manual. copying format from unix example
-	spps <- presmap[presmap$pres,c('sppocean')]
-	spps <- spps[!duplicated(spps)]
-		length(spps) # 102 (NEUS), 214 (EBS), 111 (Newf), 118 (WC), 146 (gmex), 103 (scot), 88 (sgulf), 147 (goa), 139 (ai)
-
-	sppstokeep <- presmap[presmap$period=='2006-2020' & presmap$pres,c('lat', 'lon', 'sppocean', 'pres')]
+	sppstokeep <- presmap[year_range == '2007-2020' & rcp == rcp & model %in% c(1:11, 13:15, 17:18), .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'spp')] # average across models
 		dim(sppstokeep)
-	sppstokeep <- merge(sppstokeep, pus[,c('lat', 'lon', 'id')]) # add pu id (and trim to focal pus)
-		names(sppstokeep)[names(sppstokeep)=='id'] <- 'pu'
+	sppstokeep <- sppstokeep[poccur >= poccurthresh, ]
+	sppstokeep <- merge(sppstokeep, pus[, .(latgrid, longrid, id)], by = c('latgrid', 'longrid')) # add pu id (and trim to focal pus)
+		setnames(sppstokeep, 'id', 'pu')
 		dim(sppstokeep)
 
-		ngrid <- aggregate(list(ngrid=sppstokeep$pu), by=list(sppocean=sppstokeep$sppocean), FUN=function(x) length(unique(x)))
-		sppstokeep <- merge(sppstokeep, ngrid)
-		summary(sppstokeep$ngrid) #
+		ngrid <- sppstokeep[ , .(ngrid = length(unique(pu))), by = 'spp']
+		sppstokeep <- merge(sppstokeep, ngrid, by = 'spp')
+		sppstokeep[ , summary(ngrid)] #
 
-		nspps <- aggregate(list(nspp=sppstokeep$sppocean), by=list(pu=sppstokeep$pu), FUN=function(x) length(unique(x)))
-		sppstokeep <- merge(sppstokeep, nspps)
-		summary(sppstokeep$nspp) #
+		nspps <- sppstokeep[ , .(nspp = length(unique(spp))), by = 'pu']
+		sppstokeep <- merge(sppstokeep, nspps, by = 'pu')
+		sppstokeep[, summary(nspp)] #
 
-		sppstokeep <- sppstokeep[sppstokeep$ngrid> (nrow(pus)*0.05),] # trim to species found in at least 5% of grids
+		# sppstokeep <- sppstokeep[ngrid > (nrow(pus)*0.05),] # trim to species found at poccur > poccurthresh in at least 5% of grids
 
-		length(unique(sppstokeep$sppocean)) # 67 (NEUS), 126 (EBS), 70 (Newf), 115 (WC), 140 (gmex), 48 (scot), 42 (sgulf), 115 (goa), 46 (ai)
+		sppstokeep[ , length(unique(spp))] # 176 (ebs), 115 (goa), (bc), 115 (wc), 140 (gmex), (seus), 67 (neus), 48 (maritime), 70 (newf)
 
-	spps <- spps[spps %in% sppstokeep$sppocean]
-		length(spps) # 67, 126, 70
-
-	spps <- data.frame(id=1:length(spps), name=gsub(' |_', '', spps), sppocean=spps) #  fill spaces in species names.
+	spps <- data.table(id = 1:length(unique(sppstokeep$spp)), name = gsub(' |_', '', sort(unique(sppstokeep$spp))), spp = sort(unique(sppstokeep$spp))) #  fill spaces in species names.
 
 	# set feature penalty factor
 	spps$fpf <- fpf
 
 	# add wind and wave energy feature
-	spps <- rbind(spps, data.frame(id=max(spps$id)+1, name=c('energy'), sppocean=c(NA), fpf=fpf))
+	spps <- rbind(spps, data.table(id = max(spps$id) + 1, name = c('energy'), spp = c(NA), fpf = fpf))
 
 
-	spps.dat <- spps[,c('id', 'fpf', 'name')]
+	spec.dat <- spps[, .(id, fpf, name)]
 
-	save(spps, file=paste(inputfolder1, '/spps.Rdata', sep=''))		
-	write.csv(spps.dat, file=paste(inputfolder1, '/spec.dat', sep=''), row.names=FALSE, quote=FALSE)
+	write.csv(spps, file = paste0(inputfolder1, '/spps.csv'))
+	write.csv(spec.dat, file = paste0(inputfolder1, '/spec.dat'), row.names = FALSE, quote = FALSE)
 
 # puvsp.dat (takes the place of puvfeat.dat)
 # which features are in each planning unit
 # not documented in 1.0.1 manual. copying format from unix example
+# use the average poccur and biomass from the first 16 climate models
 	# Format species data
-	puvsp <- presmap[presmap$period=='2006-2020',c('lat', 'lon', 'sppocean', 'wtcpue.proj', 'pres')]
+	puvsppa <- presmap[year_range == '2007-2020' & rcp == rcp & model %in% c(1:11, 13:15, 17:18), .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'spp')] # pres/abs data. climate models are bcc-csm1-1-m, bcc-csm1-1, CanESM2, CCSM4, CESM1-CAM5, CNRM-CM5, GFDL-CM3, GFDL-ESM2M, GFDL-ESM2G, GISS-E2-R, GISS-E2-H, HadGEM2-ES, IPSL-CM5A-LR, IPSL-CM5A-MR, MIROC-ESM, MIROC5, MPI-ESM-LR, NorESM1-ME. only use those that match biomass projections
+		dim(puvsppa)
+	puvspbio <- biomassmap[year_range == '2007-2020' & rcp == rcp & model %in% 1:16 & spp %in% fisheryspps$projname, .(biomass = mean(biomass)), by = c('latgrid', 'longrid', 'spp')] # biomass data. models are bcc-csm1-1-m, bcc-csm1-1, CanESM2, CCSM4, CESM1-CAM5, CNRM-CM5, GFDL-CM3, GFDL-ESM2M, GFDL-ESM2G, GISS-E2-R, GISS-E2-H, IPSL-CM5A-LR, IPSL-CM5A-MR, MIROC-ESM, MPI-ESM-LR, NorESM1-ME
+		dim(puvspbio)
+		puvspbio[, length(unique(spp))] # should be 10
+	puvsp <- merge(puvsppa, puvspbio, all = TRUE, by = c('latgrid', 'longrid', 'spp'))
+	    puvsp[is.na(poccur), .N] # 0: good!
+	    puvsp[is.na(biomass), .N] # >0 expected
+	
+	puvsp <- merge(puvsp, pus[, .(latgrid, longrid, id)]) # add pu id (and trim to focal pus)
 		dim(puvsp)
-	puvsp <- merge(puvsp, pus[,c('lat', 'lon', 'id')]) # add pu id (and trim to focal pus)
-		dim(puvsp)
-		names(puvsp)[names(puvsp)=='id'] <- 'pu'
+		setnames(puvsp, 'id', 'pu')
 
 
-	puvsp$name <- gsub(' |_', '', puvsp$sppocean) # trim out spaces on species names
-	puvsp <- merge(puvsp, spps[,c('id', 'name')]) # merge in species IDs and trim to focal species
+	puvsp[ , name := gsub(' |_', '', spp)] # trim out spaces on species names
+	puvsp <- merge(puvsp, spps[, .(id, name)], by = 'name') # merge in species IDs and trim to focal species
 		dim(puvsp)
-		names(puvsp)[names(puvsp)=='id'] <- 'species'
-	puvsp$amount <- as.numeric(puvsp[[amountcolnm]]) # use projected biomass as amount
-	puvsp$amount[!puvsp$pres] <- 0 # set amount to zero where our cutoff says not present
-
+		setnames(puvsp, 'id', 'species')
+	puvsp[, amount := round(100*biomass + 1)] # use projected biomass as amount where available, but only present in some cells (used for fishery targets and for conservation targets). round so an integer.
+	    puvsp[, summary(amount)]
+	puvsp[is.na(amount), amount := 1] # fill in with 1 everywhere else (used for conservation targets)
+	    puvsp[, summary(amount)]
+	puvsp[poccur < poccurthresh, amount := 0] # set amount to zero where our cutoff says not present
+        puvsp[, summary(amount)]
+        
 	# Format wind and wave data
-	puvenergy <- merge(windnpv, pus[,c('lat', 'lon', 'id')], all.y=TRUE)
-	puvenergy <- merge(puvenergy, wavenpv)
-		names(puvenergy)[names(puvenergy)=='id'] <- 'pu'
+	puvenergy <- merge(windnpv, pus[, .(latgrid, longrid, id)], all.y = TRUE, by = c('latgrid', 'longrid'))
+	    setnames(puvenergy, 'npv', 'wind_npv')
+	puvenergy <- merge(puvenergy, wavenpv, by = c('latgrid', 'longrid'), all.x = TRUE)
+		setnames(puvenergy, 'id', 'pu')
+		setnames(puvenergy, 'npv', 'wave_npv')
 		head(puvenergy)
 		dim(windnpv)
 		dim(wavenpv)
 		dim(puvenergy)
-	puvenergy$wind_npv[puvenergy$wind_npv<0 | is.na(puvenergy$wind_npv)] <- 0 # set negative or NA NPV to 0
-	puvenergy$wave_npv[puvenergy$wave_npv<0 | is.na(puvenergy$wave_npv)] <- 0
-	puvenergy$amount <- puvenergy$wind_npv + puvenergy$wave_npv
+	puvenergy[wind_npv < 0 | is.na(wind_npv), wind_npv := 0] # set negative or NA NPV to 0
+	puvenergy[wave_npv < 0 | is.na(wave_npv), wave_npv := 0]
+	puvenergy[, amount := round(wind_npv + wave_npv)]
 	
-	puvenergy$species <- spps$id[spps$name=='energy']
+	puvenergy[, species := spps[name == 'energy', id]]
 			
 	length(unique(puvsp$pu))
 	length(unique(puvenergy$pu))
 	length(unique(puvsp$species))
 
 	# Combine species, wind, and wave data for output
-	puvsp.dat <- rbind(puvsp[,c('species', 'pu', 'amount')], puvenergy[,c('species', 'pu', 'amount')])
-	puvsp.dat <- puvsp.dat[order(puvsp.dat$pu, puvsp.dat$species),]
-	puvsp.dat <- puvsp.dat[puvsp.dat$amount>0,] # trim only to presences
+	puvsp.dat <- rbind(puvsp[, .(species, pu, amount)], puvenergy[, .(species, pu, amount)])
+	setkey(puvsp.dat, pu, species) # order by pu then species
+	puvsp.dat <- puvsp.dat[amount > 0, ] # trim only to presences
 
-		length(unique(puvsp$pu)) # 552(neus), 677 (EBS), 1342 (newf)
-		length(unique(puvsp$species)) # 67 (neus), 126 (ebs), 70 (newf)
-		length(unique(puvsp.dat$pu)) # 549 (neus), 677 (ebs), 1342 (newf)
-		length(unique(puvsp.dat$species)) # 68 (neus), 127 (ebs), 71 (newf)
-		sort(unique(table(puvsp.dat$species))) # make sure all species show up in some planning units
-		sort(unique(table(puvsp.dat$pu))) # make sure all planning units have some species
+		length(unique(puvsp$pu)) # planning units for species: 2195 (ebs), 552 (neus), 1342 (newf)
+		length(unique(puvsp$species)) # features that are species: 176 (ebs), 67 (neus), 70 (newf)
+		length(unique(puvsp.dat$pu)) # planning units for species + NatCap: 2147 (ebs), 549 (neus), 1342 (newf)
+		length(unique(puvsp.dat$species)) # features that are species + NatCap: 177 (ebs), 68 (neus), 71 (newf)
+		sort(unique(table(puvsp.dat$species))) # make sure all species show up in some planning units (shouldn't see any 0s)
+		sort(unique(table(puvsp.dat$pu))) # make sure all planning units have some species (shouldn't see any 0s)
 
 		sort(unique(table(puvsp.dat$pu, puvsp.dat$species))) # should be all 0s and 1s
 
-	write.csv(puvsp.dat, file=paste(inputfolder1, '/puvsp.dat', sep=''), row.names=FALSE, quote=FALSE)
+	write.csv(puvsp.dat, file = paste0(inputfolder1, '/puvsp.dat'), row.names = FALSE, quote = FALSE)
+
 
 # zones
 # id and names for each zone
-	zones <- data.frame(zoneid=1:4, zonename=c('available', 'conservation', 'fishery', 'energy'))
+	zones <- data.frame(zoneid = 1:4, zonename = c('available', 'conservation', 'fishery', 'energy'))
 
-	write.csv(zones, file=paste(inputfolder1, '/zones.dat', sep=''), row.names=FALSE, quote=FALSE)
+	write.csv(zones, file = paste0(inputfolder1, '/zones.dat'), row.names = FALSE, quote = FALSE)
+
 
 #costs
-	costs <- data.frame(costid=1, costname='dummycost')
+	costs <- data.frame(costid = 1, costname = 'dummycost')
 
-	write.csv(costs, file=paste(inputfolder1, '/costs.dat', sep=''), row.names=FALSE, quote=FALSE)
+	write.csv(costs, file = paste0(inputfolder1, '/costs.dat'), row.names = FALSE, quote = FALSE)
+
 
 #zone cost
 #to adjust the importance of each cost in each zone
-	zonecost <- expand.grid(list(zoneid=zones$zoneid, costid=costs$costid))
+	zonecost <- expand.grid(list(zoneid = zones$zoneid, costid = costs$costid))
 	zonecost$multiplier <- 0
-	zonecost$multiplier[zonecost$zoneid==1 & zonecost$costid==1] <- zonecosts[1] # set multiplier for available
-	zonecost$multiplier[zonecost$zoneid==2 & zonecost$costid==1] <- zonecosts[2] # set multiplier for conservation
-	zonecost$multiplier[zonecost$zoneid==3 & zonecost$costid==1] <- zonecosts[3] # set multiplier for fishery
-	zonecost$multiplier[zonecost$zoneid==4 & zonecost$costid==1] <- zonecosts[4] # set multiplier for energy
+	zonecost$multiplier[zonecost$zoneid == 1 & zonecost$costid == 1] <- zonecosts[1] # set multiplier for available
+	zonecost$multiplier[zonecost$zoneid == 2 & zonecost$costid == 1] <- zonecosts[2] # set multiplier for conservation
+	zonecost$multiplier[zonecost$zoneid == 3 & zonecost$costid == 1] <- zonecosts[3] # set multiplier for fishery
+	zonecost$multiplier[zonecost$zoneid == 4 & zonecost$costid == 1] <- zonecosts[4] # set multiplier for energy
 
-	zonecost <- zonecost[zonecost$multiplier>0,] # trim out zeros
+	zonecost <- zonecost[zonecost$multiplier > 0,] # trim out zeros
 
-	write.csv(zonecost, file=paste(inputfolder1, '/zonecost.dat', sep=''), row.names=FALSE, quote=FALSE)
+	write.csv(zonecost, file = paste0(inputfolder1, '/zonecost.dat'), row.names = FALSE, quote = FALSE)
 
 #boundary length
 # optional
@@ -214,49 +276,58 @@ if(!dir.exists(outputfolder1)){
 
 #zone target
 # set zone-specific targets
-	zonetarget <- expand.grid(list(zoneid=zones$zoneid, speciesid=spps$id))
+	zonetarget <- expand.grid(list(zoneid = zones$zoneid, speciesid = spps$id))
 	zonetarget$target <- 0
 
 	# set conservation zone target
-	consinds <- zonetarget$zoneid==zones$zoneid[zones$zonename=='conservation'] & zonetarget$speciesid %in% spps$id[spps$name != 'energy']
+	consinds <- zonetarget$zoneid == zones$zoneid[zones$zonename == 'conservation'] & zonetarget$speciesid %in% spps$id[spps$name != 'energy']
 	zonetarget$target[consinds] <- consgoal # XX proportion
-	if(amountcolnm=='pres'){
-		zonetarget$targettype[consinds] <- 1 # 3: proportion of total occurrences. 1: proportion of total amount
-	}
-	if(amountcolnm=='wtcpue.proj'){
-		zonetarget$targettype[consinds] <- 3 # 3: proportion of total occurrences. 1: proportion of total amount
-	}
-	
+	zonetarget$targettype[consinds] <- 3 # 3 = proportion of total occurrences. 1 = proportion of total amount
+
 
 	# set fishing zone target
-	fishinds <- zonetarget$zoneid==zones$zoneid[zones$zonename=='fishery'] & zonetarget$speciesid %in% spps$id[spps$sppocean %in% fisheryspps$projname]
+	fishinds <- zonetarget$zoneid == zones$zoneid[zones$zonename == 'fishery'] & zonetarget$speciesid %in% spps[spp %in% fisheryspps$projname, id]
+	    sum(fishinds) # should be 10
 	zonetarget$target[fishinds] <- fishgoal # XX proportion
 	zonetarget$targettype[fishinds] <- 1 # 3: proportion of total occurrences. 1: proportion of total amount
 
 	# set energy goal target
-	energyinds <- zonetarget$zoneid==zones$zoneid[zones$zonename=='energy'] & zonetarget$speciesid %in% spps$id[spps$name == 'energy']
+	energyinds <- zonetarget$zoneid == zones$zoneid[zones$zonename == 'energy'] & zonetarget$speciesid %in% spps$id[spps$name == 'energy']
+	    sum(energyinds) # should be 1
 	zonetarget$target[energyinds] <- energygoal # XX proportion
 	zonetarget$targettype[energyinds] <- 1 # 3: proportion of total occurrences. 1: proportion of total amount
 
 	# format for output
-	zonetarget.dat <- zonetarget[zonetarget$target>0,] # trim to only positive targets
+	zonetarget.dat <- zonetarget[zonetarget$target > 0,] # trim to only positive targets
 	zonetarget.dat <- zonetarget.dat[order(zonetarget.dat$zoneid, zonetarget.dat$speciesid),] # order
 
 	# write out	
-	write.csv(zonetarget.dat, file=paste(inputfolder1, '/zonetarget.dat', sep=''), row.names=FALSE, quote=FALSE)
+	write.csv(zonetarget.dat, file = paste0(inputfolder1, '/zonetarget.dat'), row.names = FALSE, quote = FALSE)
 
 
 #input parameters
-input <- data.frame(BLM=0, PROP=0.8, RANDSEED=-1, NUMREPS=100, AVAILABLEZONE=1, NUMITNS='1000000', STARTTEMP=-1, NUMTEMP='10000', COSTTHRESH=0, THRESHPEN1=0, THRESHPEN2=0, INPUTDIR=paste(runname1, '_input', sep=''), PUNAME='pu.dat', SPECNAME='spec.dat', PUVSPRNAME='puvsp.dat', ZONESNAME='zones.dat', COSTSNAME='costs.dat', ZONECOSTNAME='zonecost.dat', ZONETARGETNAME='zonetarget.dat', SCENNAME=runname1, SAVERUN=3, SAVEBEST=3, SAVESUMMARY=3, SAVESCEN=3, SAVETARGMET=3, SAVESUMSOLN=3, SAVEPENALTY=3, SAVELOG=3, OUTPUTDIR=paste(runname1, '_output', sep=''),  RUNMODE=1, MISSLEVEL=1, ITIMPTYPE=0, HEURTYPE=-1, CLUMPTYPE=0, VERBOSITY=3, SAVESOLUTIONSMATRIX=3, SAVEANNEALINGTRACE=0, ANNEALINGTRACEROWS=1000)
+input <- data.frame(BLM = 0, PROP = 0.8, RANDSEED = -1, NUMREPS = 100, AVAILABLEZONE = 1, NUMITNS = '1000000', 
+                    STARTTEMP = -1, NUMTEMP = '10000', COSTTHRESH = 0, THRESHPEN1 = 0, THRESHPEN2 = 0, 
+                    INPUTDIR = paste0(runname1, '_input'), PUNAME = 'pu.dat', SPECNAME = 'spec.dat', 
+                    PUVSPRNAME = 'puvsp.dat', ZONESNAME = 'zones.dat', COSTSNAME = 'costs.dat', 
+                    ZONECOSTNAME = 'zonecost.dat', ZONETARGETNAME = 'zonetarget.dat', SCENNAME = runname1, 
+                    SAVERUN = 3, SAVEBEST = 3, SAVESUMMARY = 3, SAVESCEN = 3, SAVETARGMET = 3, SAVESUMSOLN = 3, 
+                    SAVEPENALTY = 3, SAVELOG = 3, OUTPUTDIR = paste0(runname1, '_output'), RUNMODE = 1, MISSLEVEL = 1, 
+                    ITIMPTYPE = 0, HEURTYPE = -1, CLUMPTYPE = 0, VERBOSITY = 3, SAVESOLUTIONSMATRIX = 3, 
+                    SAVEANNEALINGTRACE = 0, ANNEALINGTRACEROWS = 1000)
 
-write.table(t(input), file=paste(marxfolder, 'input.dat', sep=''), row.names=TRUE, quote=FALSE, sep=' ', col.names=FALSE)
-write.table(t(input), file=paste(inputfolder1, '/input.dat', sep=''), row.names=TRUE, quote=FALSE, sep=' ', col.names=FALSE)
+write.table(t(input), file = paste0(marxfolder, 'input.dat'), row.names = TRUE, quote = FALSE, sep = ' ', col.names = FALSE) # to run MarZone (will be over-written when we run another scenario)
+write.table(t(input), file = paste0(inputfolder1, '/input.dat'), row.names = TRUE, quote = FALSE, sep = ' ', col.names = FALSE) # to save with the input data
 	
 	
-# Go run MarZone!
-# cd /Users/mpinsky/Documents/Rutgers/Range\ projections/MarZone_runs 
-# ./MarZone_v201_Mac32 # will read in input.dat and write to the output folder
-
+# Run MarZone! Works if on Amphiprion
+basedir <- getwd()
+setwd(marxfolder) # change directory to run MarZone
+# system(command = 'pwd')
+marzone_log <- system(command = './MarZone_v201_Linux64', intern = TRUE) # will read in input.dat and write to the output folder
+    head(marzone_log)
+setwd(basedir) # go back
+write.table(marzone_log, file = paste0(outputfolder1, '/', runname1, '_log_rconsole.dat'), row.names = FALSE, quote = FALSE)
 
 
 ##################################################################
