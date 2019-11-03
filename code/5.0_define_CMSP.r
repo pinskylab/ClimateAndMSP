@@ -32,7 +32,7 @@ grid$region[(indsCAN & is.na(grid$region) & grid$lon > -100) | (grid$lat > 44 & 
 grid$region[(grid$lon > -80.6 | (grid$lon > -82.3 & grid$lat > 28)) & grid$lat <= 35.6] <- 'seus'
 
 # GoMex
-grid$region[grid$lon > -100 & grid$lat < 31 & is.na(grid$region)] <- 'gomex'
+grid$region[grid$lon > -100 & grid$lat < 31 & is.na(grid$region)] <- 'gmex'
 
 # west coast US
 grid$region[grid$lon < -100 & grid$lat < 50 & !indsCAN] <- 'wc'
@@ -60,7 +60,7 @@ gridcmsp[region == 'newf', plot(longrid, latgrid, cex=0.1)]
 gridcmsp[region == 'maritime', plot(longrid, latgrid, cex=0.1)]
 gridcmsp[region == 'neus', plot(longrid, latgrid, cex=0.1)]
 gridcmsp[region == 'seus', plot(longrid, latgrid, cex=0.1)]
-gridcmsp[region == 'gomex', plot(longrid, latgrid, cex=0.1)]
+gridcmsp[region == 'gmex', plot(longrid, latgrid, cex=0.1)]
 gridcmsp[region == 'wc', plot(longrid, latgrid, cex=0.1)]
 gridcmsp[region == 'bc', plot(longrid, latgrid, cex=0.1)]
 gridcmsp[region == 'goa', plot(longrid, latgrid, cex=0.1)] # odd chunk out of SW corner? but nearly all is land
@@ -85,7 +85,8 @@ projspps <- unique(gsub(paste0('/|_Atl|_Pac|_rcp26|_rcp85|_jas_prediction_AGG.RD
 # get tables of landings by LME from Sea Around Us
 ebs <- fread('dataDL/sau/SAU LME 1 v47-1.csv')
 ai <- fread('dataDL/sau/SAU LME 65 v47-1.csv') # will combine with ebs
-goabc <- fread('dataDL/sau/SAU LME 2 v47-1.csv') # shared with goa and bc
+goa <- fread('dataDL/sau/SAU LME 2 v47-1.csv') # shared with goa and bc
+bc <- goa
 wc <- fread('dataDL/sau/SAU LME 3 v47-1.csv')
 gmex <- fread('dataDL/sau/SAU LME 5 v47-1.csv')
 seus <- fread('dataDL/sau/SAU LME 6 v47-1.csv')
@@ -96,7 +97,8 @@ newf <- fread('dataDL/sau/SAU LME 9 v47-1.csv')
 # add region
 ebs$region <- 'ebs'
 ai$region <- 'ebs'
-goabc$region <- 'goa_bc'
+goa$region <- 'goa'
+bc$region <- 'bc'
 wc$region <- 'wc'
 gmex$region <- 'gmex'
 seus$region <- 'seus'
@@ -105,7 +107,7 @@ maritime$region <- 'maritime'
 newf$region <- 'newf'
 
 # combine and aggregate recent reported commercial landings by species
-sau <- rbind(ebs, ai, goabc, wc, gmex, seus, neus, maritime, newf)
+sau <- rbind(ebs, ai, goa, bc, wc, gmex, seus, neus, maritime, newf)
 sppston <- sau[year >= 1995 & fishing_sector == 'Industrial' & catch_type == 'Landings' & reporting_status == 'Reported', .(tonnes = sum(tonnes)), by = c('region', 'scientific_name')]
 
 # turn SAU names to lower case to match projections
