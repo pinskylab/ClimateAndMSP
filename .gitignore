@@ -6,5 +6,5 @@
 dataDL/
 temp/
 temp_figures/
-marzone_runs/
 .Rproj.user
+.Renviron
