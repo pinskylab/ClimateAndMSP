@@ -1,4 +1,4 @@
-# Evaluate the MarZone solutions
+# Evaluate the prioritzr solutions
 
 
 
@@ -6,17 +6,8 @@
 ## Flags
 ############
 
-## choose which runs to use
-## runtype refers to how the Species Distribution Models (SDMs) were fit
-## projtype refers to how the SDM projections were done
-#runtype <- 'test'; projtype=''
-#runtype <- ''; projtype=''`
-#runtype <- 'testK6noSeas'; projtype='_xreg'
-runtype <- 'fitallreg'; projtype='_xreg'
-
 # choose the rcps (get to choose two)
-rcp <- 85
-otherrcp <- 45
+rcps <- c(26, 85)
 
 # CMSP goals
 consgoal <- 0.1 # proportion of presences to capture in conservation
@@ -25,24 +16,13 @@ fishgoal <- 0.5 # proportion of biomass
 conscolnm <- 'proppres'
 fishcolnm <- 'proppres' # which column to use for fish goal (pres = occurrences, propwtcpue = biomass)
 
-# choose regions and names for these runs (for reading in)
-myregs <- c('NEFSC_NEUSSpring', 'AFSC_EBS', 'DFO_NewfoundlandFall', 'SEFSC_GOMex', 'DFO_ScotianShelf', 'DFO_SoGulf', 'AFSC_GOA', 'AFSC_Aleutians', 'NWFSC_WCAnn')
-runname1s <- c('cmsphistonly_neus', 'cmsphistonly_ebs', 'cmsphistonly_newf', 'cmsphistonly_gmex', 'cmsphistonly_scot', 'cmsphistonly_sgulf', 'cmsphistonly_goa', 'cmsphistonly_ai', 'cmsphistonly_wc')
-runname2s <- c('cmsp2per_neus', 'cmsp2per_ebs', 'cmsp2per_newf', 'cmsp2per_gmex', 'cmsp2per_scot', 'cmsp2per_sgulf', 'cmsp2per_goa', 'cmsp2per_ai', 'cmsp2per_wc')
+# choose regions for these runs (for reading in)
+myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
 
 # choose names for writing out
-runname1out <- 'cmsphistonly_all'
-runname2out <- 'cmsp2per_all'
+runname1out <- 'hist_all'
+runname2out <- '2per_all'
 
-# check
-length(myregs) == length(runname1s)
-length(myregs) == length(runname2s)
-
-# folders
-inputfolder1s <- paste(marxfolder, runname1s, '_input', sep='')
-inputfolder2s <- paste(marxfolder, runname2s, '_input', sep='')
-outputfolder1s <- paste(marxfolder, runname1s, '_output', sep='')
-outputfolder2s <- paste(marxfolder, runname2s, '_output', sep='')
 
 ######################
 ## Helper functions
@@ -52,82 +32,50 @@ require(data.table)
 require(maps)
 
 
-###############################################
-# Make table to fishery species in each region
-###############################################
-fsppsused <- data.frame(region=character(0), spp=character(0))
-
-for(i in 1:length(myregs)){
-	spec <- read.csv(paste(inputfolder1s[i], '/spec.dat', sep=''))
-	targ <- read.csv(paste(inputfolder1s[i], '/zonetarget.dat', sep=''))
-	
-	temp <- data.frame(region=myregs[i], spp=spec$name[spec$id %in% targ$speciesid[targ$zoneid==3]])
-	
-	fsppsused <- rbind(fsppsused, temp)
-}
-
-write.csv(fsppsused, file='cmsp_data/fisheryspps_used.csv')
 
 #######################################################
 # Read in results and simple prep
 #######################################################
-consplan1s <- vector('list', length(runname1s))
-for(i in 1:length(consplan1s)) consplan1s[[i]] <- read.csv(paste(outputfolder1s[i], '/', runname1s[i], '_best.csv', sep=''))
-consplan2s <- vector('list', length(runname2s))
-for(i in 1:length(consplan2s)) consplan2s[[i]] <- read.csv(paste(outputfolder2s[i], '/', runname2s[i], '_best.csv', sep=''))
+consplan1s <- vector('list', length(myregs))
+for(i in 1:length(consplan1s)) consplan1s[[i]] <- fread(paste0('output/prioritizr_runs/solution_hist_', myregs[i], '.csv'), drop=1)
+consplan2s <- vector('list', length(myregs))
+for(i in 1:length(consplan2s)) consplan2s[[i]] <- fread(paste0('output/prioritizr_runs/solution_2per_', myregs[i], '.csv'), drop=1)
 
-# add zone to pus
-pusplan1s <- vector('list', length(runname1s))
-pusplan2s <- vector('list', length(runname2s))
-for(i in 1:length(inputfolder1s)){
-	load(paste(inputfolder1s[i], '/pus.Rdata', sep='')) # pus
-	load(paste(inputfolder2s[i], '/pus.Rdata', sep='')) # pus2
+names(consplan1s) <- myregs
+names(consplan2s) <- myregs
 
-	pusplan1s[[i]] <- merge(pus, consplan1s[[i]], by.x='id', by.y='planning_unit')
-		dim(pus)
-		dim(pusplan1s[[i]])
-		table(pusplan1s[[i]]$zone)
-
-	pusplan2s[[i]] <- merge(pus2, consplan2s[[i]], by.x='id', by.y='planning_unit')
-		dim(pus2)
-		dim(pusplan2s[[i]])
-		table(pusplan2s[[i]]$zone)
-}
-names(pusplan1s) <- myregs
-names(pusplan2s) <- myregs
-
-# load the species lists
-sppslist <- vector('list', length(runname1s))
-spps2list <- vector('list', length(runname2s))
-for(i in 1:length(inputfolder1s)){
-	load(paste(inputfolder1s[[i]], '/spps.Rdata', sep='')) # spps
-	load(paste(inputfolder2s[[i]], '/spps.Rdata', sep='')) # spps2
-	
-	sppslist[[i]] <- spps
-	spps2list[[i]] <- spps2
-}
-
-fisheryspps <- read.csv('cmsp_data/fishery_spps.csv', row.names=1) # which spp to include in fishery goal in each region
-
-#load(paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads rich data.frame with presence/absence information
-#load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information for ensemble mean
-
-# load all model runs... slow
-# better to run this on Amphiprion: takes 20 GB memory
-load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load).
-	presmapbymod.1 <- as.data.table(presmapbymod)
-	rm(presmapbymod)
-	presmapbymod.1[,rcp:=rcp]
-	dim(presmapbymod.1)
-load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', otherrcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load) (for the other rcp, the one not used for planning)
-	presmapbymod.2 <- as.data.table(presmapbymod)
-	rm(presmapbymod)
-	presmapbymod.2[,rcp:=otherrcp]
-	dim(presmapbymod.2)
-	presmapbymod <- rbind(presmapbymod.1, presmapbymod.2, use.names=TRUE)
-	tables()
-	rm(presmapbymod.1)
-	rm(presmapbymod.2)
+# # load the species lists
+# sppslist <- vector('list', length(runname1s))
+# spps2list <- vector('list', length(runname2s))
+# for(i in 1:length(inputfolder1s)){
+# 	load(paste(inputfolder1s[[i]], '/spps.Rdata', sep='')) # spps
+# 	load(paste(inputfolder2s[[i]], '/spps.Rdata', sep='')) # spps2
+# 	
+# 	sppslist[[i]] <- spps
+# 	spps2list[[i]] <- spps2
+# }
+# 
+# fisheryspps <- read.csv('cmsp_data/fishery_spps.csv', row.names=1) # which spp to include in fishery goal in each region
+# 
+# #load(paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads rich data.frame with presence/absence information
+# #load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information for ensemble mean
+# 
+# # load all model runs... slow
+# # better to run this on Amphiprion: takes 20 GB memory
+# load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load).
+# 	presmapbymod.1 <- as.data.table(presmapbymod)
+# 	rm(presmapbymod)
+# 	presmapbymod.1[,rcp:=rcp]
+# 	dim(presmapbymod.1)
+# load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', otherrcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load) (for the other rcp, the one not used for planning)
+# 	presmapbymod.2 <- as.data.table(presmapbymod)
+# 	rm(presmapbymod)
+# 	presmapbymod.2[,rcp:=otherrcp]
+# 	dim(presmapbymod.2)
+# 	presmapbymod <- rbind(presmapbymod.1, presmapbymod.2, use.names=TRUE)
+# 	tables()
+# 	rm(presmapbymod.1)
+# 	rm(presmapbymod.2)
 
 
 
@@ -136,95 +84,38 @@ load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', other
 ## NOTE: commented out parts were written assuming only one region. needs updating
 ####################################################################################
 
-# plot map of selected grids, on top of richness (consplan #1)
-#	colfun <- colorRamp(rev(brewer.pal(11, 'Spectral')))
-#	cexs = 1 # to adjust
-#	periods <- sort(unique(rich$period))
-#	# quartz(width=20, height=5)
-#	pdf(width=20, height=5, file=paste('cmsp_figures/MarZone_', myreg, '_on_richness_', runname1, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
-#	par(mfrow=c(1,length(periods)), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
-#	j <- rich$region == 'NEFSC_NEUSSpring'
-#	for(i in 1:length(periods)){
-#		j2 <- rich$period == periods[i] & j
-#		plot(rich$lon[j2], rich$lat[j2], col=rgb(colfun(pnorm01(rich$rich[j2], rich$rich[j])), maxColorValue=255), pch=16, cex=cexs, xlab='Longitude', ylab='Latitude', main=paste(myreg, periods[i]), cex.main=0.9)
-#
-#		i <- pusplan1$zone == 2
-#		points(pusplan1$lon[i], pusplan1$lat[i], pch=1, col='black', cex=cexs) # conservation
-#
-#		i <- pusplan1$zone == 3
-#		points(pusplan1$lon[i], pusplan1$lat[i], pch=1, col='blue', cex=cexs) # fishery
-#
-#		i <- pusplan1$zone == 4
-#		points(pusplan1$lon[i], pusplan1$lat[i], pch=1, col='purple', cex=cexs) # energy
-#	}
-#	legend('bottomright', legend=c(round(seq(min(rich$rich[j]), max(rich$rich[j]), length.out=10),2), 'Conservation', 'Fishery', 'Energy'), col=c(rgb(colfun(norm01(seq(min(rich$rich[j]), max(rich$rich[j]), length.out=10))), maxColorValue=255), 'black', 'blue', 'purple'), pch=c(rep(16,10), rep(1,3)), cex=0.7, title='Species', bty='n')
-#
-#
-#	dev.off()
-
-# plot map of selected grids, on top of richness (consplan #1 and #2)
-#	colfun <- colorRamp(rev(brewer.pal(11, 'Spectral')))
-#	cexs = 1 # to adjust
-#	periods <- sort(unique(rich$period))
-#	# quartz(width=20, height=10)
-#	pdf(width=20, height=10, file=paste('cmsp_figures/MarZone_', myreg, '_on_richness_', runname1, '&', runname2, '_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
-#	par(mfrow=c(2,length(periods)), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
-#	j <- rich$region == myreg
-#	for(i in 1:length(periods)){ # for plan1
-#		j2 <- rich$period == periods[i] & j
-#		plot(rich$lon[j2], rich$lat[j2], col=rgb(colfun(pnorm01(rich$rich[j2], rich$rich[j])), maxColorValue=255), pch=16, cex=cexs, xlab='Longitude', ylab='Latitude', main=paste(myreg, periods[i]), cex.main=0.9)
-#
-#		i <- pusplan1$zone == 2
-#		points(pusplan1$lon[i], pusplan1$lat[i], pch=1, col='black', cex=cexs) # conservation
-#
-#		i <- pusplan1$zone == 3
-#		points(pusplan1$lon[i], pusplan1$lat[i], pch=1, col='blue', cex=cexs) # fishery
-#
-#		i <- pusplan1$zone == 4
-#		points(pusplan1$lon[i], pusplan1$lat[i], pch=1, col='purple', cex=cexs) # energy
-#	}
-#	for(i in 1:length(periods)){ # for plan2
-#		j2 <- rich$period == periods[i] & j
-#		plot(rich$lon[j2], rich$lat[j2], col=rgb(colfun(pnorm01(rich$rich[j2], rich$rich[j])), maxColorValue=255), pch=16, cex=cexs, xlab='Longitude', ylab='Latitude', main=paste(myreg, periods[i]), cex.main=0.9)
-#
-#		i <- pusplan2$zone == 2
-#		points(pusplan2$lon[i], pusplan2$lat[i], pch=1, col='black', cex=cexs) # conservation
-#
-#		i <- pusplan2$zone == 3
-#		points(pusplan2$lon[i], pusplan2$lat[i], pch=1, col='blue', cex=cexs) # fishery
-#
-#		i <- pusplan2$zone == 4
-#		points(pusplan2$lon[i], pusplan2$lat[i], pch=1, col='purple', cex=cexs) # energy
-#	}
-#	legend('bottomright', legend=c(round(seq(min(rich$rich[j]), max(rich$rich[j]), length.out=10),2), 'Conservation', 'Fishery', 'Energy'), col=c(rgb(colfun(norm01(seq(min(rich$rich[j]), max(rich$rich[j]), length.out=10))), maxColorValue=255), 'black', 'blue', 'purple'), pch=c(rep(16,10), rep(1,3)), cex=0.7, title='Species', bty='n')
-#
-#
-#	dev.off()
-	
-	
 # plot map of selected grids (consplan #1 and #2)
 cexs = 0.5 # to adjust
-periods <- sort(unique(rich$period))
 # quartz(width=5, height=18)
-pdf(width=5, height=18, file=paste('cmsp_figures/Planmaps_', runtype, projtype, '_rcp', rcp, '.pdf', sep=''))
-par(mfrow=c(9,2), mai=c(0.5,0.5,0.3, 0.1), las=1, mgp=c(2,1,0))
-for(i in 1:length(pusplan1s)){
-	j <- pusplan1s[[i]]$zone == 2
-	plot(pusplan1s[[i]]$lon[j], pusplan1s[[i]]$lat[j], pch=16, col='red', cex=cexs, main='Historical only', xlab='', ylab='') # conservation
-	j <- pusplan1s[[i]]$zone == 3
-	points(pusplan1s[[i]]$lon[j], pusplan1s[[i]]$lat[j], pch=16, col='blue', cex=cexs) # fishery
-#	i <- pusplan1s[[i]]$zone == 4
-#	points(pusplan1$lon[i], pusplan1$lat[i], pch=16, col='red', cex=cexs) # energy
-
-	j <- pusplan2s[[i]]$zone == 2
-	plot(pusplan2s[[i]]$lon[j], pusplan2s[[i]]$lat[j], pch=16, col='red', cex=cexs, main='Two periods', xlab='', ylab='') # conservation
-	j <- pusplan2s[[i]]$zone == 3
-	points(pusplan2s[[i]]$lon[j], pusplan2s[[i]]$lat[j], pch=16, col='blue', cex=cexs) # fishery
-#	i <- pusplan2$zone == 4
-#	points(pusplan2$lon[i], pusplan2$lat[i], pch=16, col='red', cex=cexs) # energy
+pdf(width = 5, height = 18, file = 'figures/planmaps.pdf')
+par(mfrow = c(length(myregs),2), mai = c(0.5,0.5,0.3, 0.1), las = 1, mgp = c(2,1,0))
+for(i in 1:length(consplan1s)){
+    xlims <- range(consplan1s[[i]]$longrid)
+    ylims <- range(consplan1s[[i]]$latgrid)
+	j <- consplan1s[[i]]$solution_1_conservation == 1
+	plot(consplan1s[[i]]$longrid[j], consplan1s[[i]]$latgrid[j], pch=16, 
+	     col='red', cex=cexs, main='Historical only', xlab='', ylab='', xlim=xlims, ylim=ylims) # conservation
+	j <- consplan1s[[i]]$solution_1_fishery == 1
+	points(consplan1s[[i]]$longrid[j], consplan1s[[i]]$latgrid[j], pch=16, col='blue', cex=cexs) # fishery
+	j <- consplan1s[[i]]$solution_1_energy == 1
+	points(consplan1s[[i]]$longrid[j], consplan1s[[i]]$latgrid[j], pch=16, col='green', cex=cexs) # energy
+	j <- consplan1s[[i]]$solution_1_conservation == 0 & 
+	    consplan1s[[i]]$solution_1_fishery == 0 & consplan1s[[i]]$solution_1_energy == 0
+	points(consplan1s[[i]]$longrid[j], consplan1s[[i]]$latgrid[j], pch=16, col='grey', cex=cexs) # all others
+	
+	j <- consplan2s[[i]]$solution_1_conservation == 1
+	plot(consplan2s[[i]]$longrid[j], consplan2s[[i]]$latgrid[j], pch=16, col='red', cex=cexs, 
+	     main='Two periods', xlab='', ylab='') # conservation
+	j <- consplan2s[[i]]$solution_1_fishery == 1
+	points(consplan2s[[i]]$longrid[j], consplan2s[[i]]$latgrid[j], pch=16, col='blue', cex=cexs) # fishery
+	j <- consplan2s[[i]]$solution_1_energy == 1
+	points(consplan2s[[i]]$longrid[j], consplan2s[[i]]$latgrid[j], pch=16, col='green', cex=cexs) # energy
+	j <- consplan2s[[i]]$solution_1_conservation == 0 & consplan2s[[i]]$solution_1_fishery == 0 & 
+	    consplan2s[[i]]$solution_1_energy == 0
+	points(consplan2s[[i]]$longrid[j], consplan2s[[i]]$latgrid[j], pch=16, col='grey', cex=cexs) # all others
 }
 
-legend('topright', legend=c('Conservation', 'Fishery', 'Energy'), col=c('red', 'blue', 'purple'), pch=rep(16,3), cex=0.7, title='Zones', bty='n')
+legend('topright', legend=c('Conservation', 'Fishery', 'Energy'), col=c('red', 'blue', 'green'), pch=rep(16,3), cex=0.7, title='Zones', bty='n')
 
 
 dev.off()
@@ -234,89 +125,109 @@ dev.off()
 ## Basic stats on the plans
 ############################
 # have to read in the plans above (but don't need to read in the species distributions)
-climGrid <- read.csv('data/climGrid.csv', row.names=1) # for temperature climatology and depth
+# climGrid <- read.csv('data/climGrid.csv', row.names=1) # for temperature climatology and depth
+
+# add a zone indicator to consplans
+for(i in 1:length(consplan1s)){
+    consplan1s[[i]][ , zone := as.numeric(NA)]
+    consplan1s[[i]][solution_1_conservation == 1 , zone := 1]
+    consplan1s[[i]][solution_1_fishery == 1 , zone := 2]
+    consplan1s[[i]][solution_1_energy == 1 , zone := 3]
+    consplan1s[[i]][solution_1_conservation ==  0 & solution_1_fishery == 0 & solution_1_energy == 0 , zone := 4]
+    consplan1s[[i]][, reg := myregs[i]]
+}
+for(i in 1:length(consplan2s)){
+    consplan2s[[i]][ , zone <- as.numeric(NA)]
+    consplan2s[[i]][solution_1_conservation == 1 , zone := 1]
+    consplan2s[[i]][solution_1_fishery == 1 , zone := 2]
+    consplan2s[[i]][solution_1_energy == 1 , zone := 3]
+    consplan2s[[i]][solution_1_conservation ==  0 & solution_1_fishery == 0 & solution_1_energy == 0 , zone := 4]
+    consplan2s[[i]][, reg := myregs[i]]
+}
+
 
 # latitudinal range by zone in each plan
 # do 2per plans span a wider latitudinal range?
 #	a <- lapply(pusplan1s, FUN=function(x) aggregate(list(latrng_histonly=x$lat), by=list(zone=x$zone), FUN=function(x) max(x)-min(x)))
 #	b <- lapply(pusplan2s, FUN=function(x) aggregate(list(latrng_2per=x$lat), by=list(zone=x$zone), FUN=function(x) max(x)-min(x)))
-	a <- lapply(pusplan1s, FUN=function(x) aggregate(list(latsd_histonly=x$lat), by=list(zone=x$zone), FUN=function(x) sd(x)))
-	b <- lapply(pusplan2s, FUN=function(x) aggregate(list(latsd_2per=x$lat), by=list(zone=x$zone), FUN=function(x) sd(x)))
+	a <- lapply(consplan1s, FUN=function(x) x[ , .(latsd_hist = sd(latgrid), reg = unique(reg)), by = zone])
+	b <- lapply(consplan2s, FUN=function(x) x[ , .(latsd_2per = sd(latgrid), reg = unique(reg)), by = zone])
 	a <- do.call('rbind',a)
 	b <- do.call('rbind',b)
-	a$reg <- gsub('.[[:digit:]]', '', row.names(a))
-	b$reg <- gsub('.[[:digit:]]', '', row.names(b))
 	d <- merge(a,b)
-	d[d$zone==2,] # conservation
-	d[d$zone==3,] # fishing
-	d$diff <- d$latrng_2per - d$latrng_histonly # positive if 2per spans a wider range
+	d[d$zone==1,] # conservation
+	d[d$zone==2,] # fishing
+	d$diff <- d$latsd_2per - d$latsd_hist # positive if 2per spans a wider range
 	summary(d$diff)
+	wilcox.test(d$diff[d$zone==1])
 	wilcox.test(d$diff[d$zone==2])
 	wilcox.test(d$diff[d$zone==3])
-		# note: zone 1 available, 2 conservation, 3 fishery, 4 energy
+		# note: zone 1 conservation, 2 fishery, 3 energy
 	
 # temperature and depth range by zone in each plan
 	# add in climatology temperature
-pusplan1swclim <- pusplan1s
-pusplan2swclim <- pusplan2s
-for(i in 1:length(pusplan1swclim)){
-	pusplan1swclim[[i]] <- merge(pusplan1s[[i]], climGrid[,c('lat', 'lon', 'bottemp.clim.int', 'surftemp.clim.int', 'depth')], all.x=TRUE)
-	pusplan2swclim[[i]] <- merge(pusplan2s[[i]], climGrid[,c('lat', 'lon', 'bottemp.clim.int', 'surftemp.clim.int', 'depth')], all.x=TRUE)
-}
-
-	# do 2per plans span a wider surface temperature range?
-#	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(temprng_histonly=x$surftemp.clim.int), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
-#	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(temprng_2per=x$surftemp.clim.int), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
-	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(tempsd_histonly=x$surftemp.clim.int), by=list(zone=x$zone), FUN=function(x) sd(x, na.rm=TRUE)))
-	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(tempsd_2per=x$surftemp.clim.int), by=list(zone=x$zone), FUN=function(x) sd(x, na.rm=TRUE)))
-	a <- do.call('rbind',a)
-	b <- do.call('rbind',b)
-	a$reg <- gsub('.[[:digit:]]', '', row.names(a))
-	b$reg <- gsub('.[[:digit:]]', '', row.names(b))
-	d <- merge(a,b)
-	d[d$zone==2,] # conservation
-	d[d$zone==3,] # fishing
-	d$diff <- d$temprng_2per - d$temprng_histonly # positive if 2per spans a wider range
-	summary(d$diff)
-	wilcox.test(d$diff[d$zone==2])
-	wilcox.test(d$diff[d$zone==3])
-
-	# do 2per plans span a wider bottom temperature range?
-#	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(temprng_histonly=x$bottemp.clim.int), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
-#	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(temprng_2per=x$bottemp.clim.int), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
-	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(tempsd_histonly=x$bottemp.clim.int), by=list(zone=x$zone), FUN=function(x) sd(x, na.rm=TRUE)))
-	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(tempsd_2per=x$bottemp.clim.int), by=list(zone=x$zone), FUN=function(x) sd(x, na.rm=TRUE)))
-	a <- do.call('rbind',a)
-	b <- do.call('rbind',b)
-	a$reg <- gsub('.[[:digit:]]', '', row.names(a))
-	b$reg <- gsub('.[[:digit:]]', '', row.names(b))
-	d <- merge(a,b)
-	d[d$zone==2,] # conservation
-	d[d$zone==3,] # fishing
-	d$diff <- d$temprng_2per - d$temprng_histonly # positive if 2per spans a wider range
-	summary(d$diff)
-	wilcox.test(d$diff[d$zone==2])
-	wilcox.test(d$diff[d$zone==3])
-
-
-	# do 2per plans span a wider depth range?
-	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(depthrng_histonly=x$depth), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
-	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(depthrng_2per=x$depth), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
-	a <- do.call('rbind',a)
-	b <- do.call('rbind',b)
-	a$reg <- gsub('.[[:digit:]]', '', row.names(a))
-	b$reg <- gsub('.[[:digit:]]', '', row.names(b))
-	d <- merge(a,b)
-	d[d$zone==2,] # conservation
-	d[d$zone==3,] # fishing
-	d$diff <- d$temprng_2per - d$temprng_histonly # positive if 2per spans a wider range
-	summary(d$diff)
-	wilcox.test(d$diff[d$zone==2])
-	wilcox.test(d$diff[d$zone==3])
-
+# pusplan1swclim <- pusplan1s
+# pusplan2swclim <- pusplan2s
+# for(i in 1:length(pusplan1swclim)){
+# 	pusplan1swclim[[i]] <- merge(pusplan1s[[i]], climGrid[,c('lat', 'lon', 'bottemp.clim.int', 'surftemp.clim.int', 'depth')], all.x=TRUE)
+# 	pusplan2swclim[[i]] <- merge(pusplan2s[[i]], climGrid[,c('lat', 'lon', 'bottemp.clim.int', 'surftemp.clim.int', 'depth')], all.x=TRUE)
+# }
+# 
+# 	# do 2per plans span a wider surface temperature range?
+# #	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(temprng_histonly=x$surftemp.clim.int), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
+# #	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(temprng_2per=x$surftemp.clim.int), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
+# 	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(tempsd_histonly=x$surftemp.clim.int), by=list(zone=x$zone), FUN=function(x) sd(x, na.rm=TRUE)))
+# 	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(tempsd_2per=x$surftemp.clim.int), by=list(zone=x$zone), FUN=function(x) sd(x, na.rm=TRUE)))
+# 	a <- do.call('rbind',a)
+# 	b <- do.call('rbind',b)
+# 	a$reg <- gsub('.[[:digit:]]', '', row.names(a))
+# 	b$reg <- gsub('.[[:digit:]]', '', row.names(b))
+# 	d <- merge(a,b)
+# 	d[d$zone==2,] # conservation
+# 	d[d$zone==3,] # fishing
+# 	d$diff <- d$temprng_2per - d$temprng_histonly # positive if 2per spans a wider range
+# 	summary(d$diff)
+# 	wilcox.test(d$diff[d$zone==2])
+# 	wilcox.test(d$diff[d$zone==3])
+# 
+# 	# do 2per plans span a wider bottom temperature range?
+# #	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(temprng_histonly=x$bottemp.clim.int), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
+# #	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(temprng_2per=x$bottemp.clim.int), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
+# 	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(tempsd_histonly=x$bottemp.clim.int), by=list(zone=x$zone), FUN=function(x) sd(x, na.rm=TRUE)))
+# 	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(tempsd_2per=x$bottemp.clim.int), by=list(zone=x$zone), FUN=function(x) sd(x, na.rm=TRUE)))
+# 	a <- do.call('rbind',a)
+# 	b <- do.call('rbind',b)
+# 	a$reg <- gsub('.[[:digit:]]', '', row.names(a))
+# 	b$reg <- gsub('.[[:digit:]]', '', row.names(b))
+# 	d <- merge(a,b)
+# 	d[d$zone==2,] # conservation
+# 	d[d$zone==3,] # fishing
+# 	d$diff <- d$temprng_2per - d$temprng_histonly # positive if 2per spans a wider range
+# 	summary(d$diff)
+# 	wilcox.test(d$diff[d$zone==2])
+# 	wilcox.test(d$diff[d$zone==3])
+# 
+# 
+# 	# do 2per plans span a wider depth range?
+# 	a <- lapply(pusplan1swclim, FUN=function(x) aggregate(list(depthrng_histonly=x$depth), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
+# 	b <- lapply(pusplan2swclim, FUN=function(x) aggregate(list(depthrng_2per=x$depth), by=list(zone=x$zone), FUN=function(x) max(x, na.rm=TRUE)-min(x, na.rm=TRUE)))
+# 	a <- do.call('rbind',a)
+# 	b <- do.call('rbind',b)
+# 	a$reg <- gsub('.[[:digit:]]', '', row.names(a))
+# 	b$reg <- gsub('.[[:digit:]]', '', row.names(b))
+# 	d <- merge(a,b)
+# 	d[d$zone==2,] # conservation
+# 	d[d$zone==3,] # fishing
+# 	d$diff <- d$temprng_2per - d$temprng_histonly # positive if 2per spans a wider range
+# 	summary(d$diff)
+# 	wilcox.test(d$diff[d$zone==2])
+# 	wilcox.test(d$diff[d$zone==3])
+# 
+	
 ######################################################################
 # Analyze against each climate model projection                      #
 # across each rcp                                                    #
+# run on Amphpirion
 ######################################################################
 
 abundbyzonebymod1 <- vector('list', length(myregs))
