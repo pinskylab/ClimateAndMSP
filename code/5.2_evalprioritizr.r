@@ -9,12 +9,18 @@
 # choose the rcps (get to choose two)
 rcps <- c(26, 85)
 
+# choose the climate models to use for evaluating future planning (others for planning)
+#bcc-csm1-1-m, bcc-csm1-1, CanESM2, CCSM4, CESM1-CAM5, CNRM-CM5, GFDL-CM3, GFDL-ESM2M, GFDL-ESM2G, GISS-E2-R, GISS-E2-H, IPSL-CM5A-LR, IPSL-CM5A-MR, MIROC-ESM, MPI-ESM-LR, NorESM1-ME
+gcminds <- c(5, 6, 7, 11, 12, 13, 15, 16) # the complement of those in 5.1_prioritizr.r
+
+
 # CMSP goals
 consgoal <- 0.1 # proportion of presences to capture in conservation
 energygoal <- 0.2 # proportion of NPV
 fishgoal <- 0.5 # proportion of biomass
-conscolnm <- 'proppres'
-fishcolnm <- 'proppres' # which column to use for fish goal (pres = occurrences, propwtcpue = biomass)
+
+# poccur threshold: how high does the probability of occurrence in the projections need to be to consider the species "present"?
+poccurthresh <- 0.1
 
 # choose regions for these runs (for reading in)
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
@@ -29,13 +35,14 @@ runname2out <- '2per_all'
 ######################
 require(RColorBrewer)
 require(data.table)
-#require(maps)
+require(maps)
 
 
 
 #######################################################
 # Read in results and simple prep
 #######################################################
+# read in the prioritzr solutions
 consplan1s <- vector('list', length(myregs))
 for(i in 1:length(consplan1s)) consplan1s[[i]] <- fread(paste0('output/prioritizr_runs/solution_hist_', myregs[i], '.csv'), drop=1)
 consplan2s <- vector('list', length(myregs))
@@ -43,6 +50,83 @@ for(i in 1:length(consplan2s)) consplan2s[[i]] <- fread(paste0('output/prioritiz
 
 names(consplan1s) <- myregs
 names(consplan2s) <- myregs
+
+
+# loads presence/absence and biomass data for each species/model/rcp. very slow.
+# not needed unless comparing plans against species distributions
+# trim to only focal climate models to save memory
+if(!(length(rcps) %in% c(1,2))){
+    stop('rcp must be length 1 or 2')
+}
+if(length(rcps)==1){
+    presmap1 <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[1], '.csv.gz'), drop = 1)
+    presmap1 <- presmap1[model %in% c(1:11, 13:15, 17:18)[gcminds], ] # have to account for extra models in pres/abs projections (18 instead of 16 for biomass)
+    
+    presmap2 <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[2], '.csv.gz'), drop = 1) 
+    presmap2 <- presmap2[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
+
+    presmap <- rbind(presmap1, presmap2)
+    rm(presmap1, presmap2)
+
+    biomassmap1 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[1], '.csv.gz'), drop = 1)
+    biomassmap1 <- biomassmap1[model %in% c(1:16)[gcminds], ]
+    
+    biomassmap2 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[2], '.csv.gz'), drop = 1)
+    biomassmap2 <- biomassmap2[model %in% c(1:16)[gcminds], ]
+    
+    biomassmap <- rbind(biomassmap1, biomassmap2)
+    rm(biomassmap1, biomassmap2)
+}
+if(length(rcps)==2){
+    presmap1 <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[1], '.csv.gz'), drop = 1)
+    presmap1 <- presmap1[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
+
+    presmap2 <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[2], '.csv.gz'), drop = 1) 
+    presmap2 <- presmap2[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
+    
+    presmap3 <- fread(cmd = paste0('gunzip -c temp/presmap_Pac_rcp', rcps[1], '.csv.gz'), drop = 1) 
+    presmap3 <- presmap3[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
+    
+    presmap4 <- fread(cmd = paste0('gunzip -c temp/presmap_Pac_rcp', rcps[2], '.csv.gz'), drop = 1) 
+    presmap4 <- presmap4[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
+
+    presmap <- rbind(presmap1, presmap2, presmap3, presmap4)
+    rm(presmap1, presmap2, presmap3, presmap4)
+       
+    biomassmap1 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[1], '.csv.gz'), drop = 1)
+    biomassmap1 <- biomassmap1[model %in% c(1:16)[gcminds], ]
+    
+    biomassmap2 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[2], '.csv.gz'), drop = 1)
+    biomassmap2 <- biomassmap2[model %in% c(1:16)[gcminds], ]
+    
+    biomassmap3 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Pac_rcp', rcps[1], '.csv.gz'), drop = 1)
+    biomassmap3 <- biomassmap3[model %in% c(1:16)[gcminds], ]
+    
+    biomassmap4 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Pac_rcp', rcps[2], '.csv.gz'), drop = 1)
+    biomassmap4 <- biomassmap4[model %in% c(1:16)[gcminds], ]
+    
+    biomassmap <- rbind(biomassmap1, biomassmap2, biomassmap3, biomassmap4)
+    rm(biomassmap1, biomassmap2, biomassmap3, biomassmap4)
+}
+
+# fix model #s for pres/abs projections (extras are in position 12 and 16)
+presmap[model > 12 & model < 16, model := model - 1L]
+presmap[model > 16, model := model - 2L]
+
+# definition of planning goals by region
+sppfiles <- list.files(path = 'output/prioritizr_runs/', pattern = 'spp_*', full.names = TRUE)
+spps <- fread(sppfiles[1], drop = 1)
+spps[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[1])]
+for(i in 1:length(sppfiles)){
+    temp <- fread(sppfiles[i], drop = 1)
+    temp[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[i])]
+    spps <- rbind(spps, temp)
+}
+rm(temp)
+
+# region definitions
+regiongrid <- fread(cmd = 'gunzip -c output/region_grid.csv.gz', drop = 1)
+
 
 # add a zone indicator to consplans
 for(i in 1:length(consplan1s)){
@@ -63,44 +147,34 @@ for(i in 1:length(consplan2s)){
 }
 
 
-# # load the species lists
-# sppslist <- vector('list', length(runname1s))
-# spps2list <- vector('list', length(runname2s))
-# for(i in 1:length(inputfolder1s)){
-# 	load(paste(inputfolder1s[[i]], '/spps.Rdata', sep='')) # spps
-# 	load(paste(inputfolder2s[[i]], '/spps.Rdata', sep='')) # spps2
-# 	
-# 	sppslist[[i]] <- spps
-# 	spps2list[[i]] <- spps2
-# }
-# 
-# fisheryspps <- read.csv('cmsp_data/fishery_spps.csv', row.names=1) # which spp to include in fishery goal in each region
-# 
-# #load(paste('data/rich_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads rich data.frame with presence/absence information
-# #load(paste('data/presmap_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information for ensemble mean
-# 
-# # load all model runs... slow
-# # better to run this on Amphiprion: takes 20 GB memory
-# load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', rcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load).
-# 	presmapbymod.1 <- as.data.table(presmapbymod)
-# 	rm(presmapbymod)
-# 	presmapbymod.1[,rcp:=rcp]
-# 	dim(presmapbymod.1)
-# load(paste(presmapbymodfolder, 'presmapbymod_', runtype, projtype, '_rcp', otherrcp, '.RData', sep='')) # loads presmap data.frame with presence/absence information from each model (slow to load) (for the other rcp, the one not used for planning)
-# 	presmapbymod.2 <- as.data.table(presmapbymod)
-# 	rm(presmapbymod)
-# 	presmapbymod.2[,rcp:=otherrcp]
-# 	dim(presmapbymod.2)
-# 	presmapbymod <- rbind(presmapbymod.1, presmapbymod.2, use.names=TRUE)
-# 	tables()
-# 	rm(presmapbymod.1)
-# 	rm(presmapbymod.2)
+# Fix lon in regiongrid to match presmap (-360 to 0)
+regiongrid[longrid > 0, longrid := longrid - 360] 
 
+# Add region information to presmap
+setkey(presmap, latgrid, longrid)
+setkey(regiongrid, latgrid, longrid)
+presmap <- merge(presmap, regiongrid[, .(latgrid, longrid, region)], all.x = TRUE) # add region information
+if(presmap[is.na(region) & !duplicated(presmap[,.(latgrid, longrid)]), .N] != 0){ # 0 missing region: good!
+    stop('presmap is missing >0 regions')
+}
+# presmap[is.na(region) & !duplicated(presmap[,.(latgrid, longrid)]), ]
+# presmap[is.na(region) & !duplicated(presmap[,.(latgrid, longrid)]), plot(longrid, latgrid)]
+
+# Add region information to biomassmap
+setkey(biomassmap, latgrid, longrid)
+setkey(regiongrid, latgrid, longrid)
+biomassmap <- merge(biomassmap, regiongrid[, .(latgrid, longrid, region)], all.x = TRUE) # add region information
+if(biomassmap[is.na(region) & !duplicated(biomassmap[,.(latgrid, longrid)]), .N] != 0){ # 0 missing region: good!
+    stop('biomassmap is missing >0 regions')
+}
+
+# Fix a species name
+presmap[spp == 'theragra chalcogramma', spp := 'gadus chalcogrammus']
+biomassmap[spp == 'theragra chalcogramma', spp := 'gadus chalcogrammus']
 
 
 ####################################################################################
 ## Basic maps of solutions
-## NOTE: commented out parts were written assuming only one region. needs updating
 ####################################################################################
 
 # plot map of selected grids (consplan #1 and #2)
@@ -151,18 +225,18 @@ dev.off()
 # do 2per plans span a wider latitudinal range?
 #	a <- lapply(pusplan1s, FUN=function(x) aggregate(list(latrng_histonly=x$lat), by=list(zone=x$zone), FUN=function(x) max(x)-min(x)))
 #	b <- lapply(pusplan2s, FUN=function(x) aggregate(list(latrng_2per=x$lat), by=list(zone=x$zone), FUN=function(x) max(x)-min(x)))
-	a <- lapply(consplan1s, FUN = function(x) x[ , .(latsd_hist = sd(latgrid), reg = unique(reg)), by = zone])
-	b <- lapply(consplan2s, FUN = function(x) x[ , .(latsd_2per = sd(latgrid), reg = unique(reg)), by = zone])
+	a <- lapply(consplan1s, FUN=function(x) x[ , .(latsd_hist = sd(latgrid), reg = unique(reg)), by = zone])
+	b <- lapply(consplan2s, FUN=function(x) x[ , .(latsd_2per = sd(latgrid), reg = unique(reg)), by = zone])
 	a <- do.call('rbind',a)
 	b <- do.call('rbind',b)
 	d <- merge(a,b)
-	d[d$zone == 1,] # conservation
-	d[d$zone == 2,] # fishing
+	d[d$zone==1,] # conservation
+	d[d$zone==2,] # fishing
 	d$diff <- d$latsd_2per - d$latsd_hist # positive if 2per spans a wider range
 	summary(d$diff)
-	wilcox.test(d$diff[d$zone == 1])
-	wilcox.test(d$diff[d$zone == 2])
-	wilcox.test(d$diff[d$zone == 3])
+	wilcox.test(d$diff[d$zone==1])
+	wilcox.test(d$diff[d$zone==2])
+	wilcox.test(d$diff[d$zone==3])
 		# note: zone 1 conservation, 2 fishery, 3 energy
 	
 # temperature and depth range by zone in each plan
@@ -231,145 +305,169 @@ dev.off()
 # run on Amphpirion
 ######################################################################
 
-abundbyzonebymod1 <- vector('list', length(myregs))
-abundbyzonebymod2 <- vector('list', length(myregs))
-goalsmetbymod1 <- vector('list', length(myregs))
+goalsbyzonebymod1 <- vector('list', length(myregs)) # to hold # presences and total biomass in conservation/fishing zones for each species and each projection, hist-only cmsp
+goalsbyzonebymod2 <- vector('list', length(myregs)) # for 2per cmsp
+goalsmetbymod1 <- vector('list', length(myregs)) # summary of # goals met by year_range/model/rcp, for hist cmsp
 goalsmetbymod2 <- vector('list', length(myregs))
 
-setkey(presmapbymod, region)
+modelsp <- sort(unique(presmap$model)) # species in the pres/abs models
+modelsb <- sort(unique(biomassmap$model)) # species in the biomass models
+periods <- sort(unique(presmap$year_range))
 
-models <- sort(unique(presmapbymod$model))
-periods <- sort(unique(presmapbymod$period))
-
-# takes 25G memory and 10 min on MacBook Air
+# evaluate # targets met in each time period in each model
 for(i in 1:length(myregs)){
 	print(i)
 	
-	finds <- fisheryspps$region == myregs[i] # trim to this region
-
-	# evaluate # targets met in each time period in each model
-		# calculate total presences and wtcpue by species and time-period
-		totals <- expand.grid(sppocean=sppslist[[i]]$sppocean[sppslist[[i]]$name != 'energy'], period=periods, model=models, rcp=c(rcp, otherrcp)) # grid of all spp and time periods and models and rcps
-			dim(totals)
-		
-		totcalcs <- aggregate(list(totalpres = presmapbymod[myregs[i],pres], totalwtcpue=presmapbymod[myregs[i],wtcpue.proj]), by=list(sppocean=presmapbymod[myregs[i],sppocean], period=presmapbymod[myregs[i],period], model=presmapbymod[myregs[i],model], rcp=presmapbymod[myregs[i],rcp]), FUN=sum) # how many spp presences and amount in each period in each model for focal rcp
-			dim(totcalcs)
-
-		totals2 <- merge(totals, totcalcs, all.x=TRUE) # make sure all spp and time periods and models and rcps represented
-		totals2$totalpres[is.na(totals2$totalpres)] <- 0
-		totals2$totalwtcpue[is.na(totals2$totalwtcpue)] <- 0
-		totals2$zone <- 2 # for conservation
-
-		# add totals for the fishery zones
-		temp <- totals2
-		temp$zone <- 3
-		temp <- temp[temp$sppocean %in% fisheryspps$projname[finds],]
-			nrow(temp)/5/13/2 # 8 species: good
-		totals2 <- as.data.table(rbind(totals2, temp)) # for fishery
-
-			length(unique(totals2$sppocean)) # number of species: 67
-			numgoals <- length(unique(paste(totals2$sppocean, totals2$zone))) # number of goals: 75
-				numgoals
-			nrow(totals2)
-
-		# merge plan zones into presmap
-		temp1 <- merge(presmapbymod[myregs[i], ], pusplan1s[[i]][pusplan1s[[i]]$zone %in% c(2,3),], by=c('lat', 'lon')) # only keep the conserved & fishery zones for goals
-			dim(temp1) # a data.table
-		temp2 <- merge(presmapbymod[myregs[i], ], pusplan2s[[i]][pusplan2s[[i]]$zone %in% c(2,3),], by=c('lat', 'lon'))
-		abundbyzone1 <- temp1[,.(npres=sum(pres),sumwtcpue=sum(wtcpue.proj)),by=c('sppocean','period','zone','model','rcp')]
-			dim(abundbyzone1) # 67080
-		abundbyzone2 <- temp2[,.(npres=sum(pres),sumwtcpue=sum(wtcpue.proj)),by=c('sppocean','period','zone','model','rcp')]
-			dim(abundbyzone2) # 67080
-
-		# add totals for pres and wtcpue across all zones
-		# intersect(names(abundbyzone1), names(totals2))
-		setkey(totals2, sppocean,period,model,rcp,zone)
-		setkey(abundbyzone1, sppocean,period,model,rcp,zone)
-		setkey(abundbyzone2, sppocean,period,model,rcp,zone)
-		abundbyzonebymod1[[i]] <- merge(abundbyzone1, totals2, all.y=TRUE)
-			if(abundbyzonebymod1[[i]][,sum(is.na(npres))]>0) abundbyzonebymod1[[i]][is.na(npres),npres:=0]
-			if(abundbyzonebymod1[[i]][,sum(is.na(sumwtcpue))]>0) abundbyzonebymod1[[i]][is.na(sumwtcpue),sumwtcpue:=0]
-			dim(abundbyzonebymod1[[i]]) # 9750
-			abundbyzonebymod1[[i]][,length(unique(sppocean))] # 67 species
-			abundbyzonebymod1[[i]][,sort(table(as.character(sppocean)))] # entries per species, from low to high. 8 species appear in both conservation and fishery zones.
-		abundbyzonebymod2[[i]] <- merge(abundbyzone2, totals2, all.y=TRUE)
-			if(abundbyzonebymod2[[i]][,sum(is.na(npres))]>0) abundbyzonebymod2[[i]][is.na(npres),npres:=0]
-			if(abundbyzonebymod2[[i]][,sum(is.na(sumwtcpue))]>0) abundbyzonebymod2[[i]][is.na(sumwtcpue),sumwtcpue:=0]
-			dim(abundbyzonebymod2[[i]]) # 9750
-			abundbyzonebymod2[[i]][,length(unique(sppocean))] # 67 species
-			abundbyzonebymod2[[i]][,sort(table(as.character(sppocean)))] # entries per species, from low to high. 8 species appear in both 
-		# calculate proportion of presences and wtcpue
-		abundbyzonebymod1[[i]][,proppres:=npres/totalpres]
-		abundbyzonebymod2[[i]][,proppres:=npres/totalpres]
-		abundbyzonebymod1[[i]][,propwtcpue:=sumwtcpue/totalwtcpue]
-		abundbyzonebymod2[[i]][,propwtcpue:=sumwtcpue/totalwtcpue]
-
-		# force 0/0 to 1 so that it counts as a goal met
-		abundbyzonebymod1[[i]][npres==0 & totalpres==0,proppres:=1]
-		abundbyzonebymod2[[i]][npres==0 & totalpres==0,proppres:=1]
-		abundbyzonebymod1[[i]][sumwtcpue==0 & totalwtcpue==0,propwtcpue:=1]
-		abundbyzonebymod2[[i]][sumwtcpue==0 & totalwtcpue==0,propwtcpue:=1]
+	# calculate total presences by species and time-period for conservation
+	totalpres <- as.data.table(expand.grid(spp=spps[!grepl('fishery|energy', name) & region == myregs[i], spp], year_range = periods, model = modelsp, rcp=rcps)) # grid of all spp and time periods and models and rcps
+		dim(totalpres)
 	
-		# mark where goals met for conservation or fishery
-		abundbyzonebymod1[[i]][,metgoal:=FALSE]
-		abundbyzonebymod2[[i]][,metgoal:=FALSE]
-		expr <- paste('zone==2 &', conscolnm, '>=', consgoal) # the only way to dynamically construct a vector with which to choose rows (http://r.789695.n4.nabble.com/Idiomatic-way-of-using-expression-in-i-td4711229.html)
-		abundbyzonebymod1[[i]][eval(parse(text=expr)),metgoal:=TRUE]
-		abundbyzonebymod2[[i]][eval(parse(text=expr)),metgoal:=TRUE]
-		expr2 <- paste('zone==3 &', fishcolnm, '>=', fishgoal)
-		abundbyzonebymod1[[i]][eval(parse(text=expr2)),metgoal:=TRUE]
-		abundbyzonebymod2[[i]][eval(parse(text=expr2)),metgoal:=TRUE]
+	totprescalcs <- presmap[region == myregs[i], .(total = sum(poccur > poccurthresh)), by = c("spp", "year_range", "model", "rcp")]
+        dim(totprescalcs)
+    
+	totalpres <- merge(totalpres, totprescalcs, all.x=TRUE) # make sure all spp and time periods and models and rcps represented
+	totalpres[is.na(total), total := 0]
+	totalpres[ , zone := 1] # for conservation
 
+	# merge plan zones into presmap and calculate # presences
+	temp1 <- merge(presmap[region == myregs[i], ], consplan1s[[i]][zone == 1, .(latgrid, longrid, zone)], by=c('latgrid', 'longrid')) # only keep the conserved zones for goals related to climate
+		dim(temp1) # a data.table
+	temp2 <- merge(presmap[region == myregs[i], ], consplan2s[[i]][zone == 1, .(latgrid, longrid, zone)], by=c('latgrid', 'longrid'))
+	presbyzone1 <- temp1[, .(zonetotal = sum(poccur > poccurthresh)), by = c('spp', 'year_range', 'zone', 'model', 'rcp')]
+		dim(presbyzone1) # 19392 (ebs)
+	presbyzone2 <- temp2[, .(zonetotal = sum(poccur > poccurthresh)), by = c('spp', 'year_range', 'zone', 'model', 'rcp')]
+		dim(presbyzone2)
 
-		# calculate number goals met in each timeperiod
-		goalsmetbymod1[[i]] <- abundbyzonebymod1[[i]][,.(nmet=sum(metgoal)),by=c('period','model','rcp')]
-		goalsmetbymod1[[i]]$mid <- sapply(strsplit(as.character(goalsmetbymod1[[i]]$period), split='-'), FUN=function(x) mean(as.numeric(x)))
-		goalsmetbymod1[[i]]$pmet <- goalsmetbymod1[[i]]$nmet/numgoals
+	# add totals for pres across all zones
+	setkey(totalpres, spp, year_range, model, rcp, zone)
+	setkey(presbyzone1, spp, year_range, model, rcp, zone)
+	setkey(presbyzone2, spp, year_range, model, rcp, zone)
+	presbyzonebymod1 <- merge(presbyzone1, totalpres, all.y=TRUE)
+	if(presbyzonebymod1[, sum(is.na(zonetotal))] > 0) presbyzonebymod1[is.na(zonetotal), zonetotal:=0]
+	    dim(presbyzonebymod1) # 5728 (ebs)
+	    presbyzonebymod1[, length(unique(spp))] # 179 species
 
-		goalsmetbymod2[[i]] <- abundbyzonebymod2[[i]][,.(nmet=sum(metgoal)),by=c('period','model','rcp')]
-		goalsmetbymod2[[i]]$mid <- sapply(strsplit(as.character(goalsmetbymod2[[i]]$period), split='-'), FUN=function(x) mean(as.numeric(x)))
-		goalsmetbymod2[[i]]$pmet <- goalsmetbymod2[[i]]$nmet/numgoals
+	presbyzonebymod2 <- merge(presbyzone2, totalpres, all.y=TRUE)
+	if(presbyzonebymod2[, sum(is.na(zonetotal))] > 0) presbyzonebymod2[is.na(zonetotal), zonetotal:=0]
+	    dim(presbyzonebymod2) # 
+    	presbyzonebymod2[, length(unique(spp))] # 
 
-		# set region
-		abundbyzonebymod1[[i]][,region:=myregs[i]]
-		abundbyzonebymod2[[i]][,region:=myregs[i]]
-		goalsmetbymod1[[i]][,region:=myregs[i]]
-		goalsmetbymod2[[i]][,region:=myregs[i]]
+	# calculate proportion of presences
+	presbyzonebymod1[, prop := zonetotal/total]
+	presbyzonebymod2[, prop := zonetotal/total]
+
+	# calculate total biomass by species and time-period for fishery species
+	totalbio <- as.data.table(expand.grid(spp = spps[grepl('fishery', name) & region == myregs[i], spp], year_range = periods, model = modelsp, rcp = rcps)) # grid of all spp and time periods and models and rcps
+	    dim(totalbio)
+	
+	totbiocalcs <- biomassmap[region == myregs[i], .(total = sum(biomass)), by = c("spp", "year_range", "model", "rcp")]
+	    dim(totbiocalcs)
+	
+	totalbio <- merge(totalbio, totbiocalcs, all.x=TRUE) # make sure all spp and time periods and models and rcps represented
+	totalbio[is.na(total), total := 0]
+	totalbio[ , zone := 2] # for fisheries
+	
+	# merge plan zones into biomassmap and calculate total biomass
+	temp1 <- merge(biomassmap[region == myregs[i], ], consplan1s[[i]][zone == 2, .(latgrid, longrid, zone)], by=c('latgrid', 'longrid')) # only keep the fishery zones for goals related to climate
+    	dim(temp1) # a data.table
+	temp2 <- merge(biomassmap[region == myregs[i], ], consplan2s[[i]][zone == 2, .(latgrid, longrid, zone)], by=c('latgrid', 'longrid'))
+	biobyzone1 <- temp1[, .(zonetotal = sum(biomass)), by = c('spp', 'year_range', 'zone', 'model', 'rcp')]
+	    dim(biobyzone1) # 19392 (ebs)
+	biobyzone2 <- temp2[, .(zonetotal = sum(biomass)), by = c('spp', 'year_range', 'zone', 'model', 'rcp')]
+	    dim(biobyzone2)
+	
+	# add totals for biomass
+	# intersect(names(presbyzone1), names(totals2))
+	setkey(totalbio, spp, year_range, model, rcp, zone)
+	setkey(biobyzone1, spp, year_range, model, rcp, zone)
+	setkey(biobyzone2, spp, year_range, model, rcp, zone)
+	biobyzonebymod1 <- merge(biobyzone1, totalbio, all.y=TRUE)
+	if(biobyzonebymod1[, sum(is.na(zonetotal))] > 0) biobyzonebymod1[is.na(zonetotal), zonetotal := 0]
+	    dim(biobyzonebymod1) # 320 (ebs)
+	biobyzonebymod1[, length(unique(spp))] # 10 species
+	
+	biobyzonebymod2 <- merge(biobyzone2, totalbio, all.y=TRUE)
+	if(biobyzonebymod2[, sum(is.na(zonetotal))] > 0) biobyzonebymod2[is.na(zonetotal), zonetotal := 0]
+	    dim(biobyzonebymod2) # 
+	biobyzonebymod2[, length(unique(spp))] # 
+	
+	# calculate proportion of biomass
+	biobyzonebymod1[, prop := zonetotal/total]
+	biobyzonebymod2[, prop := zonetotal/total]
+	
+	
+
+	# count a goal as met if the species is not present
+	presbyzonebymod1[total == 0, prop := 1]
+	presbyzonebymod2[total == 0, prop := 1]
+	biobyzonebymod1[total == 0, prop := 1]
+	biobyzonebymod2[total == 0, prop := 1]
+
+	# mark where goals met for conservation or fishery
+	presbyzonebymod1[, metgoal := FALSE]
+	presbyzonebymod2[, metgoal := FALSE]
+	expr <- paste('zone == 1 & prop >=', consgoal) # the only way to dynamically construct a vector with which to choose rows (http://r.789695.n4.nabble.com/Idiomatic-way-of-using-expression-in-i-td4711229.html)
+	presbyzonebymod1[eval(parse(text=expr)), metgoal := TRUE]
+	presbyzonebymod2[eval(parse(text=expr)), metgoal := TRUE]
+	
+	biobyzonebymod1[, metgoal := FALSE]
+	biobyzonebymod2[, metgoal := FALSE]
+	expr2 <- paste('zone == 2 & prop >=', fishgoal)
+	biobyzonebymod1[eval(parse(text=expr2)), metgoal := TRUE]
+	biobyzonebymod2[eval(parse(text=expr2)), metgoal := TRUE]
+
+    # combine conservation and fishery goals
+	goalsbyzonebymod1[[i]] <- rbind(presbyzonebymod1, biobyzonebymod1)
+	goalsbyzonebymod2[[i]] <- rbind(presbyzonebymod2, biobyzonebymod2)
+	
+	# calculate number goals met in each timeperiod
+	numgoals <- totalpres[, length(unique(spp))] + totalbio[, length(unique(spp))] # total number of conservation and fishery goals
+	goalsmetbymod1[[i]] <- goalsbyzonebymod1[[i]][, .(nmet = sum(metgoal)), by=c('year_range','model','rcp')]
+	goalsmetbymod1[[i]]$mid <- sapply(strsplit(as.character(goalsmetbymod1[[i]]$year_range), split='-'), FUN=function(x) mean(as.numeric(x))) # find mid-year
+	goalsmetbymod1[[i]]$pmet <- goalsmetbymod1[[i]]$nmet/numgoals
+
+	goalsmetbymod2[[i]] <- goalsbyzonebymod2[[i]][, .(nmet=sum(metgoal)), by = c('year_range','model','rcp')]
+	goalsmetbymod2[[i]]$mid <- sapply(strsplit(as.character(goalsmetbymod2[[i]]$year_range), split='-'), FUN=function(x) mean(as.numeric(x)))
+	goalsmetbymod2[[i]]$pmet <- goalsmetbymod2[[i]]$nmet/numgoals
+
+	# set region
+	goalsbyzonebymod1[[i]][, region := myregs[i]]
+	goalsbyzonebymod2[[i]][, region := myregs[i]]
+	goalsmetbymod1[[i]][, region := myregs[i]]
+	goalsmetbymod2[[i]][, region := myregs[i]]
 }
 
 # clean up
-rm(temp1)
-rm(temp2)
+rm(temp1, temp2, presbyzone1, presbyzone2, presbyzonebymod1, presbyzonebymod2, biobyzone1, biobyzone2, biobyzonebymod1, biobyzonebymod2, totalbio, totalpres, totbiocalcs, totprescalcs)
 
 # flatten lists into data.frames
-abundbyzonebymod1out <- rbindlist(abundbyzonebymod1)
-abundbyzonebymod2out <- rbindlist(abundbyzonebymod2)
+goalsbyzonebymod1out <- rbindlist(goalsbyzonebymod1)
+goalsbyzonebymod2out <- rbindlist(goalsbyzonebymod2)
 goalsmetbymod1out <- rbindlist(goalsmetbymod1)
 goalsmetbymod2out <- rbindlist(goalsmetbymod2)
 
-dim(abundbyzonebymod1out)
-dim(abundbyzonebymod2out)
+dim(goalsbyzonebymod1out)
+dim(goalsbyzonebymod2out)
 dim(goalsmetbymod1out)
 dim(goalsmetbymod2out)
 
 # write out
-write.csv(abundbyzonebymod1out, file=paste('output/abundbyzonebymod_', runtype, projtype, '_', runname1out, '.csv', sep=''))
-write.csv(abundbyzonebymod2out, file=paste('output/abundbyzonebymod_', runtype, projtype, '_', runname2out, '.csv', sep=''))
-write.csv(goalsmetbymod1out, file=paste('output/goalsmetbymod_', runtype, projtype, '_', runname1out, '.csv', sep=''))
-write.csv(goalsmetbymod2out, file=paste('output/goalsmetbymod_', runtype, projtype, '_', runname2out, '.csv', sep=''))
+write.csv(goalsbyzonebymod1out, file = gzfile(paste0('output/goalsbyzonebymod_', runname1out, '.csv.gz')))
+write.csv(goalsbyzonebymod2out, file = gzfile(paste0('output/goalsbyzonebymod_', runname2out, '.csv.gz')))
+write.csv(goalsmetbymod1out, file = paste0('output/goalsmetbymod_', runname1out, '.csv'))
+write.csv(goalsmetbymod2out, file = paste0('output/goalsmetbymod_', runname2out, '.csv'))
 
 
 ######################################################################
 # Compare and plot the planning approaches against all climate models
 ######################################################################
-goalsmetbymod1out <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname1out, '.csv', sep=''), row.names=1)
-goalsmetbymod2out <- read.csv(paste('output/goalsmetbymod_', runtype, projtype, '_', runname2out, '.csv', sep=''), row.names=1)
+goalsmetbymod1out <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
+goalsmetbymod2out <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)
 
 
-myregs <- c('AFSC_Aleutians', 'AFSC_EBS', 'AFSC_GOA', 'DFO_NewfoundlandFall', 'DFO_ScotianShelf', 'DFO_SoGulf', 'NEFSC_NEUSSpring', 'SEFSC_GOMex')
 mods <- sort(unique(goalsmetbymod1out$model))
 rcps <- sort(unique(goalsmetbymod1out$rcp))
-regnames<-c('Aleutians Is.', 'E. Bering Sea', 'Gulf of AK', 'Newfoundland', 'Scotian Shelf', 'S. Gulf of St. Lawrence', 'Northeast US')
+regnames<-c('E. Bering Sea', 'Gulf of AK', 'British Columbia', 'West Coast US', 'Gulf of Mexico', 'Southeast US', 'Northeast US', 'Maritimes', 'Newfoundland')
 
 # add plan identifier
 goalsmetbymod1out$plan <- 'histonly'
@@ -380,10 +478,11 @@ goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
 
 
 # compare goals met across plans and time periods
-	goalmetbymodag <- with(rbind(goalsmetbymod1out, goalsmetbymod2out), aggregate(list(pmet=pmet), by=list(plan=plan, model=model, rcp=rcp, period=period), FUN=mean))
-	with(goalmetbymodag, aggregate(list(ave_goals=pmet), by=list(plan=plan, period=period), FUN=mean))
-	with(goalmetbymodag, aggregate(list(ave_goals=pmet), by=list(plan=plan, period=period), FUN=se))
-	with(goalmetbymodag, aggregate(list(ave_goals=pmet), by=list(plan=plan, period=period), FUN=length))
+goalmetbymodag <- with(rbind(goalsmetbymod1out, goalsmetbymod2out), 
+                       aggregate(list(pmet = pmet), by = list(plan = plan, model = model, rcp = rcp, period = year_range), FUN = mean))
+with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, period = period), FUN = mean))
+with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, period = period), FUN = function(x) sd(x)/length(x)))
+with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, period = period), FUN = length))
 
 
 # test whether histonly meets significantly fewer goals than 2per
@@ -513,3 +612,4 @@ goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
 	# plot
 	require(lattice)
 	xyplot(u80 ~ period | region, data=u80, groups=plan, type='l')
+	
