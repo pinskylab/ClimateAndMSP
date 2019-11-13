@@ -38,7 +38,7 @@ myreg <- 'newf'; runname1 <- 'hist_newf'; runname2 <- '2per_newf'
 planningperiods <- c('2007-2020', '2081-2100')
 
 # folders
-marxfolder <- 'marzone_runs/'
+marxfolder <- 'prioritizr_runs/'
 
 ######################
 # Functions
@@ -171,7 +171,9 @@ pus$dummycost <- rep(cost, nrow(pus)) # set the same cost in each planning unit.
 	# add wind and wave energy feature
 	spps <- rbind(spps, data.table(id = max(spps$id) + 1, name = c('energy'), spp = c(NA)))
 
-
+    # write out the species for this region
+	write.csv(spps, file = paste0('output/', marxfolder, 'spp_', myreg, '.csv'))
+	
 # puvsp
 # which features are in each planning unit
 	# Format conservation data
