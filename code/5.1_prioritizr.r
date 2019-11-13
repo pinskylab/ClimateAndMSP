@@ -60,17 +60,30 @@ if(!(length(rcps) %in% c(1,2))){
 	stop('rcp must be length 1 or 2')
 }
 if(length(rcps)==1){
-	presmap <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps, '.csv.gz'), drop = 1) 
-	biomassmap <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps, '.csv.gz'), drop = 1)
+	presmap1 <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps, '_2007-2020.csv.gz'), drop = 1) 
+	presmap2 <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps, '_2081-2100.csv.gz'), drop = 1) 
+	presmap <- rbind(presmap1, presmap2)
+	
+	biomassmap1 <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps, '_2007-2020.csv.gz'), drop = 1)
+	biomassmap2 <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps, '_2081-2100.csv.gz'), drop = 1)
+	biomassmap <- rbind(biomassmap1, biomassmap2)
+	
+	rm(presmap1, presmap2, biomassmap1, biomassmap2)
 }
 if(length(rcps)==2){
-	presmap1 <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps[1], '.csv.gz'), drop = 1) 
-	biomassmap1 <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps[1], '.csv.gz'), drop = 1)
-	presmap2 <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps[2], '.csv.gz'), drop = 1) 
-	biomassmap2 <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps[2], '.csv.gz'), drop = 1)
-	presmap <- rbind(presmap1, presmap2)
-	biomassmap <- rbind(biomassmap1, biomassmap2)
-	rm(presmap1, presmap2, biomassmap1, biomassmap2)
+	presmap1 <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps[1], '_2007-2020.csv.gz'), drop = 1) 
+	presmap2 <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps[1], '_2081-2100.csv.gz'), drop = 1) 
+	presmap3 <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps[2], '_2007-2020.csv.gz'), drop = 1) 
+	presmap4 <- fread(cmd = paste0('gunzip -c temp/presmap_', myocean, '_rcp', rcps[2], '_2081-2100.csv.gz'), drop = 1) 
+	presmap <- rbind(presmap1, presmap2, presmap3, presmap4)
+	
+	biomassmap1 <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps[1], '_2007-2020.csv.gz'), drop = 1)
+	biomassmap2 <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps[1], '_2081-2100.csv.gz'), drop = 1)
+	biomassmap3 <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps[2], '_2007-2020.csv.gz'), drop = 1)
+	biomassmap4 <- fread(cmd = paste0('gunzip -c temp/biomassmap_', myocean, '_rcp', rcps[2], '_2081-2100.csv.gz'), drop = 1)
+	biomassmap <- rbind(biomassmap1, biomassmap2, biomassmap3, biomassmap4)
+	
+	rm(presmap1, presmap2, presmap3, presmap4, biomassmap1, biomassmap2, biomassmap3, biomassmap4)
 }
 
 # load NatCap calculations

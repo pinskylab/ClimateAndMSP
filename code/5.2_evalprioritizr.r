@@ -25,6 +25,9 @@ poccurthresh <- 0.1
 # choose regions for these runs (for reading in)
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
 
+# periods
+periods <- c('2007-2020', '2021-2040', '2041-2060', '2061-2080', '2081-2100')
+
 # choose names for writing out
 runname1out <- 'hist_all'
 runname2out <- '2per_all'
@@ -58,55 +61,25 @@ names(consplan2s) <- myregs
 if(!(length(rcps) %in% c(1,2))){
     stop('rcp must be length 1 or 2')
 }
-if(length(rcps)==1){
-    presmap1 <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[1], '.csv.gz'), drop = 1)
-    presmap1 <- presmap1[model %in% c(1:11, 13:15, 17:18)[gcminds], ] # have to account for extra models in pres/abs projections (18 instead of 16 for biomass)
-    
-    presmap2 <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[2], '.csv.gz'), drop = 1) 
-    presmap2 <- presmap2[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
+## NOT SURE IF THIS WORKS YET
+for (i in 1:length(rcps)){
+    for(j in 1:length(periods)){
+        prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[i], '_', periods[j], '.csv.gz'), drop = 1)
+        prestemp <- prestemp[model %in% c(1:11, 13:15, 17:18)[gcminds], ] # trim to focal climate models. have to account for extra models in pres/abs projections (18 instead of 16 for biomass)
+        
+        biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[i], '_', periods[j], '.csv.gz'), drop = 1)
+        biotemp <- biotemp[model %in% c(1:16)[gcminds], ]
 
-    presmap <- rbind(presmap1, presmap2)
-    rm(presmap1, presmap2)
+        if(i == 1 & j == 1){
+            presmap <- prestemp
+            biomassmap <- biotemp
+        } else {
+            presmap <- rbind(presmap, prestemp)
+            biomassmap <- rbind(biomassmap, biotemp)
+        }
 
-    biomassmap1 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[1], '.csv.gz'), drop = 1)
-    biomassmap1 <- biomassmap1[model %in% c(1:16)[gcminds], ]
-    
-    biomassmap2 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[2], '.csv.gz'), drop = 1)
-    biomassmap2 <- biomassmap2[model %in% c(1:16)[gcminds], ]
-    
-    biomassmap <- rbind(biomassmap1, biomassmap2)
-    rm(biomassmap1, biomassmap2)
-}
-if(length(rcps)==2){
-    presmap1 <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[1], '.csv.gz'), drop = 1)
-    presmap1 <- presmap1[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
-
-    presmap2 <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[2], '.csv.gz'), drop = 1) 
-    presmap2 <- presmap2[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
-    
-    presmap3 <- fread(cmd = paste0('gunzip -c temp/presmap_Pac_rcp', rcps[1], '.csv.gz'), drop = 1) 
-    presmap3 <- presmap3[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
-    
-    presmap4 <- fread(cmd = paste0('gunzip -c temp/presmap_Pac_rcp', rcps[2], '.csv.gz'), drop = 1) 
-    presmap4 <- presmap4[model %in% c(1:11, 13:15, 17:18)[gcminds], ]
-
-    presmap <- rbind(presmap1, presmap2, presmap3, presmap4)
-    rm(presmap1, presmap2, presmap3, presmap4)
-       
-    biomassmap1 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[1], '.csv.gz'), drop = 1)
-    biomassmap1 <- biomassmap1[model %in% c(1:16)[gcminds], ]
-    
-    biomassmap2 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[2], '.csv.gz'), drop = 1)
-    biomassmap2 <- biomassmap2[model %in% c(1:16)[gcminds], ]
-    
-    biomassmap3 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Pac_rcp', rcps[1], '.csv.gz'), drop = 1)
-    biomassmap3 <- biomassmap3[model %in% c(1:16)[gcminds], ]
-    
-    biomassmap4 <- fread(cmd = paste0('gunzip -c temp/biomassmap_Pac_rcp', rcps[2], '.csv.gz'), drop = 1)
-    biomassmap4 <- biomassmap4[model %in% c(1:16)[gcminds], ]
-    
-    biomassmap <- rbind(biomassmap1, biomassmap2, biomassmap3, biomassmap4)
-    rm(biomassmap1, biomassmap2, biomassmap3, biomassmap4)
+        rm(prestemp, biotemp)
+    }
 }
 
 # fix model #s for pres/abs projections (extras are in position 12 and 16)
