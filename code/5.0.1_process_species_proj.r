@@ -10,12 +10,11 @@ gridsize <- 0.25
 # choose the rcp(s)
 RCPS <- c(26, 85)
 
-# select initial and final timeperiod for these grids
-PERIODS <- c('2007-2020', '2081-2100')
 
 # number of climate models in the projections
-NMODS <- 18
+NMODSpres <- 18 # for the pres/abs models. Models 12 and 16 are extraneous.
 NMODSbio <- 16 # for the biomass models
+MODSpresTODROP <- c(12, 16)
 
 # path to the pres-abs and biomass projection results from Morley et al. 2018. At 0.05 grid size.
 PRESABSPATH <- '/local/shared/pinsky_lab/projections_PlosOne2018/CEmodels_proj_PresAbs_May2018' 
@@ -28,61 +27,74 @@ BIOMASSPATH <- '/local/shared/pinsky_lab/projections_PlosOne2018/CEmodels_proj_B
 require(data.table)
 
 
+###########################
+## set up some parameters
+###########################
+
+# define the time-periods from the first file
+files <- list.files(path = PRESABSPATH, pattern = paste0('*_Atl_rcp26*'), full.names = TRUE) # find relevant projection files
+load(files[1]) # loads pred.agg
+periods <- as.character(sort(unique(pred.agg$year_range)))
+            
 
 ############################################
 ## Summarize species occurrence
 ## by grid cell for each model separately
 ############################################
 
-# step through each RCP and Ocean separately
+# step through each RCP, Ocean, and time period separately
 for (i in 1:length(RCPS)) {
     for (ocean in c('Atl', 'Pac')){
-        if (exists('presmap')) rm(presmap) # will store results in presmap
-
-        files <- list.files(path = PRESABSPATH, pattern = paste0('*_', ocean, '_rcp', RCPS[i], '*'), full.names = TRUE) # find relevant projection files
-        print(paste0(Sys.time(), ' On RCP ', RCPS[i], ', Ocean ', ocean, '. Species (of ', length(files), '): ')) # print status
-
-        # load presmap for each model run and process the results
-        for (j in 1:length(files)) {
-            cat(paste0(' ', j))
-            load(files[j]) # loads pred.agg data.frame
-            thisspp <- gsub(paste0(PRESABSPATH, '/|_Atl|_Pac|_rcp26|_rcp85|_jas_PresAbs_projection_AGG.RData'), '', files[j])
-            pred.agg <- as.data.table(pred.agg)
-            
-            # round lat lon to nearest CMSP grid cell
-            pred.agg[, latgrid := floor(latitude/gridsize)*gridsize + gridsize/2]
-            pred.agg[, longrid := floor(longitude/gridsize)*gridsize + gridsize/2]
-            setkey(pred.agg, latgrid, longrid)
-            
-            # trim to focal year ranges
-            pred.agg <- pred.agg[year_range %in% PERIODS,]
-            
-            # calculate summary stats about species p(occur) by grid cell for each climate model
-            for (m in 1:NMODS) { # for each climate model
-                
-                # average p(occur) across projection grid cells into the larger CMSP analysis grid cells
-                # use sum/25 to implicitly consider 0s for cells on land (there are 25 climate projection grid cells per CMSP analysis grid)
-                sppbygrid <- pred.agg[, .(spp = thisspp, rcp = RCPS[i], model = m, poccur = sum(get(paste0('mean', m)), na.rm = TRUE)/(gridsize/0.05)^2), by = c('latgrid', 'longrid', 'year_range')]
-                #print(dim(sppbygrid))
-                
-                # add this species/model/rcp/time onto the output data.table
-                if (!exists('presmap')) { # create the output table if it doesn't exist
-                    presmap <- sppbygrid
-                } else {
-                    presmap <- rbind(presmap, sppbygrid)
-                }
-                
-            }
-        }
-        
-        print(dim(presmap))
-
-        # write out species presence/absence data 
-        outfile <- paste0('temp/presmap_', ocean, '_rcp', RCPS[i], '.csv.gz')
-        write.csv(presmap, file = gzfile(outfile))
-        print(paste('wrote', outfile))
-    }
+        for (k in 1:length(periods)){
+            if (exists('presmap')) rm(presmap) # will store results in presmap
     
+            files <- list.files(path = PRESABSPATH, pattern = paste0('*_', ocean, '_rcp', RCPS[i], '*'), full.names = TRUE) # find relevant projection files
+            print(paste0(Sys.time(), ' On RCP ', RCPS[i], ', Ocean ', ocean, ', Period ', periods[k], '. Species (of ', length(files), '): ')) # print status
+    
+            # load presmap for each model run and process the results
+            for (j in 1:length(files)) {
+                cat(paste0(' ', j))
+                load(files[j]) # loads pred.agg data.frame
+                thisspp <- gsub(paste0(PRESABSPATH, '/|_Atl|_Pac|_rcp26|_rcp85|_jas_PresAbs_projection_AGG.RData'), '', files[j])
+                pred.agg <- as.data.table(pred.agg)
+                
+                # round lat lon to nearest CMSP grid cell
+                pred.agg[, latgrid := floor(latitude/gridsize)*gridsize + gridsize/2]
+                pred.agg[, longrid := floor(longitude/gridsize)*gridsize + gridsize/2]
+                setkey(pred.agg, latgrid, longrid)
+                
+                # trim to focal year ranges
+                pred.agg <- pred.agg[year_range %in% periods[k],]
+                
+                # trim out extraneous pres/abs climate models
+                pred.agg <- pred.agg[!(model %in% MODSpresTODROP), ]
+                
+                # calculate summary stats about species p(occur) by grid cell for each climate model
+                for (m in 1:NMODSpres) { # for each climate model
+                    
+                    # average p(occur) across projection grid cells into the larger CMSP analysis grid cells
+                    # use sum/25 to implicitly consider 0s for cells on land (there are 25 climate projection grid cells per CMSP analysis grid)
+                    sppbygrid <- pred.agg[, .(spp = thisspp, rcp = RCPS[i], model = m, poccur = sum(get(paste0('mean', m)), na.rm = TRUE)/(gridsize/0.05)^2), by = c('latgrid', 'longrid', 'year_range')]
+                    #print(dim(sppbygrid))
+                    
+                    # add this species/model/rcp/time onto the output data.table
+                    if (!exists('presmap')) { # create the output table if it doesn't exist
+                        presmap <- sppbygrid
+                    } else {
+                        presmap <- rbind(presmap, sppbygrid)
+                    }
+                    
+                }
+            }
+            
+            print(dim(presmap))
+    
+            # write out species presence/absence data 
+            outfile <- paste0('temp/presmap_', ocean, '_rcp', RCPS[i], '_', periods[k], '.csv.gz')
+            write.csv(presmap, file = gzfile(outfile))
+            print(paste('wrote', outfile))
+        }
+    }
 }
 
 print(Sys.time())
