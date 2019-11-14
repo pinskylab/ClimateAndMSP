@@ -25,8 +25,11 @@ poccurthresh <- 0.1
 # choose regions for these runs (for reading in)
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
 
-# periods
+# periods of time
 periods <- c('2007-2020', '2021-2040', '2041-2060', '2061-2080', '2081-2100')
+
+# oceans
+oceans <- c('Atl', 'Pac')
 
 # choose names for writing out
 runname1out <- 'hist_all'
@@ -63,13 +66,17 @@ if(!(length(rcps) %in% c(1,2))){
 }
 ## NOT SURE IF THIS WORKS YET
 for (i in 1:length(rcps)){
-    for(j in 1:length(periods)){
-        prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[i], '_', periods[j], '.csv.gz'), drop = 1)
+    print(paste0('rcp', rcps[i]))
+    
+    # code if files are saved w/out timeperiod in the name
+    for(j in 1:length(oceans)){
+        print(paste0('ocean', oceans[j]))
+        prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_', oceans[j], '_rcp', rcps[i], '.csv.gz'), drop = 1)
         prestemp <- prestemp[model %in% c(1:11, 13:15, 17:18)[gcminds], ] # trim to focal climate models. have to account for extra models in pres/abs projections (18 instead of 16 for biomass)
         
-        biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[i], '_', periods[j], '.csv.gz'), drop = 1)
+        biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_', oceans[j], '_rcp', rcps[i], '.csv.gz'), drop = 1)
         biotemp <- biotemp[model %in% c(1:16)[gcminds], ]
-
+        
         if(i == 1 & j == 1){
             presmap <- prestemp
             biomassmap <- biotemp
@@ -77,10 +84,29 @@ for (i in 1:length(rcps)){
             presmap <- rbind(presmap, prestemp)
             biomassmap <- rbind(biomassmap, biotemp)
         }
-
-        rm(prestemp, biotemp)
     }
+        
+    # code if files are saved by time period
+    # for(k in 1:length(periods)){
+    #     prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[i], '_', periods[k], '.csv.gz'), drop = 1)
+    #     prestemp <- prestemp[model %in% c(1:11, 13:15, 17:18)[gcminds], ] # trim to focal climate models. have to account for extra models in pres/abs projections (18 instead of 16 for biomass)
+    #     
+    #     biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[i], '_', periods[k], '.csv.gz'), drop = 1)
+    #     biotemp <- biotemp[model %in% c(1:16)[gcminds], ]
+    # 
+    #     if(i == 1 & j == 1 & k == 1){
+    #         presmap <- prestemp
+    #         biomassmap <- biotemp
+    #     } else {
+    #         presmap <- rbind(presmap, prestemp)
+    #         biomassmap <- rbind(biomassmap, biotemp)
+    #     }
+    # 
+    #     rm(prestemp, biotemp)
+    # }
 }
+rm(prestemp, biotemp)
+
 
 # fix model #s for pres/abs projections (extras are in position 12 and 16)
 presmap[model > 12 & model < 16, model := model - 1L]
