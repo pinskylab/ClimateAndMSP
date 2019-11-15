@@ -43,6 +43,8 @@ require(RColorBrewer)
 require(data.table)
 require(maps)
 
+lu <- function(x) length(unique(x))
+
 
 
 #######################################################
@@ -116,7 +118,7 @@ presmap[model > 16, model := model - 2L]
 sppfiles <- list.files(path = 'output/prioritizr_runs/', pattern = 'spp_*', full.names = TRUE)
 spps <- fread(sppfiles[1], drop = 1)
 spps[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[1])]
-for(i in 1:length(sppfiles)){
+for(i in 2:length(sppfiles)){
     temp <- fread(sppfiles[i], drop = 1)
     temp[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[i])]
     spps <- rbind(spps, temp)
@@ -301,7 +303,6 @@ dev.off()
 ######################################################################
 # Analyze against each climate model projection                      #
 # across each rcp                                                    #
-# run on Amphpirion
 ######################################################################
 
 goalsbyzonebymod1 <- vector('list', length(myregs)) # to hold # presences and total biomass in conservation/fishing zones for each species and each projection, hist-only cmsp
@@ -319,7 +320,7 @@ for(i in 1:length(myregs)){
 	
 	# calculate total presences by species and time-period for conservation
 	totalpres <- as.data.table(expand.grid(spp=spps[!grepl('fishery|energy', name) & region == myregs[i], spp], year_range = periods, model = modelsp, rcp=rcps)) # grid of all spp and time periods and models and rcps
-		dim(totalpres)
+	if(totalpres[, .(lu(spp)*lu(year_range)*lu(model)*lu(rcp))] != nrow(totalpres)) stop(paste('i=', i, 'and rows in totalpres are not right'))
 	
 	totprescalcs <- presmap[region == myregs[i], .(total = sum(poccur > poccurthresh)), by = c("spp", "year_range", "model", "rcp")]
         dim(totprescalcs)
@@ -342,9 +343,9 @@ for(i in 1:length(myregs)){
 	setkey(presbyzone1, spp, year_range, model, rcp, zone)
 	setkey(presbyzone2, spp, year_range, model, rcp, zone)
 	presbyzonebymod1 <- merge(presbyzone1, totalpres, all.y=TRUE)
-	if(presbyzonebymod1[, sum(is.na(zonetotal))] > 0) presbyzonebymod1[is.na(zonetotal), zonetotal:=0]
-	    dim(presbyzonebymod1) # 5728 (ebs)
-	    presbyzonebymod1[, length(unique(spp))] # 179 species
+	if(presbyzonebymod1[, sum(is.na(zonetotal))] > 0) presbyzonebymod1[is.na(zonetotal), zonetotal:= 0]
+	    dim(presbyzonebymod1) # 5728 (ebs), 9024 (bc)
+	    presbyzonebymod1[, length(unique(spp))] # 179 species (ebs), 141 (bc)
 
 	presbyzonebymod2 <- merge(presbyzone2, totalpres, all.y=TRUE)
 	if(presbyzonebymod2[, sum(is.na(zonetotal))] > 0) presbyzonebymod2[is.na(zonetotal), zonetotal:=0]
@@ -357,7 +358,7 @@ for(i in 1:length(myregs)){
 
 	# calculate total biomass by species and time-period for fishery species
 	totalbio <- as.data.table(expand.grid(spp = spps[grepl('fishery', name) & region == myregs[i], spp], year_range = periods, model = modelsp, rcp = rcps)) # grid of all spp and time periods and models and rcps
-	    dim(totalbio)
+	if(totalbio[, .(lu(spp)*lu(year_range)*lu(model)*lu(rcp))] != nrow(totalbio)) stop(paste('i=', i, 'and rows in totalbio are not right'))
 	
 	totbiocalcs <- biomassmap[region == myregs[i], .(total = sum(biomass)), by = c("spp", "year_range", "model", "rcp")]
 	    dim(totbiocalcs)
@@ -367,23 +368,23 @@ for(i in 1:length(myregs)){
 	totalbio[ , zone := 2] # for fisheries
 	
 	# merge plan zones into biomassmap and calculate total biomass
+	# note: biobyzone* includes species that aren't fishery targets in this region
 	temp1 <- merge(biomassmap[region == myregs[i], ], consplan1s[[i]][zone == 2, .(latgrid, longrid, zone)], by=c('latgrid', 'longrid')) # only keep the fishery zones for goals related to climate
     	dim(temp1) # a data.table
 	temp2 <- merge(biomassmap[region == myregs[i], ], consplan2s[[i]][zone == 2, .(latgrid, longrid, zone)], by=c('latgrid', 'longrid'))
 	biobyzone1 <- temp1[, .(zonetotal = sum(biomass)), by = c('spp', 'year_range', 'zone', 'model', 'rcp')]
-	    dim(biobyzone1) # 19392 (ebs)
+	    dim(biobyzone1) # 19392 (ebs), 640 (bc)
 	biobyzone2 <- temp2[, .(zonetotal = sum(biomass)), by = c('spp', 'year_range', 'zone', 'model', 'rcp')]
 	    dim(biobyzone2)
 	
 	# add totals for biomass
-	# intersect(names(presbyzone1), names(totals2))
 	setkey(totalbio, spp, year_range, model, rcp, zone)
 	setkey(biobyzone1, spp, year_range, model, rcp, zone)
 	setkey(biobyzone2, spp, year_range, model, rcp, zone)
-	biobyzonebymod1 <- merge(biobyzone1, totalbio, all.y=TRUE)
+	biobyzonebymod1 <- merge(biobyzone1, totalbio, all.y=TRUE, by = c('spp', 'year_range', 'model', 'rcp', 'zone'))
 	if(biobyzonebymod1[, sum(is.na(zonetotal))] > 0) biobyzonebymod1[is.na(zonetotal), zonetotal := 0]
-	    dim(biobyzonebymod1) # 320 (ebs)
-	biobyzonebymod1[, length(unique(spp))] # 10 species
+	    nrow(biobyzonebymod1) # 320 (ebs w/ 2 year_ranges), 640 (bc w/ 2 year_ranges)
+	    biobyzonebymod1[, length(unique(spp))] # 10 species
 	
 	biobyzonebymod2 <- merge(biobyzone2, totalbio, all.y=TRUE)
 	if(biobyzonebymod2[, sum(is.na(zonetotal))] > 0) biobyzonebymod2[is.na(zonetotal), zonetotal := 0]
@@ -449,6 +450,10 @@ dim(goalsbyzonebymod1out)
 dim(goalsbyzonebymod2out)
 dim(goalsmetbymod1out)
 dim(goalsmetbymod2out)
+
+# simple check
+test <- goalsmetbymod1out[, .(min = min(pmet), max = max(pmet)), by = region]
+if(test[, any(min < 0)] | test[, any(max > 1)]) stop('some regions have pmet < 0 or > 1')
 
 # write out
 write.csv(goalsbyzonebymod1out, file = gzfile(paste0('output/goalsbyzonebymod_', runname1out, '.csv.gz')))
@@ -521,47 +526,21 @@ with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, pe
 	Anova(mod)
 
 
-# plot %goals met (solution #1)
-	# quartz(width=4, height=4)
-#	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
-	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
-	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
-	mods <- sort(unique(goalsmetbymod1$model))
-	rcps <- sort(unique(goalsmetbymod1$rcp))
-	outfile <- paste('cmsp_figures/MarZone_', myreg, '_goalsmetbymod_', runtype, projtype, '_', runname1, '.pdf', sep='')
-		outfile
-	pdf(width=4, height=4, file=outfile)
-
-	inds <- goalsmetbymod1$model == mods[1] & goalsmetbymod1$rcp == rcps[1]
-	plot(goalsmetbymod1$mid[inds], goalsmetbymod1$pmet[inds], xlab='Year', ylab='Fraction goals met', ylim=c(0.5, 1), type='l', pch=16, las=1, col=cols[1])
-	for(i in 1:length(mods)){
-		for(j in 1:length(rcps)){
-			if(!(i==1 & j==1)){
-				inds <- goalsmetbymod1$model == mods[i] & goalsmetbymod1$rcp == rcps[j]
-				points(goalsmetbymod1$mid[inds], goalsmetbymod1$pmet[inds], type='l', pch=16, col=cols[1])	
-			}
-		}
-	}
-	ensmean <- aggregate(list(nmet=goalsmetbymod1$nmet, pmet=goalsmetbymod1$pmet), by=list(mid=goalsmetbymod1$mid), FUN=mean)
-	lines(ensmean$mid, ensmean$pmet, col=cols[2], lwd=2)
-
-	
-	dev.off()
-	
 # plot %goals met (solution #1 and #2)
 	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
 #	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
 	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
-	outfile <- paste('cmsp_figures/MarZone_allregs_goalsmetbymod_', runtype, projtype, '_', runname1out, '&', runname2out, '.pdf', sep='')
+	outfile <- paste('figures/prioritizr_allregs_goalsmetbymod_', runname1out, '&', runname2out, '.pdf', sep='')
 		outfile
-	ylims <- c(0.3,1)
+	ylims <- c(0,1)
 
 	# quartz(width=6, height=6)
 	pdf(width=6, height=6, file=outfile)
 	par(mfrow=c(3,3), mai=c(0.3, 0.35, 0.2, 0.05), omi=c(0.2,0.2,0,0), cex.main=0.8)
 
 	for(i in 1:length(myregs)){
-		inds <- goalsmetbymod1out$model == mods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i]
+		# each model/rcp for hist only plans
+	    inds <- goalsmetbymod1out$model == mods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i]
 		plot(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], xlab='', ylab='', ylim=ylims, type='l', pch=16, las=1, col=cols[1], main=regnames[i])
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
@@ -571,19 +550,26 @@ with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, pe
 				}
 			}
 		}
-		inds <- goalsmetbymod1out$region==myregs[i]
-		ensmean <- aggregate(list(nmet=goalsmetbymod1out$nmet[inds], pmet=goalsmetbymod1out$pmet[inds]), by=list(mid=goalsmetbymod1out$mid[inds]), FUN=mean)
-		lines(ensmean$mid, ensmean$pmet, col=cols[2], lwd=2)
-
+		
+        # each model/rcp for 2per plans
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
 				inds <- goalsmetbymod2out$model == mods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]
 				points(goalsmetbymod2out$mid[inds], goalsmetbymod2out$pmet[inds], type='l', pch=16, col=cols[3])
 			}	
 		}
+
+		# average across models/rcps for hist and 2per plans
+		inds <- goalsmetbymod1out$region==myregs[i]
+		ensmean <- aggregate(list(nmet=goalsmetbymod1out$nmet[inds], pmet=goalsmetbymod1out$pmet[inds]), by=list(mid=goalsmetbymod1out$mid[inds]), FUN=mean)
+		lines(ensmean$mid, ensmean$pmet, col=cols[2], lwd=3)
+		
 		inds <- goalsmetbymod2out$region==myregs[i]
 		ensmean2 <- aggregate(list(nmet=goalsmetbymod2out$nmet[inds], pmet=goalsmetbymod2out$pmet[inds]), by=list(mid=goalsmetbymod2out$mid[inds]), FUN=mean)
-		lines(ensmean2$mid, ensmean2$pmet, col=cols[4], lwd=2)
+		lines(ensmean2$mid, ensmean2$pmet, col=cols[4], lwd=3)
+		
+		# legend in plot 1
+		if(i == 1) legend('bottomright', legend = c('hist', '2per'), col = cols[c(2,4)], lwd = 1)
 	}
 	mtext(side=1,text='Year',line=0.5, outer=TRUE)
 	mtext(side=2,text='Fraction goals met',line=0.3, outer=TRUE)
@@ -594,13 +580,14 @@ with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, pe
 ## probability of < 80% goals met by region, plan, and time period
 	# calcs
 	u80func <- function(x) return(sum(x<0.8)/length(x))	
-	u80 <- with(goalsmetbymod, aggregate(list(u80=pmet), by=list(region=region, period=period, plan=plan), FUN=u80func))
+	u80 <- with(goalsmetbymod, aggregate(list(u80=pmet), by=list(region=region, period=year_range, plan=plan), FUN=u80func))
 
 
 	# examine
 	u80[u80$period=='2041-2060',] # middle of century, by region
 	u80[u80$period=='2081-2100',] # end of century, by region
 	
+	with(u80[u80$period=='2007-2020',], aggregate(list(meanu80=u80), by=list(plan=plan), FUN=mean)) # means by plan (across regions), start
 	with(u80[u80$period=='2041-2060',], aggregate(list(meanu80=u80), by=list(plan=plan), FUN=mean)) # means by plan (across regions), middle of century
 	with(u80[u80$period=='2081-2100',], aggregate(list(meanu80=u80), by=list(plan=plan), FUN=mean)) # means by plan (across regions), end of century
 
@@ -609,6 +596,10 @@ with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, pe
 		mean(a$max_u80[a$plan=='histonly'])
 	
 	# plot
-	require(lattice)
-	xyplot(u80 ~ period | region, data=u80, groups=plan, type='l')
+    require(ggplot2)
+	ggplot(u80, aes(x = period, y = u80, group = plan, color = plan)) +
+	    geom_line() + 
+	    geom_point() +
+	    facet_wrap(~ region, ncol = 3)
+	    
 	
