@@ -20,7 +20,7 @@ energygoal <- 0.2 # proportion of NPV
 fishgoal <- 0.5 # proportion of biomass
 
 # poccur threshold: how high does the probability of occurrence in the projections need to be to consider the species "present"?
-poccurthresh <- 0.1
+poccurthresh <- 0.5
 
 # choose regions for these runs (for reading in)
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
@@ -42,6 +42,7 @@ runname2out <- '2per_all'
 require(RColorBrewer)
 require(data.table)
 require(maps)
+require(ggplot2)
 
 lu <- function(x) length(unique(x))
 
@@ -66,7 +67,6 @@ names(consplan2s) <- myregs
 if(!(length(rcps) %in% c(1,2))){
     stop('rcp must be length 1 or 2')
 }
-## NOT SURE IF THIS WORKS YET
 for (i in 1:length(rcps)){
     print(paste0('rcp', rcps[i]))
     
@@ -108,9 +108,22 @@ for (i in 1:length(rcps)){
     # }
 }
 rm(prestemp, biotemp)
-
-
+    
+    # optional plots to examine presmap
+    # thisspp <- 'gadus morhua'
+    # thisspp <- 'urophycis chuss'
+    # ggplot(presmap[spp == thisspp & model == 5 & rcp == 85], 
+    #        aes(x = longrid, y = latgrid, color = poccur > 0.5)) +
+    #     geom_point(size = 0.2) +
+    #     facet_wrap(~ year_range, ncol = 2)
+    # 
+    # ggplot(biomassmap[spp == thisspp & model == 5 & rcp == 85], 
+    #        aes(x = longrid, y = latgrid, color = biomass)) +
+    #     geom_point(size = 0.2) +
+    #     facet_wrap(~ year_range, ncol = 2)
+    
 # fix model #s for pres/abs projections (extras are in position 12 and 16)
+# DELETE THIS AFTER UPDATING 5.0.1_process_species_proj.r to fix this problem in that script
 presmap[model > 12 & model < 16, model := model - 1L]
 presmap[model > 16, model := model - 2L]
 
@@ -199,7 +212,7 @@ for(i in 1:length(consplan1s)){
 	
 	j <- consplan2s[[i]]$solution_1_conservation == 1
 	plot(consplan2s[[i]]$longrid[j], consplan2s[[i]]$latgrid[j], pch=16, col='red', cex=cexs, 
-	     main='Two periods', xlab='', ylab='') # conservation
+	     main='Two periods', xlab='', ylab='', xlim=xlims, ylim=ylims) # conservation
 	j <- consplan2s[[i]]$solution_1_fishery == 1
 	points(consplan2s[[i]]$longrid[j], consplan2s[[i]]$latgrid[j], pch=16, col='blue', cex=cexs) # fishery
 	j <- consplan2s[[i]]$solution_1_energy == 1
@@ -221,6 +234,12 @@ dev.off()
 # have to read in the plans above (but don't need to read in the species distributions)
 # climGrid <- read.csv('data/climGrid.csv', row.names=1) # for temperature climatology and depth
 
+# proportion of each region in each zone
+grids <- rbindlist(consplan1s)[, .(ngrid = .N), by = c('reg', 'zone')]
+grids[, total := sum(ngrid), by  = 'reg'][, prop := round(ngrid/total, 2)]
+setkey(grids, reg, zone)
+grids
+grids[ , .(meanprop = mean(prop), sdprop = sd(prop), seprop = sd(prop)/sqrt(.N)), by = 'zone']
 
 # latitudinal range by zone in each plan
 # do 2per plans span a wider latitudinal range?
@@ -301,7 +320,7 @@ dev.off()
 # 
 	
 ######################################################################
-# Analyze against each climate model projection                      #
+# Analyze plans against each climate model projection                #
 # across each rcp                                                    #
 ######################################################################
 
@@ -596,7 +615,6 @@ with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, pe
 		mean(a$max_u80[a$plan=='histonly'])
 	
 	# plot
-    require(ggplot2)
 	ggplot(u80, aes(x = period, y = u80, group = plan, color = plan)) +
 	    geom_line() + 
 	    geom_point() +
