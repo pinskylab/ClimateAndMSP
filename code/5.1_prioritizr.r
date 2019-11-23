@@ -56,26 +56,7 @@ if(!(length(rcps) %in% c(1,2))){
 }
 for (i in 1:length(rcps)){
     print(paste0('rcp', rcps[i]))
-    
-    # code if files are saved w/out timeperiod in the name
-    # for(j in 1:length(oceans)){
-    #     print(paste0('ocean', oceans[j]))
-    #     prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_', oceans[j], '_rcp', rcps[i], '.csv.gz'), drop = 1)
-    #     prestemp <- prestemp[model %in% c(1:11, 13:15, 17:18)[gcminds], ] # trim to focal climate models. this code accounts for extra models in pres/abs projections (18 instead of 16 for biomass)
-    #     
-    #     biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_', oceans[j], '_rcp', rcps[i], '.csv.gz'), drop = 1)
-    #     biotemp <- biotemp[model %in% c(1:16)[gcminds], ]
-    #     
-    #     if(i == 1 & j == 1){
-    #         presmap <- prestemp
-    #         biomassmap <- biotemp
-    #     } else {
-    #         presmap <- rbind(presmap, prestemp)
-    #         biomassmap <- rbind(biomassmap, biotemp)
-    #     }
-    # }
-    
-    # code if files are saved by time period
+
     for(j in 1:length(oceans)){
         for(k in 1:length(planningperiods)){
             prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_', oceans[j], '_rcp', rcps[i], '_', planningperiods[k], '.csv.gz'), drop = 1)
@@ -144,7 +125,6 @@ if(biomassmap[is.na(region) & !duplicated(biomassmap[,.(latgrid, longrid)]), .N]
 # Add poccur threshold to presmap
 poccurthresh[, ocean := gsub('.*_', '', sppocean)]
 poccurthresh[, spp := gsub('_Atl|_Pac', '', sppocean)]
-
 presmapPac <- merge(presmap[region %in% c('ebs', 'goa', 'bc', 'wc'), ], poccurthresh[ocean == 'Pac', .(spp, thresh.kappa)], by = 'spp') # have to do Atl and Pac separately since some species are in both regions but use different models
 presmapAtl <- merge(presmap[region %in% c('gmex', 'seus', 'neus', 'maritime', 'newf'), ], poccurthresh[ocean == 'Atl', .(spp, thresh.kappa)], by = 'spp')
 if(nrow(presmap) == nrow(presmapPac) + nrow(presmapAtl)){
@@ -155,6 +135,7 @@ if(nrow(presmap) == nrow(presmapPac) + nrow(presmapAtl)){
 }
 
 # Fix a species name
+# ALSO DORYTEUTHIS/LOLIGO PEALEII?
 presmap[spp == 'theragra chalcogramma', spp := 'gadus chalcogrammus']
 
 # zones
@@ -222,7 +203,7 @@ for (i in 1:length(myregs)) {
     	spps <- rbind(spps, data.table(id = max(spps$id) + 1, name = c('energy'), spp = c(NA)))
     
     	# write out the species for this region
-    	write.csv(spps, file = paste0('output/', prioritizrfolder, 'spp_', myreg, '.csv'))
+    	write.csv(spps, file = paste0(prioritizrfolder, 'spp_', myregs[i], '.csv'))
     	
     # puvsp
     # which features are in each planning unit
@@ -240,7 +221,7 @@ for (i in 1:length(myregs)) {
             dim(puvspbio)
             puvspbio[, length(unique(spp))] # should be 10
         puvspbio[, amount := biomass] # use biomass as amount for fishery targets
-        puvspbio[ , name := paste0(gsub(' |_', '', spp), '_fishery')] # trim out spaces from species names
+        puvspbio[ , name := paste0(gsub(' |_', '', spp), '_fishery')] # trim out spaces from species names, append fishery
      
     	# Format wind and wave data
     	puvenergy <- merge(windnpv, wavenpv, by = c('latgrid', 'longrid'), all = TRUE)
@@ -278,7 +259,8 @@ for (i in 1:length(myregs)) {
     	}
         
     	# Trim out values < 1e-6 (will throw error in prioritizr)
-    	puvsp[amount < 1e-6, amount := 0]
+    	# Use 5e-6 to leave some buffer
+    	puvsp[amount < 5e-6, amount := 0]
 
     	# Sort and trim columns and rows
     	setkey(puvsp, pu, species) # order by pu then species
@@ -407,7 +389,8 @@ for (i in 1:length(myregs)) {
     	puvsp2 <- rbind(temp1, puvsp2)
 
     	# Trim out values < 1e-6 (will throw error in prioritizr)
-    	puvsp2[amount < 1e-6, amount := 0]
+    	# Use 5e-6 to leave some buffer
+    	puvsp2[amount < 5e-6, amount := 0]
     	
     	# Sort and trim columns and rows
     	setkey(puvsp2, pu, species) # order by pu then species
