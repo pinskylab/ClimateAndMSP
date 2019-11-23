@@ -19,9 +19,6 @@ consgoal <- 0.1 # proportion of presences to capture in conservation
 energygoal <- 0.2 # proportion of NPV
 fishgoal <- 0.5 # proportion of biomass
 
-# poccur threshold: how high does the probability of occurrence in the projections need to be to consider the species "present"?
-poccurthresh <- 0.5
-
 # choose regions for these runs (for reading in)
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
 
@@ -63,7 +60,6 @@ names(consplan2s) <- myregs
 
 # loads presence/absence and biomass data for each species/model/rcp. very slow.
 # not needed unless comparing plans against species distributions
-# trim to only focal climate models to save memory
 if(!(length(rcps) %in% c(1,2))){
     stop('rcp must be length 1 or 2')
 }
@@ -71,41 +67,42 @@ for (i in 1:length(rcps)){
     print(paste0('rcp', rcps[i]))
     
     # code if files are saved w/out timeperiod in the name
-    for(j in 1:length(oceans)){
-        print(paste0('ocean', oceans[j]))
-        prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_', oceans[j], '_rcp', rcps[i], '.csv.gz'), drop = 1)
-        prestemp <- prestemp[model %in% c(1:11, 13:15, 17:18)[gcminds], ] # trim to focal climate models. have to account for extra models in pres/abs projections (18 instead of 16 for biomass)
-        
-        biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_', oceans[j], '_rcp', rcps[i], '.csv.gz'), drop = 1)
-        biotemp <- biotemp[model %in% c(1:16)[gcminds], ]
-        
-        if(i == 1 & j == 1){
-            presmap <- prestemp
-            biomassmap <- biotemp
-        } else {
-            presmap <- rbind(presmap, prestemp)
-            biomassmap <- rbind(biomassmap, biotemp)
-        }
-    }
-        
-    # code if files are saved by time period
-    # for(k in 1:length(periods)){
-    #     prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_Atl_rcp', rcps[i], '_', periods[k], '.csv.gz'), drop = 1)
-    #     prestemp <- prestemp[model %in% c(1:11, 13:15, 17:18)[gcminds], ] # trim to focal climate models. have to account for extra models in pres/abs projections (18 instead of 16 for biomass)
-    #     
-    #     biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_Atl_rcp', rcps[i], '_', periods[k], '.csv.gz'), drop = 1)
-    #     biotemp <- biotemp[model %in% c(1:16)[gcminds], ]
+    # for(j in 1:length(oceans)){
+    #     print(paste0('ocean', oceans[j]))
+    #     prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_', oceans[j], '_rcp', rcps[i], '.csv.gz'), drop = 1)
+    #     biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_', oceans[j], '_rcp', rcps[i], '.csv.gz'), drop = 1)
     # 
-    #     if(i == 1 & j == 1 & k == 1){
+    #     # fix model #s for pres/abs projections (extras are in position 12 and 16)
+    #     # DELETE THIS AFTER UPDATING 5.0.1_process_species_proj.r to fix this problem in that script
+    #     prestemp <- prestemp[!(model %in% c(12, 16)), ]
+    #     prestemp[model > 12 & model < 16, model := model - 1L]
+    #     prestemp[model > 16, model := model - 2L]
+    #     
+    #     if(i == 1 & j == 1){
     #         presmap <- prestemp
     #         biomassmap <- biotemp
     #     } else {
     #         presmap <- rbind(presmap, prestemp)
     #         biomassmap <- rbind(biomassmap, biotemp)
     #     }
-    # 
-    #     rm(prestemp, biotemp)
     # }
+        
+    # code if files are saved by time period
+    for(j in 1:length(oceans)){
+        for(k in 1:length(periods)){
+            print(paste0('ocean', oceans[j], ' period', periods[k]))
+            prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_', oceans[j], '_rcp', rcps[i], '_', periods[k], '.csv.gz'), drop = 1)
+            biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_', oceans[j], '_rcp', rcps[i], '_', periods[k], '.csv.gz'), drop = 1)
+    
+            if(i == 1 & j == 1 & k == 1){
+                presmap <- prestemp
+                biomassmap <- biotemp
+            } else {
+                presmap <- rbind(presmap, prestemp)
+                biomassmap <- rbind(biomassmap, biotemp)
+            }
+        }
+    }
 }
 rm(prestemp, biotemp)
     
@@ -122,10 +119,9 @@ rm(prestemp, biotemp)
     #     geom_point(size = 0.2) +
     #     facet_wrap(~ year_range, ncol = 2)
     
-# fix model #s for pres/abs projections (extras are in position 12 and 16)
-# DELETE THIS AFTER UPDATING 5.0.1_process_species_proj.r to fix this problem in that script
-presmap[model > 12 & model < 16, model := model - 1L]
-presmap[model > 16, model := model - 2L]
+# poccur threshold: how high does the probability of occurrence in the projections need to be to consider the species "present"?
+# use the thresholds calculated during model fitting from Morley et al. 2018 PLOS ONE
+poccurthresh <- fread('https://raw.githubusercontent.com/pinskylab/project_velocity/master/output/modeldiag_Nov2017_fitallreg_2017.csv', drop = 1)[, .(sppocean, thresh.kappa)]
 
 # definition of planning goals by region
 sppfiles <- list.files(path = 'output/prioritizr_runs/', pattern = 'spp_*', full.names = TRUE)
@@ -180,6 +176,20 @@ setkey(regiongrid, latgrid, longrid)
 biomassmap <- merge(biomassmap, regiongrid[, .(latgrid, longrid, region)], all.x = TRUE) # add region information
 if(biomassmap[is.na(region) & !duplicated(biomassmap[,.(latgrid, longrid)]), .N] != 0){ # 0 missing region: good!
     stop('biomassmap is missing >0 regions')
+}
+
+
+# Add poccur threshold to presmap
+poccurthresh[, ocean := gsub('.*_', '', sppocean)]
+poccurthresh[, spp := gsub('_Atl|_Pac', '', sppocean)]
+
+presmapPac <- merge(presmap[region %in% c('ebs', 'goa', 'bc', 'wc'), ], poccurthresh[ocean == 'Pac', .(spp, thresh.kappa)], by = 'spp') # have to do Atl and Pac separately since some species are in both regions but use different models
+presmapAtl <- merge(presmap[region %in% c('gmex', 'seus', 'neus', 'maritime', 'newf'), ], poccurthresh[ocean == 'Atl', .(spp, thresh.kappa)], by = 'spp')
+if(nrow(presmap) == nrow(presmapPac) + nrow(presmapAtl)){
+    presmap <- rbind(presmapPac, presmapAtl)
+    rm(presmapPac, presmapAtl)
+} else {
+    stop('merge of poccurthesh and presmap did not work')
 }
 
 # Fix a species name
@@ -329,8 +339,12 @@ goalsbyzonebymod2 <- vector('list', length(myregs)) # for 2per cmsp
 goalsmetbymod1 <- vector('list', length(myregs)) # summary of # goals met by year_range/model/rcp, for hist cmsp
 goalsmetbymod2 <- vector('list', length(myregs))
 
+# set up models for evaluation
 modelsp <- sort(unique(presmap$model)) # species in the pres/abs models
 modelsb <- sort(unique(biomassmap$model)) # species in the biomass models
+if(any(modelsp != modelsb)) stop('biomass and presmap models do not match')
+
+# set up time periods for evaluation
 periods <- sort(unique(presmap$year_range))
 
 # evaluate # targets met in each time period in each model
@@ -545,12 +559,16 @@ with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, pe
 	Anova(mod)
 
 
-# plot %goals met (solution #1 and #2)
+# plot %goals met (solution #1 and #2) for non-planning models
+	# thesemods <- mods[gcminds]; type <- 'testing' # for models not used in planning
+	thesemods <- mods[-gcminds]; type <- 'training' # for models used in planning
+	
 	colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
 #	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
 	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
-	outfile <- paste('figures/prioritizr_allregs_goalsmetbymod_', runname1out, '&', runname2out, '.pdf', sep='')
-		outfile
+	if(type == 'testing') outfile <- paste('figures/prioritizr_allregs_goalsmetbymod_', runname1out, '&', runname2out, '.pdf', sep='')
+	if(type == 'training') outfile <- paste('temp_figures/prioritizr_allregs_goalsmetbymod_', runname1out, '&', runname2out, '_training.pdf', sep='')
+	    outfile
 	ylims <- c(0,1)
 
 	# quartz(width=6, height=6)
@@ -559,31 +577,31 @@ with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, pe
 
 	for(i in 1:length(myregs)){
 		# each model/rcp for hist only plans
-	    inds <- goalsmetbymod1out$model == mods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i]
+	    inds <- goalsmetbymod1out$model == thesemods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i]
 		plot(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], xlab='', ylab='', ylim=ylims, type='l', pch=16, las=1, col=cols[1], main=regnames[i])
-		for(k in 1:length(mods)){
+		for(k in 1:length(thesemods)){
 			for(j in 1:length(rcps)){
 				if(!(k==1 & j==1)){
-					inds <- goalsmetbymod1out$model == mods[k] & goalsmetbymod1out$rcp == rcps[j] & goalsmetbymod1out$region==myregs[i]
+					inds <- goalsmetbymod1out$model == thesemods[k] & goalsmetbymod1out$rcp == rcps[j] & goalsmetbymod1out$region==myregs[i]
 					points(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], type='l', pch=16, col=cols[1])	
 				}
 			}
 		}
 		
         # each model/rcp for 2per plans
-		for(k in 1:length(mods)){
+		for(k in 1:length(thesemods)){
 			for(j in 1:length(rcps)){
-				inds <- goalsmetbymod2out$model == mods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]
+				inds <- goalsmetbymod2out$model == thesemods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]
 				points(goalsmetbymod2out$mid[inds], goalsmetbymod2out$pmet[inds], type='l', pch=16, col=cols[3])
 			}	
 		}
 
 		# average across models/rcps for hist and 2per plans
-		inds <- goalsmetbymod1out$region==myregs[i]
+		inds <- goalsmetbymod1out$region==myregs[i] & goalsmetbymod1out$model %in% thesemods
 		ensmean <- aggregate(list(nmet=goalsmetbymod1out$nmet[inds], pmet=goalsmetbymod1out$pmet[inds]), by=list(mid=goalsmetbymod1out$mid[inds]), FUN=mean)
 		lines(ensmean$mid, ensmean$pmet, col=cols[2], lwd=3)
 		
-		inds <- goalsmetbymod2out$region==myregs[i]
+		inds <- goalsmetbymod2out$region==myregs[i] & goalsmetbymod2out$model %in% thesemods
 		ensmean2 <- aggregate(list(nmet=goalsmetbymod2out$nmet[inds], pmet=goalsmetbymod2out$pmet[inds]), by=list(mid=goalsmetbymod2out$mid[inds]), FUN=mean)
 		lines(ensmean2$mid, ensmean2$pmet, col=cols[4], lwd=3)
 		
