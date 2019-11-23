@@ -122,7 +122,7 @@ for (i in 1:length(RCPS)) {
             ## trim to fishery species
             spps <- gsub(paste0(BIOMASSPATH, '/|_Atl|_Pac|_rcp26|_rcp85|_jas_prediction_AGG.RData'), '', files)
             if (ocean == 'Atl') oceanspp <- fisheryspp[region %in% c('gmex', 'seus', 'neus', 'maritime', 'newf'), projname] # projected species in the current ocean
-            if (ocean == 'Pac') oceanspp <- fisheryspp[region %in% c('wc', 'goa_bc', 'ebs'), projname]
+            if (ocean == 'Pac') oceanspp <- fisheryspp[region %in% c('wc', 'goa', 'bc', 'ebs'), projname]
             torun <- spps %in% oceanspp
             if (length(setdiff(oceanspp, spps[torun])) > 0) stop(paste('missing species for i =', i, 'ocean =', ocean)) # make sure all the fishery species are in the available projections
             files <- files[torun]
