@@ -1,6 +1,31 @@
 ### Stats and plots on the plans and their performance
 
 
+############
+## Flags
+############
+
+# choose the climate models to use for evaluating future planning (others for planning)
+#bcc-csm1-1-m, bcc-csm1-1, CanESM2, CCSM4, CESM1-CAM5, CNRM-CM5, GFDL-CM3, GFDL-ESM2M, GFDL-ESM2G, GISS-E2-R, GISS-E2-H, IPSL-CM5A-LR, IPSL-CM5A-MR, MIROC-ESM, MPI-ESM-LR, NorESM1-ME
+gcminds <- c(5, 6, 7, 11, 12, 13, 15, 16) # the complement of those in 5.1_prioritizr.r
+
+# choose regions for these runs (for reading in)
+myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
+
+# choose file name suffixes
+runname1out <- 'hist_all'
+runname2out <- '2per_all'
+
+
+######################
+## Helper functions
+######################
+require(RColorBrewer)
+require(data.table)
+#require(maps)
+require(ggplot2)
+
+lu <- function(x) length(unique(x))
 
 
 #######################################################
@@ -35,10 +60,6 @@ for(i in 1:length(consplan2s)){
     consplan2s[[i]][solution_1_conservation ==  0 & solution_1_fishery == 0 & solution_1_energy == 0 , zone := 4]
     consplan2s[[i]][, reg := myregs[i]]
 }
-
-
-
-
 
 
 ####################################################################################
@@ -176,21 +197,15 @@ wilcox.test(d$diff[d$zone==3])
 
 
 ######################################################################
-# Compare and plot the planning approaches against all climate models
+# Stats comparing the planning approaches against all climate models
 ######################################################################
 goalsmetbymod1out <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
 goalsmetbymod2out <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)
 
 
-mods <- sort(unique(goalsmetbymod1out$model))
-rcps <- sort(unique(goalsmetbymod1out$rcp))
-regnames<-c('E. Bering Sea', 'Gulf of AK', 'British Columbia', 'West Coast US', 'Gulf of Mexico', 'Southeast US', 'Northeast US', 'Maritimes', 'Newfoundland')
-
-# add plan identifier
+# add plan identifier and combine
 goalsmetbymod1out$plan <- 'histonly'
 goalsmetbymod2out$plan <- '2per'
-
-# combine
 goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
 
 
@@ -239,9 +254,20 @@ summary(mod)
 Anova(mod)
 
 
+######################################################################
+# Plots comparing the planning approaches against all climate models
+######################################################################
+goalsmetbymod1out <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
+goalsmetbymod2out <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)
+
+
+mods <- sort(unique(goalsmetbymod1out$model))
+rcps <- sort(unique(goalsmetbymod1out$rcp))
+regnames<-c('E. Bering Sea', 'Gulf of AK', 'British Columbia', 'West Coast US', 'Gulf of Mexico', 'Southeast US', 'Northeast US', 'Maritimes', 'Newfoundland')
+
 # plot %goals met (solution #1 and #2) for non-planning models (the test set)
-    #thesemods <- mods[gcminds]; type <- 'testing' # for models not used in planning
-    thesemods <- mods[-gcminds]; type <- 'training' # for models used in planning
+    thesemods <- mods[gcminds]; type <- 'testing' # for models not used in planning
+    #thesemods <- mods[-gcminds]; type <- 'training' # for models used in planning
     
     colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
     #	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
@@ -317,3 +343,71 @@ ggplot(u80, aes(x = period, y = u80, group = plan, color = plan)) +
     geom_line() + 
     geom_point() +
     facet_wrap(~ region, ncol = 3)
+
+
+
+
+######################################################################
+# Plots comparing the planning approaches against climate model ensembles
+######################################################################
+goalsmetbyens1 <- fread(paste0('output/goalsmetbyensemble_', runname1out, '.csv'), drop = 1)
+goalsmetbyens2 <- fread(paste0('output/goalsmetbyensemble_', runname2out, '.csv'), drop = 1)
+
+
+mods <- sort(unique(goalsmetbyens1$model))
+rcps <- sort(unique(goalsmetbyens1$rcp))
+regnames<-c('E. Bering Sea', 'Gulf of AK', 'British Columbia', 'West Coast US', 'Gulf of Mexico', 'Southeast US', 'Northeast US', 'Maritimes', 'Newfoundland')
+
+# plot %goals met (solution #1 and #2) for non-planning models (the test set)
+    colmat <- t(col2rgb(brewer.pal(8, 'Paired')))
+    #	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
+    cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
+    outfile <- paste('temp_figures/prioritizr_allregs_goalsmetbyensemble_', runname1out, '&', runname2out, '.pdf', sep='')
+    outfile
+    ylims <- c(0,1)
+    
+    # quartz(width=6, height=6)
+    pdf(width=6, height=6, file=outfile)
+    par(mfrow=c(3,3), mai=c(0.3, 0.35, 0.2, 0.05), omi=c(0.2,0.2,0,0), cex.main=0.8)
+    
+    for(i in 1:length(myregs)){
+        # each model/rcp for hist only plans
+        colind <- 1
+        goalsmetbyens1[model == mods[1] & rcp == rcps[1] & region==myregs[i], 
+                       plot(mid, pmet, xlab='', ylab='', ylim=ylims, type='l', pch=16, las=1, 
+                            col=cols[colind], main=regnames[i])]
+        colnms <- paste0(mods[1], rcps[1], 'hist')
+        for(k in 1:length(mods)){
+            for(j in 1:length(rcps)){
+                if(!(k==1 & j==1)){
+                    colind <- colind + 1
+                    goalsmetbyens1[model == mods[k] & rcp == rcps[j] & region==myregs[i], 
+                                   points(mid, pmet, xlab='', ylab='', type='l', pch=16, col=cols[colind])]
+                    colnms <- c(colnms, paste0(mods[k], rcps[j], 'hist'))
+                }
+            }
+        }
+
+        # each model/rcp for 2per plans
+        colind <- colind + 1
+        goalsmetbyens2[model == mods[1] & rcp == rcps[1] & region==myregs[i], 
+                       points(mid, pmet, type='l', pch=16, col=cols[colind])]
+        colnms <- c(colnms, paste0(mods[1], rcps[1], '2per'))
+        for(k in 1:length(mods)){
+            for(j in 1:length(rcps)){
+                if(!(k==1 & j==1)){
+                    colind <- colind + 1
+                    goalsmetbyens2[model == mods[k] & rcp == rcps[j] & region==myregs[i], 
+                                   points(mid, pmet, xlab='', ylab='', type='l', pch=16, col=cols[colind])]
+                    colnms <- c(colnms, paste0(mods[k], rcps[j], '2per'))
+                }
+            }
+        }
+        
+        # legend in plot 1
+        if(i == 1) legend('bottomleft', legend = colnms, col = cols, lwd = 1, cex=0.5)
+    }
+    mtext(side=1,text='Year',line=0.5, outer=TRUE)
+    mtext(side=2,text='Fraction goals met',line=0.3, outer=TRUE)
+    
+    dev.off()

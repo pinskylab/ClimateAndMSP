@@ -7,7 +7,9 @@
 ## Parameters
 #############
 
-# choose the rcp (for runs using just one)
+# choose the rcps
+# will use both for first planning period
+# will use only the second for the second planning period
 rcps <- c(26, 85)
 
 # choose the climate models to use for future planning (save others for testing)
@@ -30,7 +32,6 @@ runname2s <- paste0('2per_', myregs)
 
 # which time periods to use in the multi-period planning
 # contemporary time period must be in first slot, second time period must be the future
-# since we will trim out half of the future models using gcminds for training/testing
 planningperiods <- c('2007-2020', '2081-2100')
 
 # folders
@@ -59,23 +60,32 @@ for (i in 1:length(rcps)){
 
     for(j in 1:length(oceans)){
         for(k in 1:length(planningperiods)){
-            prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_', oceans[j], '_rcp', rcps[i], '_', planningperiods[k], '.csv.gz'), drop = 1)
-            if(k == 2) prestemp <- prestemp[model %in% c(1:16)[gcminds], ] # trim to focal climate models for the second (future) planning period
-    
-            biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_', oceans[j], '_rcp', rcps[i], '_', planningperiods[k], '.csv.gz'), drop = 1)
-            if(k == 2) biotemp <- biotemp[model %in% c(1:16)[gcminds], ]
-    
-            if(i == 1 & j == 1 & k == 1){
-                presmap <- prestemp
-                biomassmap <- biotemp
-            } else {
-                presmap <- rbind(presmap, prestemp)
-                biomassmap <- rbind(biomassmap, biotemp)
+            # do both RCPs for first planning period. Do only 2nd rcp for 2nd planning period.
+            if(k == 1 | (k == 2 & i == 2)){
+                print(paste(oceans[j], planningperiods[k]))
+                prestemp <- fread(cmd = paste0('gunzip -c temp/presmap_', oceans[j], '_rcp', rcps[i], '_', planningperiods[k], '.csv.gz'), drop = 1)
+                biotemp <- fread(cmd = paste0('gunzip -c temp/biomassmap_', oceans[j], '_rcp', rcps[i], '_', planningperiods[k], '.csv.gz'), drop = 1)
+                
+                # calculate ensemble mean across training GCMs and remaining RCPs
+                prestemp <- prestemp[model %in% c(1:16)[gcminds], .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'year_range', 'rcp', 'spp')]
+                biotemp <- biotemp[model %in% c(1:16)[gcminds], .(biomass = mean(biomass)), by = c('latgrid', 'longrid', 'year_range', 'rcp', 'spp')]
+                
+                if(i == 1 & j == 1 & k == 1){
+                    presmap <- prestemp
+                    biomassmap <- biotemp
+                } else {
+                    presmap <- rbind(presmap, prestemp)
+                    biomassmap <- rbind(biomassmap, biotemp)
+                }
             }
         }
     }
 }
 rm(prestemp, biotemp)
+
+# average across the remaining rcps
+presmap <- presmap[, .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'year_range', 'spp')]
+biomassmap <- biomassmap[, .(biomass = mean(biomass)), by = c('latgrid', 'longrid', 'year_range', 'spp')]
 
 # poccur threshold: how high does the probability of occurrence in the projections need to be to consider the species "present"?
 # use the thresholds calculated during model fitting from Morley et al. 2018 PLOS ONE
@@ -173,7 +183,7 @@ for (i in 1:length(myregs)) {
     # id and name for each species
     # fishery features entered separately from conservation features, even if same species
     # plan on ensemble mean of all climate models for the current time-period
-    	sppstokeep <- presmap[region == myregs[i] & year_range == planningperiods[1] & rcp %in% rcps, .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'spp', 'thresh.kappa')] # average across models
+    	sppstokeep <- presmap[region == myregs[i] & year_range == planningperiods[1], .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'spp', 'thresh.kappa')] # average across models
     		dim(sppstokeep)
     	sppstokeep <- sppstokeep[poccur >= thresh.kappa, ]
     	sppstokeep <- merge(sppstokeep, pus[, .(latgrid, longrid, id)], by = c('latgrid', 'longrid')) # add pu id (and trim to focal pus)
@@ -208,7 +218,7 @@ for (i in 1:length(myregs)) {
     # puvsp
     # which features are in each planning unit
     	# Format conservation data
-    	puvsppa <- presmap[region == myregs[i] & year_range == planningperiods[1] & rcp %in% rcps, .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'spp', 'thresh.kappa')] # pres/abs data.
+    	puvsppa <- presmap[region == myregs[i] & year_range == planningperiods[1], .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'spp', 'thresh.kappa')] # pres/abs data.
     		dim(puvsppa)
     	puvsppa[, amount := as.numeric(poccur >= thresh.kappa)] # use pres/abs as conservation amount.
     	    puvsppa[, summary(amount)]
@@ -217,7 +227,7 @@ for (i in 1:length(myregs)) {
     	puvsppa[ , name := gsub(' |_', '', spp)] # trim out spaces from species names
     	
         # Format fishery data
-        puvspbio <- biomassmap[region == myregs[i] & year_range == planningperiods[1] & rcp %in% rcps & spp %in% fisheryspps[region == myregs[i], projname], .(biomass = mean(biomass)), by = c('latgrid', 'longrid', 'spp')] # biomass data. 
+        puvspbio <- biomassmap[region == myregs[i] & year_range == planningperiods[1] & spp %in% fisheryspps[region == myregs[i], projname], .(biomass = mean(biomass)), by = c('latgrid', 'longrid', 'spp')] # biomass data. 
             dim(puvspbio)
             puvspbio[, length(unique(spp))] # should be 10
         puvspbio[, amount := biomass] # use biomass as amount for fishery targets
@@ -301,6 +311,7 @@ for (i in 1:length(myregs)) {
         add_gurobi_solver(gap = gap)
     
     # solve it
+    print('\tSolving hist')
     if(presolve_check(p1)){
         s1 <- solve(p1)
     } else {
@@ -352,7 +363,7 @@ for (i in 1:length(myregs)) {
     # add future species to include
     # use only a set of 8 models, leaving later 8 for testing
     	# Format future conservation data
-    	puvsppa2 <- presmap[region == myregs[i] & year_range == planningperiods[2] & rcp %in% rcps, .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'spp', 'thresh.kappa')] # pres/abs data. trim to focal models
+    	puvsppa2 <- presmap[region == myregs[i] & year_range == planningperiods[2], .(poccur = mean(poccur)), by = c('latgrid', 'longrid', 'spp', 'thresh.kappa')] # pres/abs data. trim to focal models
     		dim(puvsppa2)
     	puvsppa2[, amount := as.numeric(poccur >= thresh.kappa)] # use pres/abs as conservation amount. should this instead be left as poccur?
     	    puvsppa2[, summary(amount)]
@@ -361,10 +372,10 @@ for (i in 1:length(myregs)) {
     	puvsppa2[!grepl('energy', name), name := paste0(name, gsub('-', '', planningperiods[2]))] # append time period
     	
         # Format fishery data
-        puvspbio2 <- biomassmap[region == myregs[i] & year_range == planningperiods[2] & rcp %in% rcps & spp %in% fisheryspps[region == myregs[i], projname], .(biomass = mean(biomass)), by = c('latgrid', 'longrid', 'spp')] # biomass data
+        puvspbio2 <- biomassmap[region == myregs[i] & year_range == planningperiods[2] & spp %in% fisheryspps[region == myregs[i], projname], .(biomass = mean(biomass)), by = c('latgrid', 'longrid', 'spp')] # biomass data
             dim(puvspbio2)
             puvspbio2[, length(unique(spp))] # should be 10
-        puvspbio2[, amount := biomass/100] # use biomass as amount for fishery targets. Scale down to pass presolve checks.
+        puvspbio2[, amount := biomass] # use biomass as amount for fishery targets.
         puvspbio2[ , name := paste0(gsub(' |_', '', spp), '_fishery')] # trim out spaces from species names
     	puvspbio2[!grepl('energy', name), name := paste0(name, gsub('-', '', planningperiods[2]))] # append time period
      	
@@ -383,6 +394,14 @@ for (i in 1:length(myregs)) {
     	nrow(puvsp2)
     	setnames(puvsp2, 'id', 'pu')
     	
+    	# Check fishery species for adequate biomass and scale up if needed
+    	# Makes sure that no fishery species are eliminated by the next section checking for amount < 1e6
+        fishtotals2 <- puvsp2[grepl('fishery', name), .(total = sum(amount), name = unique(name)), by = 'species']
+    	for(j in which(fishtotals2[, total < 1])){
+    	    scalar <- 1/fishtotals2[j, total] # scale up so sum would be 1
+    	    puvsp2[species == fishtotals2[j, species], amount := amount * scalar]
+    	}
+
     	# Add historical data
     	temp1 <- puvsp # start from the same data as in the historical run
     	temp1[!grepl('energy', name), name := paste0(name, gsub('-', '', planningperiods[1]))] # append time period (except energy)
@@ -440,7 +459,8 @@ for (i in 1:length(myregs)) {
         add_gurobi_solver(gap = gap)
     
     # solve it
-    if(presolve_check(p1)){
+    print('\tSolving 2per')
+    if(presolve_check(p2)){
         s2 <- solve(p2)
     } else {
         stop(paste0('region:', myregs[i], '. Failed presolve check (2per).'))
