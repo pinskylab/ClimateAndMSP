@@ -56,7 +56,7 @@ if(!(length(rcps) %in% c(1,2))){
 	stop('rcp must be length 1 or 2')
 }
 for (i in 1:length(rcps)){
-    print(paste0('rcp', rcps[i]))
+    print(paste0('Loading rcp', rcps[i]))
 
     for(j in 1:length(oceans)){
         for(k in 1:length(planningperiods)){
@@ -198,7 +198,7 @@ for (i in 1:length(myregs)) {
     		sppstokeep <- merge(sppstokeep, nspps, by = 'pu')
     		sppstokeep[, summary(nspp)] #
     
-    		# sppstokeep <- sppstokeep[ngrid > (nrow(pus)*0.05),] # trim to species found at poccur > poccurthresh in at least 5% of grids
+    		sppstokeep <- sppstokeep[ngrid >= (nrow(pus)*0.05),] # trim to species found at poccur > poccurthresh in at least 5% of grids
     
     		sppstokeep[ , length(unique(spp))] 
     		
@@ -311,7 +311,7 @@ for (i in 1:length(myregs)) {
         add_gurobi_solver(gap = gap)
     
     # solve it
-    print('\tSolving hist')
+    cat('\tSolving hist\n')
     if(presolve_check(p1)){
         s1 <- solve(p1)
     } else {
@@ -459,7 +459,7 @@ for (i in 1:length(myregs)) {
         add_gurobi_solver(gap = gap)
     
     # solve it
-    print('\tSolving 2per')
+    cat('\tSolving 2per\n')
     if(presolve_check(p2)){
         s2 <- solve(p2)
     } else {

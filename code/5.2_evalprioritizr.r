@@ -278,20 +278,34 @@ for(k in 1:length(periods)){
 # clean up
 rm(temp1, temp2, presbyzone1, presbyzone2, presbyzonebymod1, presbyzonebymod2, biobyzone1, biobyzone2, biobyzonebymod1, biobyzonebymod2, totalbio, totalpres, totbiocalcs, totprescalcs)
 
+# set up strict goal accounting: species not present counts against meeting the goal
+goalsbyzonebymod1[, metgoalstrict := metgoal]
+goalsbyzonebymod2[, metgoalstrict := metgoal]
+goalsbyzonebymod1[total == 0, metgoalstrict := FALSE]
+goalsbyzonebymod2[total == 0, metgoalstrict := FALSE]
 
 # summarize by region/timeperiod/model/rcp
-goalsmetbymod1 <- goalsbyzonebymod1[!is.na(metgoal) , .(mid = mean(as.numeric(unlist(strsplit(as.character(year_range), split='-')))), 
-                                                        ngoals = .N, nmet = sum(metgoal), pmet = sum(metgoal)/.N), 
-                                           by = c('year_range', 'model', 'rcp', 'region')]
-goalsmetbymod2 <- goalsbyzonebymod2[!is.na(metgoal) , .(mid = mean(as.numeric(unlist(strsplit(as.character(year_range), split='-')))), 
-                                                        ngoals = .N, nmet = sum(metgoal), pmet = sum(metgoal)/.N), 
-                                           by = c('year_range', 'model', 'rcp', 'region')]
+# no need for a separate nmetstrict column because == nmet in all cases
+goalsmetbymod1 <- goalsbyzonebymod1[, .(mid = mean(as.numeric(unlist(strsplit(as.character(year_range), split='-')))), 
+                                        ngoals = sum(!is.na(metgoal)), nmet = sum(metgoal, na.rm = TRUE), 
+                                        pmet = sum(metgoal, na.rm = TRUE)/sum(!is.na(metgoal)),
+                                        ngoalsstrict = .N, pmetstrict = sum(metgoal, na.rm = TRUE)/.N),
+                                    by = c('year_range', 'model', 'rcp', 'region')]
+goalsmetbymod2 <- goalsbyzonebymod2[, .(mid = mean(as.numeric(unlist(strsplit(as.character(year_range), split='-')))), 
+                                        ngoals = sum(!is.na(metgoal)), nmet = sum(metgoal, na.rm = TRUE), 
+                                        pmet = sum(metgoal, na.rm = TRUE)/sum(!is.na(metgoal)),
+                                        ngoalsstrict = .N, pmetstrict = sum(metgoal, na.rm = TRUE)/.N),
+                                    by = c('year_range', 'model', 'rcp', 'region')]
 
 # check
 dim(goalsbyzonebymod1)
 dim(goalsbyzonebymod2)
 dim(goalsmetbymod1)
 dim(goalsmetbymod2)
+
+# quick summary of the number of regular vs. strict goals: how many scenarios have fewer regular goals?
+goalsmetbymod1[, .(ndiff = sum(ngoals < ngoalsstrict), n = .N), by = 'region']
+goalsmetbymod2[, .(ndiff = sum(ngoals < ngoalsstrict), n = .N), by = 'region'] # should be the same
 
 # simple check
 test <- goalsmetbymod1[, .(min = min(pmet), max = max(pmet)), by = region]

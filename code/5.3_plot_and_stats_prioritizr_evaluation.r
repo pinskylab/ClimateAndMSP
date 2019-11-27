@@ -40,9 +40,6 @@ for(i in 1:length(consplan2s)) consplan2s[[i]] <- fread(paste0('output/prioritiz
 names(consplan1s) <- myregs
 names(consplan2s) <- myregs
 
-
-
-
 # add a zone indicator to consplans
 for(i in 1:length(consplan1s)){
     consplan1s[[i]][ , zone := as.numeric(NA)]
@@ -60,6 +57,17 @@ for(i in 1:length(consplan2s)){
     consplan2s[[i]][solution_1_conservation ==  0 & solution_1_fishery == 0 & solution_1_energy == 0 , zone := 4]
     consplan2s[[i]][, reg := myregs[i]]
 }
+
+# definition of planning features by region
+sppfiles <- list.files(path = 'output/prioritizr_runs/', pattern = 'spp_*', full.names = TRUE)
+spps <- fread(sppfiles[1], drop = 1)
+spps[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[1])]
+for(i in 2:length(sppfiles)){
+    temp <- fread(sppfiles[i], drop = 1)
+    temp[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[i])]
+    spps <- rbind(spps, temp)
+}
+rm(temp)
 
 
 ####################################################################################
@@ -115,6 +123,11 @@ grids[, total := sum(ngrid), by  = 'reg'][, prop := round(ngrid/total, 2)]
 setkey(grids, reg, zone)
 grids
 grids[ , .(meanprop = mean(prop), sdprop = sd(prop), seprop = sd(prop)/sqrt(.N)), by = 'zone']
+
+# number of planning goals in hist
+spps[, .(ngoals = .N, ncons = sum(!grepl('fishery|energy', name)), 
+         nfish = sum(grepl('fishery', name)), nenergy = sum(grepl('energy', name))), by = 'region']
+
 
 # latitudinal range by zone in each plan
 # do 2per plans span a wider latitudinal range?
@@ -199,18 +212,18 @@ wilcox.test(d$diff[d$zone==3])
 ######################################################################
 # Stats comparing the planning approaches against all climate models
 ######################################################################
-goalsmetbymod1out <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
-goalsmetbymod2out <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)
+goalsmetbymod1 <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
+goalsmetbymod2 <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)
 
 
 # add plan identifier and combine
-goalsmetbymod1out$plan <- 'histonly'
-goalsmetbymod2out$plan <- '2per'
-goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
+goalsmetbymod1$plan <- 'histonly'
+goalsmetbymod2$plan <- '2per'
+goalsmetbymod <- rbind(goalsmetbymod1, goalsmetbymod2)
 
 
 # compare goals met across plans and time periods
-goalmetbymodag <- with(rbind(goalsmetbymod1out, goalsmetbymod2out), 
+goalmetbymodag <- with(rbind(goalsmetbymod1, goalsmetbymod2), 
                        aggregate(list(pmet = pmet), by = list(plan = plan, model = model, rcp = rcp, period = year_range), FUN = mean))
 with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, period = period), FUN = mean))
 with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, period = period), FUN = function(x) sd(x)/length(x)))
@@ -218,13 +231,13 @@ with(goalmetbymodag, aggregate(list(ave_goals = pmet), by = list(plan = plan, pe
 
 
 # test whether histonly meets significantly fewer goals than 2per
-all(goalsmetbymod1out$model == goalsmetbymod2out$model & goalsmetbymod1out$period == goalsmetbymod2out$period & goalsmetbymod1out$rcp == goalsmetbymod2out$rcp) # same order?
+all(goalsmetbymod1$model == goalsmetbymod2$model & goalsmetbymod1$period == goalsmetbymod2$period & goalsmetbymod1$rcp == goalsmetbymod2$rcp) # same order?
 
 # simple t-test on number met (pseudoreplicates within regions)
-t.test(goalsmetbymod1out$nmet[goalsmetbymod1out$period=='2081-2100'], goalsmetbymod2out$nmet[goalsmetbymod2out$period=='2081-2100'])
+t.test(goalsmetbymod1$nmet[goalsmetbymod1$period=='2081-2100'], goalsmetbymod2$nmet[goalsmetbymod2$period=='2081-2100'])
 
 # simple t-test on proportions (should use logistic) (also pseudoreplicates within regions)
-t.test(goalsmetbymod1out$pmet[goalsmetbymod1out$period=='2081-2100'], goalsmetbymod2out$pmet[goalsmetbymod2out$period=='2081-2100'], paired=FALSE)
+t.test(goalsmetbymod1$pmet[goalsmetbymod1$period=='2081-2100'], goalsmetbymod2$pmet[goalsmetbymod2$period=='2081-2100'], paired=FALSE)
 
 # GLMM model (since proportion data) on 2006-2020
 require(lme4)
@@ -236,44 +249,47 @@ Anova(mod)
 # GLMM model (since proportion data) on 2041-2060
 require(lme4)
 require(car)
-goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
+goalsmetbymod <- rbind(goalsmetbymod1, goalsmetbymod2)
 mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ plan + (1|region/rcp/model), data=goalsmetbymod, family='binomial', subset=goalsmetbymod$period=='2041-2060')
 summary(mod)
 Anova(mod)
 
 # GLMM model (since proportion data) on 2081-2100
-goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
+goalsmetbymod <- rbind(goalsmetbymod1, goalsmetbymod2)
 mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ plan + (1|region/rcp/model), data=goalsmetbymod, family='binomial', subset=goalsmetbymod$period=='2081-2100')
 summary(mod)
 Anova(mod)
 
 # GLMM model (since proportion data) across all time periods
-goalsmetbymod <- rbind(goalsmetbymod1out, goalsmetbymod2out)
+goalsmetbymod <- rbind(goalsmetbymod1, goalsmetbymod2)
 mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ plan + (1|region/rcp/model/period), data=goalsmetbymod, family='binomial')
 summary(mod)
 Anova(mod)
 
 
-######################################################################
+#########################################################################################
 # Plots comparing the planning approaches against all climate models
-######################################################################
-goalsmetbymod1out <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
-goalsmetbymod2out <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)
+# regular (missing species don't count) or strict (missing species count against goals)
+#########################################################################################
+goalsmetbymod1 <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
+goalsmetbymod2 <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)
 
 
-mods <- sort(unique(goalsmetbymod1out$model))
-rcps <- sort(unique(goalsmetbymod1out$rcp))
+mods <- sort(unique(goalsmetbymod1$model))
+rcps <- sort(unique(goalsmetbymod1$rcp))
 regnames<-c('E. Bering Sea', 'Gulf of AK', 'British Columbia', 'West Coast US', 'Gulf of Mexico', 'Southeast US', 'Northeast US', 'Maritimes', 'Newfoundland')
 
 # plot %goals met (solution #1 and #2) for non-planning models (the test set)
-    thesemods <- mods[gcminds]; type <- 'testing' # for models not used in planning
-    #thesemods <- mods[-gcminds]; type <- 'training' # for models used in planning
+    thesemods <- mods[gcminds]; type <- 'testing_strict'; plotvar <- quote(pmetstrict) # for models not used in planning, strict goal counting
+    #thesemods <- mods[gcminds]; type <- 'testing_lax'; plotvar <- quote(pmet) # for models not used in planning, lax goal counting
+    #thesemods <- mods[-gcminds]; type <- 'training_strict'; plotvar <- quote(pmetstrict) # for models used in planning
+    #thesemods <- mods[-gcminds]; type <- 'training_lax'; plotvar <- quote(pmet)
     
     colmat <- t(col2rgb(brewer.pal(4, 'Paired')))
     #	colmat <- t(col2rgb(brewer.pal(4, 'Dark2')))
     cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
-    if(type == 'testing') outfile <- paste('figures/prioritizr_allregs_goalsmetbymod_', runname1out, '&', runname2out, '.pdf', sep='')
-    if(type == 'training') outfile <- paste('temp_figures/prioritizr_allregs_goalsmetbymod_', runname1out, '&', runname2out, '_training.pdf', sep='')
+    if(grepl('testing', type)) outfile <- paste('figures/prioritizr_allregs_goalsmetbymod_', runname1out, '&', runname2out, '.pdf', sep='')
+    if(grepl('training', type)) outfile <- paste('temp_figures/prioritizr_allregs_goalsmetbymod_lax_', runname1out, '&', runname2out, '_training.pdf', sep='')
     outfile
     ylims <- c(0,1)
     
@@ -283,13 +299,12 @@ regnames<-c('E. Bering Sea', 'Gulf of AK', 'British Columbia', 'West Coast US', 
     
     for(i in 1:length(myregs)){
         # each model/rcp for hist only plans
-        inds <- goalsmetbymod1out$model == thesemods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i]
-        plot(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], xlab='', ylab='', ylim=ylims, type='l', pch=16, las=1, col=cols[1], main=regnames[i])
+        goalsmetbymod1[model == thesemods[1] & rcp == rcps[1] & region==myregs[i], 
+                          plot(mid, eval(plotvar), xlab='', ylab='', ylim=ylims, type='l', pch=16, las=1, col=cols[1], main=regnames[i])]
         for(k in 1:length(thesemods)){
             for(j in 1:length(rcps)){
                 if(!(k==1 & j==1)){
-                    inds <- goalsmetbymod1out$model == thesemods[k] & goalsmetbymod1out$rcp == rcps[j] & goalsmetbymod1out$region==myregs[i]
-                    points(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], type='l', pch=16, col=cols[1])	
+                    goalsmetbymod1[model == thesemods[k] & rcp == rcps[j] & region==myregs[i], points(mid, eval(plotvar), type='l', pch=16, col=cols[1])]
                 }
             }
         }
@@ -297,18 +312,17 @@ regnames<-c('E. Bering Sea', 'Gulf of AK', 'British Columbia', 'West Coast US', 
         # each model/rcp for 2per plans
         for(k in 1:length(thesemods)){
             for(j in 1:length(rcps)){
-                inds <- goalsmetbymod2out$model == thesemods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]
-                points(goalsmetbymod2out$mid[inds], goalsmetbymod2out$pmet[inds], type='l', pch=16, col=cols[3])
+                goalsmetbymod2[model == thesemods[k] & rcp == rcps[j] & region==myregs[i], points(mid, eval(plotvar), type='l', pch=16, col=cols[3])]
             }	
         }
         
         # average across models/rcps for hist and 2per plans
-        inds <- goalsmetbymod1out$region==myregs[i] & goalsmetbymod1out$model %in% thesemods
-        ensmean <- aggregate(list(nmet=goalsmetbymod1out$nmet[inds], pmet=goalsmetbymod1out$pmet[inds]), by=list(mid=goalsmetbymod1out$mid[inds]), FUN=mean)
+        inds <- goalsmetbymod1[, region==myregs[i] & model %in% thesemods]
+        ensmean <- aggregate(list(nmet=goalsmetbymod1$nmet[inds], pmet=goalsmetbymod1[[plotvar]][inds]), by=list(mid=goalsmetbymod1$mid[inds]), FUN=mean)
         lines(ensmean$mid, ensmean$pmet, col=cols[2], lwd=3)
         
-        inds <- goalsmetbymod2out$region==myregs[i] & goalsmetbymod2out$model %in% thesemods
-        ensmean2 <- aggregate(list(nmet=goalsmetbymod2out$nmet[inds], pmet=goalsmetbymod2out$pmet[inds]), by=list(mid=goalsmetbymod2out$mid[inds]), FUN=mean)
+        inds <- goalsmetbymod2[region==myregs[i] & model %in% thesemods]
+        ensmean2 <- aggregate(list(nmet=goalsmetbymod2$nmet[inds], pmet=goalsmetbymod2[[plotvar]][inds]), by=list(mid=goalsmetbymod2$mid[inds]), FUN=mean)
         lines(ensmean2$mid, ensmean2$pmet, col=cols[4], lwd=3)
         
         # legend in plot 1
@@ -320,26 +334,27 @@ regnames<-c('E. Bering Sea', 'Gulf of AK', 'British Columbia', 'West Coast US', 
     dev.off()
 
 
-## probability of < 80% goals met by region, plan, and time period
+## probability of > 80% goals met by region, plan, and time period
 # calcs
-u80func <- function(x) return(sum(x<0.8)/length(x))	
-u80 <- with(goalsmetbymod, aggregate(list(u80=pmet), by=list(region=region, period=year_range, plan=plan), FUN=u80func))
+u80func <- function(x) return(sum(x>0.8)/length(x))	
+goalsmetbymod1$plan <- 'histonly'
+goalsmetbymod2$plan <- '2per'
+goalsmetbymod <- rbind(goalsmetbymod1, goalsmetbymod2)
+u80 <- goalsmetbymod[, .(u80=u80func(pmet)), by= c('region', 'year_range', 'plan')]
 
 
 # examine
-u80[u80$period=='2041-2060',] # middle of century, by region
-u80[u80$period=='2081-2100',] # end of century, by region
+u80[year_range == '2041-2060',] # middle of century, by region
+u80[year_range == '2081-2100',] # end of century, by region
 
-with(u80[u80$period=='2007-2020',], aggregate(list(meanu80=u80), by=list(plan=plan), FUN=mean)) # means by plan (across regions), start
-with(u80[u80$period=='2041-2060',], aggregate(list(meanu80=u80), by=list(plan=plan), FUN=mean)) # means by plan (across regions), middle of century
-with(u80[u80$period=='2081-2100',], aggregate(list(meanu80=u80), by=list(plan=plan), FUN=mean)) # means by plan (across regions), end of century
+u80[, .(meanu80=mean(u80)), by=c('plan', 'year_range')] # means by plan (across regions), across time
 
-a<-aggregate(list(max_u80=u80$u80), by=list(region=u80$region, plan=u80$plan), FUN=max) # max probability of being under 80% of goals met (look across time periods)
-mean(a$max_u80[a$plan=='2per'])
-mean(a$max_u80[a$plan=='histonly'])
+# a<-aggregate(list(max_u80=u80$u80), by=list(region=u80$region, plan=u80$plan), FUN=max) # max probability of being under 80% of goals met (look across time periods)
+# mean(a$max_u80[a$plan=='2per'])
+# mean(a$max_u80[a$plan=='histonly'])
 
 # plot
-ggplot(u80, aes(x = period, y = u80, group = plan, color = plan)) +
+ggplot(u80, aes(x = year_range, y = u80, group = plan, color = plan)) +
     geom_line() + 
     geom_point() +
     facet_wrap(~ region, ncol = 3)
