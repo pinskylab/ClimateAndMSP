@@ -13,8 +13,10 @@ RCPS <- c(26, 85)
 # select initial and final timeperiod for these grids
 PERIODS <- c('2007-2020', '2081-2100')
 
-# number of climate models in the projections
-NMODS <- 18
+# climate models in the projections
+#bcc-csm1-1-m, bcc-csm1-1, CanESM2, CCSM4, CESM1-CAM5, CNRM-CM5, GFDL-CM3, GFDL-ESM2M, GFDL-ESM2G, GISS-E2-R, GISS-E2-H, HadGEM2-ES, IPSL-CM5A-LR, IPSL-CM5A-MR, MIROC-ESM, MIROC5, MPI-ESM-LR, NorESM1-ME
+NMODS <- 18 # for the pres/abs models. Models 12 (HadGEM2-ES) and 16 (MIROC5) are extraneous since not in the biomass projections used in rest of project
+MODSPRESTODROP <- c(12,16)
 
 # path to the pres-abs projection results from Morley et al. 2018. At 0.05 grid size.
 PRESABSPATH <- '/local/shared/pinsky_lab/projections_PlosOne2018/CEmodels_proj_PresAbs_May2018' 
@@ -83,14 +85,6 @@ for (i in 1:length(RCPS)) {
         pred.agg[, lon := floor(longitude*20)/20 + 0.025] # assumes 0.05 grid size
         setkey(pred.agg, lat, lon)
         
-        # scale up from tow to grid area: not done
-        # D <- 365*20/(20/60/24) # number of tows in 20 years (currently hard-coded for NEUS 20 minutes)
-        # pred.agg[, Agrid := 2*pi*6371^2*abs(sin((latitude - 0.025)*pi/180) - sin(pi/180*(latitude + 0.025)))*0.05/360] # area of each 0.05 grid in km2. See http://mathforum.org/library/drmath/view/63767.html
-        # pred.agg[, A := Agrid/0.0384] # number of tows in one 0.05 grid cell (currently hard-coded for NEUS)
-        # for (m in 1:NMODS) { # for each climate model
-        #     pred.agg[, (paste0('scaled', m)) := 1 - (1 - get(paste0('mean', m)))^A] # 1-(1-p)^D^A
-        # }
- 
         # reorganize so that time 2 and time 1 are separate columns, rows are locations
         presbyloc <- merge(pred.agg[year_range == PERIODS[1], ..projcols], pred.agg[year_range == PERIODS[2], ..projcols], by = c('lat', 'lon'), suffixes = c('.t1', '.t2'))
 
@@ -98,37 +92,43 @@ for (i in 1:length(RCPS)) {
         # summary stat column names are of form [sumstatname].[RCP].[modnumber]
         wdpagridspp <- merge(wdpagrid, presbyloc, all.x = TRUE, by = c('lat', 'lon'))
         for (m in 1:NMODS) { # for each climate model
-            wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t1')]]), (paste0('mean', m, '.t1')) := 0] # set NAs to 0 (species not present)
-            wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t2')]]), (paste0('mean', m, '.t2')) := 0]
+            if(!(m %in% MODSPRESTODROP)){ # drop two of the pres-abs models
+                if (m < 12) thismodnum <- m
+                if (m > 12 & m < 16) thismodnum <- m - 1 # adjust model numbers to match biomass models
+                if (m > 16) thismodnum <- m - 2
 
-            # aggregate p(occur) across grid cells into full MPAs
-            sppbyMPA <- wdpagridspp[, .(pinit = 1 - prod(1 - get(paste0('mean', m, '.t1'))*prop_wdpa), # p(occur whole MPA) at initial timepoint as 1 - prod(1-p(occur per grid))
-                                 pfinal = 1 - prod(1 - get(paste0('mean', m, '.t2'))*prop_wdpa)
-                                 ), by = WDPA_PID]
-            #print(dim(sppbyMPA))
-            
-            # merge wpda with sppbyMPA (latter has results from the current species)
-            wdpa <- merge(wdpa, sppbyMPA, by = 'WDPA_PID')
-            
-            # calculate summary stats by MPA and add this species onto results from previous species
-            if (!(paste0('ninit.', RCPS[i], '.', m) %in% colnames(wdpa))) { # if output column in wdpa doesn't yet exist, create it
-                wdpa[, (paste0('ninit.', RCPS[i], '.', m)) := pinit]
-                wdpa[, (paste0('nfinal.', RCPS[i], '.', m)) := pfinal]
-                wdpa[, (paste0('nshared.', RCPS[i], '.', m)) := pinit*pfinal]
-                wdpa[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', m)) := pinit - pfinal]
-                wdpa[pinit <= pfinal, (paste0('nlost.', RCPS[i], '.', m)) := 0]
-                wdpa[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', m)) := pfinal - pinit]
-                wdpa[pinit >= pfinal, (paste0('ngained.', RCPS[i], '.', m)) := 0]
-            } else {# if columns already exist, add the new species' values onto the existing values
-                wdpa[, (paste0('ninit.', RCPS[i], '.', m)) := get(paste0('ninit.', RCPS[i], '.', m)) + pinit]
-                wdpa[, (paste0('nfinal.', RCPS[i], '.', m)) := get(paste0('nfinal.', RCPS[i], '.', m)) + pfinal]
-                wdpa[, (paste0('nshared.', RCPS[i], '.', m)) := get(paste0('nshared.', RCPS[i], '.', m)) + pinit*pfinal]
-                wdpa[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', m)) := get(paste0('nlost.', RCPS[i], '.', m)) + pinit - pfinal]
-                wdpa[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', m)) := get(paste0('ngained.', RCPS[i], '.', m)) + pfinal - pinit]
+                wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t1')]]), (paste0('mean', m, '.t1')) := 0] # set NAs to 0 (species not present)
+                wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t2')]]), (paste0('mean', m, '.t2')) := 0]
+
+                # aggregate p(occur) across grid cells into full MPAs
+                sppbyMPA <- wdpagridspp[, .(pinit = 1 - prod(1 - get(paste0('mean', m, '.t1'))*prop_wdpa), # p(occur whole MPA) at initial timepoint as 1 - prod(1-p(occur per grid))
+                                     pfinal = 1 - prod(1 - get(paste0('mean', m, '.t2'))*prop_wdpa)
+                                     ), by = WDPA_PID]
+                #print(dim(sppbyMPA))
+                
+                # merge wpda with sppbyMPA (latter has results from the current species)
+                wdpa <- merge(wdpa, sppbyMPA, by = 'WDPA_PID')
+                
+                # calculate summary stats by MPA and add this species onto results from previous species
+                if (!(paste0('ninit.', RCPS[i], '.', thismodnum) %in% colnames(wdpa))) { # if output column in wdpa doesn't yet exist, create it
+                    wdpa[, (paste0('ninit.', RCPS[i], '.', thismodnum)) := pinit]
+                    wdpa[, (paste0('nfinal.', RCPS[i], '.', thismodnum)) := pfinal]
+                    wdpa[, (paste0('nshared.', RCPS[i], '.', thismodnum)) := pinit*pfinal]
+                    wdpa[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', thismodnum)) := pinit - pfinal]
+                    wdpa[pinit <= pfinal, (paste0('nlost.', RCPS[i], '.', thismodnum)) := 0]
+                    wdpa[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', thismodnum)) := pfinal - pinit]
+                    wdpa[pinit >= pfinal, (paste0('ngained.', RCPS[i], '.', thismodnum)) := 0]
+                } else {# if columns already exist, add the new species' values onto the existing values
+                    wdpa[, (paste0('ninit.', RCPS[i], '.', thismodnum)) := get(paste0('ninit.', RCPS[i], '.', thismodnum)) + pinit]
+                    wdpa[, (paste0('nfinal.', RCPS[i], '.', thismodnum)) := get(paste0('nfinal.', RCPS[i], '.', thismodnum)) + pfinal]
+                    wdpa[, (paste0('nshared.', RCPS[i], '.', thismodnum)) := get(paste0('nshared.', RCPS[i], '.', thismodnum)) + pinit*pfinal]
+                    wdpa[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', thismodnum)) := get(paste0('nlost.', RCPS[i], '.', thismodnum)) + pinit - pfinal]
+                    wdpa[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', thismodnum)) := get(paste0('ngained.', RCPS[i], '.', thismodnum)) + pfinal - pinit]
+                }
+                wdpa[, c('pinit', 'pfinal') := NULL] # delete the species-specific columns now that we have the summaries we need
             }
-            wdpa[, c('pinit', 'pfinal') := NULL] # delete the species-specific columns now that we have the summaries we need
         }
-       # wdpa[,print(max(get(paste0('ninit.', RCPS[i], '.1'))))] # a test that cumulative sums are being calculated. Should increase through the loop
+        # wdpa[,print(max(get(paste0('ninit.', RCPS[i], '.1'))))] # a test that cumulative sums are being calculated. Should increase through the loop
     }
 }
 print(Sys.time())
@@ -178,18 +178,22 @@ for (i in 1:length(RCPS)) {
         
         # calculate summary stats about species p(occur) by MPA for each climate model
         for (m in 1:NMODS) { # for each climate model
+            if(!(m %in% MODSPRESTODROP)){ # drop two of the pres-abs models
+                if (m < 12) thismodnum <- m
+                if (m > 12 & m < 16) thismodnum <- m - 1 # adjust model numbers to match biomass models
+                if (m > 16) thismodnum <- m - 2
 
-            # aggregate p(occur) across grid cells into full MPAs
-            sppbyMPA <- wdpagridspp[, .(spp = thisspp, rcp = RCPS[i], model = m, poccur = 1 - prod(1 - get(paste0('mean', m))*prop_wdpa)), by = WDPA_PID] # p(occur whole MPA) at initial timepoint as 1 - prod(1-p(occur per grid))
-                #print(dim(sppbyMPA))
-            
-            # add this species/model/rcp onto the output data.table
-            if(!exists('wdpa_by_spp_projnow')) { # create the output table if it doesn't exist
-                wdpa_by_spp_projnow <- sppbyMPA
-            } else {
-                wdpa_by_spp_projnow <- rbind(wdpa_by_spp_projnow, sppbyMPA)
-            }
-            
+                # aggregate p(occur) across grid cells into full MPAs
+                sppbyMPA <- wdpagridspp[, .(spp = thisspp, rcp = RCPS[i], model = thismodnum, poccur = 1 - prod(1 - get(paste0('mean', m))*prop_wdpa)), by = WDPA_PID] # p(occur whole MPA) at initial timepoint as 1 - prod(1-p(occur per grid))
+                    #print(dim(sppbyMPA))
+                
+                # add this species/model/rcp onto the output data.table
+                if(!exists('wdpa_by_spp_projnow')) { # create the output table if it doesn't exist
+                    wdpa_by_spp_projnow <- sppbyMPA
+                } else {
+                    wdpa_by_spp_projnow <- rbind(wdpa_by_spp_projnow, sppbyMPA)
+                }
+            }            
         }
     }
 }
@@ -199,7 +203,7 @@ dim(wdpa_by_spp_projnow) #
 
 
 # write out species data 
-saveRDS(wdpa_by_spp_projnow, file = 'temp/wdpa_by_spp_projnow.rds')
+write.csv(wdpa_by_spp_projnow, file = gzfile('temp/wdpa_by_spp_projnow.csv.gz'))
 
 
 
@@ -227,14 +231,6 @@ for (i in 1:length(RCPS)) {
         pred.agg[, lat := floor(latitude*20)/20 + 0.025] # assumes 0.05 grid size
         pred.agg[, lon := floor(longitude*20)/20 + 0.025] # assumes 0.05 grid size
         setkey(pred.agg, lat, lon)
-        
-        # scale up from tow to grid area: not done
-        # D <- 365*20/(20/60/24) # number of tows in 20 years (currently hard-coded for NEUS 20 minutes)
-        # pred.agg[, Agrid := 2*pi*6371^2*abs(sin((latitude - 0.025)*pi/180) - sin(pi/180*(latitude + 0.025)))*0.05/360] # area of each 0.05 grid in km2. See http://mathforum.org/library/drmath/view/63767.html
-        # pred.agg[, A := Agrid/0.0384] # number of tows in one 0.05 grid cell (currently hard-coded for NEUS)
-        # for (m in 1:NMODS) { # for each climate model
-        #     pred.agg[, (paste0('scaled', m)) := 1 - (1 - get(paste0('mean', m)))^A] # 1-(1-p)^D^A
-        # }
  
         # reorganize so that time 2 and time 1 are separate columns, rows are locations
         presbyloc <- merge(pred.agg[year_range == PERIODS[1], ..projcols], pred.agg[year_range == PERIODS[2], ..projcols], by = c('lat', 'lon'), suffixes = c('.t1', '.t2'))
@@ -243,35 +239,41 @@ for (i in 1:length(RCPS)) {
         # summary stat column names are of form [sumstatname].[RCP].[modnumber]
         wdpagridspp <- merge(wdpagrid, presbyloc, all.x = TRUE, by = c('lat', 'lon'))
         for (m in 1:NMODS) { # for each climate model
-            wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t1')]]), (paste0('mean', m, '.t1')) := 0] # set NAs to 0 (species not present)
-            wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t2')]]), (paste0('mean', m, '.t2')) := 0]
-
-            # aggregate p(occur) across grid cells into full MPA networks
-            sppbynet <- wdpagridspp[!is.na(network), .(pinit = 1 - prod(1 - get(paste0('mean', m, '.t1'))*prop_wdpa), # p(occur whole MPA) at initial timepoint as 1 - prod(1-p(occur per grid))
-                                 pfinal = 1 - prod(1 - get(paste0('mean', m, '.t2'))*prop_wdpa)
-                                 ), by = network]
-            #print(dim(sppbynet))
-            
-            # merge wpda with sppbynet (latter has results from the current species)
-            wdpanet <- merge(wdpanet, sppbynet, by = 'network')
-            
-            # calculate summary stats and add this species onto results from previous species
-            if (!(paste0('ninit.', RCPS[i], '.', m) %in% colnames(wdpanet))) { # if output column in wdpanet doesn't yet exist, create it
-                wdpanet[, (paste0('ninit.', RCPS[i], '.', m)) := pinit]
-                wdpanet[, (paste0('nfinal.', RCPS[i], '.', m)) := pfinal]
-                wdpanet[, (paste0('nshared.', RCPS[i], '.', m)) := pinit*pfinal]
-                wdpanet[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', m)) := pinit - pfinal]
-                wdpanet[pinit <= pfinal, (paste0('nlost.', RCPS[i], '.', m)) := 0]
-                wdpanet[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', m)) := pfinal - pinit]
-                wdpanet[pinit >= pfinal, (paste0('ngained.', RCPS[i], '.', m)) := 0]
-            } else {# if columns already exist, add the new species' values onto the existing values
-                wdpanet[, (paste0('ninit.', RCPS[i], '.', m)) := get(paste0('ninit.', RCPS[i], '.', m)) + pinit]
-                wdpanet[, (paste0('nfinal.', RCPS[i], '.', m)) := get(paste0('nfinal.', RCPS[i], '.', m)) + pfinal]
-                wdpanet[, (paste0('nshared.', RCPS[i], '.', m)) := get(paste0('nshared.', RCPS[i], '.', m)) + pinit*pfinal]
-                wdpanet[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', m)) := get(paste0('nlost.', RCPS[i], '.', m)) + pinit - pfinal]
-                wdpanet[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', m)) := get(paste0('ngained.', RCPS[i], '.', m)) + pfinal - pinit]
-            }
-            wdpanet[, c('pinit', 'pfinal') := NULL] # delete the species-specific columns now that we have the summaries we need
+             if(!(m %in% MODSPRESTODROP)){ # drop two of the pres-abs models
+                if (m < 12) thismodnum <- m
+                if (m > 12 & m < 16) thismodnum <- m - 1 # adjust model numbers to match biomass models
+                if (m > 16) thismodnum <- m - 2
+                
+                wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t1')]]), (paste0('mean', m, '.t1')) := 0] # set NAs to 0 (species not present)
+                wdpagridspp[is.na(wdpagridspp[[paste0('mean', m, '.t2')]]), (paste0('mean', m, '.t2')) := 0]
+    
+                # aggregate p(occur) across grid cells into full MPA networks
+                sppbynet <- wdpagridspp[!is.na(network), .(pinit = 1 - prod(1 - get(paste0('mean', m, '.t1'))*prop_wdpa), # p(occur whole MPA) at initial timepoint as 1 - prod(1-p(occur per grid))
+                                     pfinal = 1 - prod(1 - get(paste0('mean', m, '.t2'))*prop_wdpa)
+                                     ), by = network]
+                #print(dim(sppbynet))
+                
+                # merge wpda with sppbynet (latter has results from the current species)
+                wdpanet <- merge(wdpanet, sppbynet, by = 'network')
+                
+                # calculate summary stats and add this species onto results from previous species
+                if (!(paste0('ninit.', RCPS[i], '.', thismodnum) %in% colnames(wdpanet))) { # if output column in wdpanet doesn't yet exist, create it
+                    wdpanet[, (paste0('ninit.', RCPS[i], '.', thismodnum)) := pinit]
+                    wdpanet[, (paste0('nfinal.', RCPS[i], '.', thismodnum)) := pfinal]
+                    wdpanet[, (paste0('nshared.', RCPS[i], '.', thismodnum)) := pinit*pfinal]
+                    wdpanet[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', thismodnum)) := pinit - pfinal]
+                    wdpanet[pinit <= pfinal, (paste0('nlost.', RCPS[i], '.', thismodnum)) := 0]
+                    wdpanet[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', thismodnum)) := pfinal - pinit]
+                    wdpanet[pinit >= pfinal, (paste0('ngained.', RCPS[i], '.', thismodnum)) := 0]
+                } else {# if columns already exist, add the new species' values onto the existing values
+                    wdpanet[, (paste0('ninit.', RCPS[i], '.', thismodnum)) := get(paste0('ninit.', RCPS[i], '.', thismodnum)) + pinit]
+                    wdpanet[, (paste0('nfinal.', RCPS[i], '.', thismodnum)) := get(paste0('nfinal.', RCPS[i], '.', thismodnum)) + pfinal]
+                    wdpanet[, (paste0('nshared.', RCPS[i], '.', thismodnum)) := get(paste0('nshared.', RCPS[i], '.', thismodnum)) + pinit*pfinal]
+                    wdpanet[pinit > pfinal, (paste0('nlost.', RCPS[i], '.', thismodnum)) := get(paste0('nlost.', RCPS[i], '.', thismodnum)) + pinit - pfinal]
+                    wdpanet[pinit < pfinal, (paste0('ngained.', RCPS[i], '.', thismodnum)) := get(paste0('ngained.', RCPS[i], '.', thismodnum)) + pfinal - pinit]
+                }
+                wdpanet[, c('pinit', 'pfinal') := NULL] # delete the species-specific columns now that we have the summaries we need
+             }
         }
         # wdpanet[,print(max(get(paste0('ninit.', RCPS[i], '.1'))))] # a test that cumulative sums are being calculated. Should increase through the loop
     }
