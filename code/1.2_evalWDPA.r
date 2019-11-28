@@ -239,7 +239,7 @@ for (i in 1:length(RCPS)) {
         # summary stat column names are of form [sumstatname].[RCP].[modnumber]
         wdpagridspp <- merge(wdpagrid, presbyloc, all.x = TRUE, by = c('lat', 'lon'))
         for (m in 1:NMODS) { # for each climate model
-             if(!(m %in% MODSPRESTODROP)){ # drop two of the pres-abs models
+             if (!(m %in% MODSPRESTODROP)) { # drop two of the pres-abs models
                 if (m < 12) thismodnum <- m
                 if (m > 12 & m < 16) thismodnum <- m - 1 # adjust model numbers to match biomass models
                 if (m > 16) thismodnum <- m - 2
@@ -277,6 +277,7 @@ for (i in 1:length(RCPS)) {
         }
         # wdpanet[,print(max(get(paste0('ninit.', RCPS[i], '.1'))))] # a test that cumulative sums are being calculated. Should increase through the loop
     }
+    cat('\n')
 }
 print(Sys.time())
 
