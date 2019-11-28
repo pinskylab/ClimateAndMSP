@@ -67,7 +67,7 @@ for (r in c(26, 85)) {
     for (m in 1:18) {
         wdpaturnbyMPAbymod[, (paste0('beta_sor.', r, '.', m)) := 
                                2*get(paste0('nshared.', r, '.', m)) /
-                               (2*get(paste0('nshared.', r, '.', m)) + get(paste0('ngained.', r, '.', m)) + get(paste0('ngained.', r, '.', m)))]
+                               (2*get(paste0('nshared.', r, '.', m)) + get(paste0('ngained.', r, '.', m)) + get(paste0('nlost.', r, '.', m)))]
         wdpaturnbyMPAbymod[, (paste0('flost.', r, '.', m)) := 
                                get(paste0('nlost.', r, '.', m)) /
                                get(paste0('ninit.', r, '.', m))]

@@ -1,17 +1,5 @@
 # Plot figures for paper
 
-## Set working directory
-if(Sys.info()["nodename"] == "pinsky-macbookair"){
-	setwd('~/Documents/Rutgers/Range projections/proj_ranges/')
-	}
-if(Sys.info()["nodename"] == "amphiprion.deenr.rutgers.edu"){
-	setwd('~/Documents/range_projections/')
-	.libPaths(new='~/R/x86_64-redhat-linux-gnu-library/3.1/') # so that it can find my old packages (chron and ncdf4)
-	}
-# could add code for Lauren's working directory here
-if(Sys.info()["user"] == "lauren"){
-	setwd('~/backup/NatCap/proj_ranges/')
-	}
 
 #####################
 ## Useful functions
@@ -24,7 +12,7 @@ require(rgeos)
 require(raster)
 #require(rworldmap)
 #require(rworldxtra)
-require(lattice)
+#require(lattice)
 require(data.table)
 require(beanplot)
 require(RColorBrewer)
@@ -68,7 +56,8 @@ se <- function(x,na.rm=FALSE){ # standard error
 #########################
 ## Study regions maps
 #########################
-clim <- read.csv('data/climGrid.csv')
+# where to get the Morley et al. 2018 SODA climatology?
+#clim <- read.csv('data/climGrid.csv')
 
 # set regions and expansion for dots
 regs <- c('AFSC_EBS', 'AFSC_Aleutians', 'AFSC_GOA', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'NEFSC_NEUSSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'DFO_NewfoundlandFall')
@@ -127,87 +116,78 @@ clim2$lon[clim2$lon>180] <- clim2$lon[clim2$lon>180] - 360
 	
 	dev.off()
 	
-##########################
-## MPA gains and losses plot
-##########################
-wdpaturnbynetbymod <- read.csv(paste('data/wdpaturnbynetbymod_fitallreg_xreg_rcp85&45.csv', sep=''), row.names=1) # network results
-wdpaturnbyMPAbymod <- read.csv(paste('data/wdpaturnbyMPAbymod_fitallreg_xreg_rcp85&45.csv', sep=''), row.names=1) # individual MPA results
 
-regs <- c('AFSC_EBS', 'AFSC_Aleutians', 'AFSC_GOA', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'NEFSC_NEUSSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'DFO_NewfoundlandFall')
-#regsnice = c('Eastern Bering Sea', 'Aleutian Islands', 'Gulf of Alaska', 'West Coast U.S.', 'Gulf of Mexico', 'Northeast U.S.', 'Scotian Shelf', 'So. Gulf of St. Lawrence', 'Newfoundland')
-regsnice = c('EBS', 'AI', 'GoA', 'WC', 'GoM', 'Neast', 'SS', 'SGoSL', 'Newf')
-cols <- list(c('#67a9cf','white','black','#2166ac'), c('#ef8a62', 'white','black','#b2182b')) # colors from Colorbrewer2 7-class RdBu
-# trim data to focal regions
-wdpaturnbyMPAbymod <- droplevels(wdpaturnbyMPAbymod[wdpaturnbyMPAbymod$region %in% regs,])
 
-# re-order the regions
-wdpaturnbyMPAbymod$region <- factor(wdpaturnbyMPAbymod$region, levels=regs)
+###############################################
+## Fig. 2 MPA gains and losses plot and stats
+###############################################
+wdpaturnbyMPAbymod <- fread('gunzip -c temp/wdpaturnbyMPAbymod.csv.gz', drop = 1) # individual MPA results
+wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # network results
 
-# calculate means within models/rcps (across regions)
-means <- with(wdpaturnbyMPAbymod, aggregate(list(flost=flost, fgainedalt=fgainedalt, beta_sor=beta_sor), by=list(rcp=rcp, model=model), FUN=mean, na.rm=TRUE)) # mean across MPAs within climate models
+# Prep
+    # reshape to long format
+    wdpaturnbyMPAbymodl <- melt(wdpaturnbyMPAbymod, id.vars = c('WDPA_PID', 'network'), 
+                                measure.vars = patterns('ninit|nfinal|nshared|nlost|ngained')) # convert to long
+    wdpaturnbyMPAbymodl[, c('var', 'rcp', 'model') := tstrsplit(variable, "\\.", fixed = FALSE)][, variable := NULL] # extract rcp and GMC number from the col name
+    wdpaturnbyMPAbymodl <- dcast(wdpaturnbyMPAbymodl, WDPA_PID + network + rcp + model ~ var) # group ninit -> nshared as separate columns
+    
+    wdpaturnbynetbymodl <- melt(wdpaturnbynetbymod, id.vars = c('lat'), # ID.VARS SHOULD BE NETWORK
+                                measure.vars = patterns('ninit|nfinal|nshared|nlost|ngained')) # convert to long
+    wdpaturnbynetbymodl[, c('var', 'rcp', 'model') := tstrsplit(variable, "\\.", fixed = FALSE)][, variable := NULL] # extract rcp and GMC number from the col name
+    wdpaturnbynetbymodl <- dcast(wdpaturnbynetbymodl, lat + rcp + model ~ var) # group ninit -> nshared as separate columns
+    
+    # calculate means within models/rcps (across regions)
+    means <- wdpaturnbyMPAbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
+                                 by=c('rcp', 'model')] 
+    
+    # calculate network means within models/rcps
+    means.net <- wdpaturnbynetbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
+                                 by=c('rcp', 'model')] 
+    
+    # calculate means within models/rcps for individual MPAs in the networks
+    means.net.indiv <- wdpaturnbyMPAbymodl[!is.na(network), .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
+                                 by=c('rcp', 'model')] 
+    
+    # combine network and individual MPA results
+    means.net$type <- 'net'
+    means.net.indiv$type <- 'ind'
+    means.net <- rbind(means.net, means.net.indiv)
 
-# calculate means for individual MPAs within regions/models/rcps
-means.reg <- with(wdpaturnbyMPAbymod, aggregate(list(flost=flost, fgainedalt=fgainedalt, beta_sor=beta_sor), by=list(rcp=rcp, model=model, region=region), FUN=mean, na.rm=TRUE)) # mean across MPAs within climate models
-
-# calculate network means within models/rcps
-means.net <- with(wdpaturnbynetbymod, aggregate(list(flost=flost, fgainedalt=fgainedalt, beta_sor=beta_sor), by=list(rcp=rcp, model=model), FUN=mean, na.rm=TRUE))
-
-# calculate means within models/rcps for individual MPAs in the networks
-means.net.indiv <- with(wdpaturnbyMPAbymod[!is.na(wdpaturnbyMPAbymod$network),], aggregate(list(flost=flost, fgainedalt=fgainedalt, beta_sor=beta_sor), by=list(rcp=rcp, model=model), FUN=mean, na.rm=TRUE)) # mean 
-
-# combine network and individual MPA results
-means.net$type <- 'Netwk'
-means.net.indiv$type <- 'Indiv'
-means.net <- rbind(means.net, means.net.indiv)
-
+# Statistics
 	# means and SE
-	aggregate(list(flost=means.net$flost, fgained=means.net$fgainedalt, beta_sor=means.net$beta_sor), by=list(rcp=means.net$rcp, type=means.net$type), FUN=mean)
-	aggregate(list(flost=means.net$flost, fgained=means.net$fgainedalt, beta_sor=means.net$beta_sor), by=list(rcp=means.net$rcp, type=means.net$type), FUN=se)
-
-# statistical test of individual MPA turnover vs. network turnover
-	# prep
-means.MPA.acrossmods <- with(wdpaturnbyMPAbymod[!is.na(wdpaturnbyMPAbymod$network),], aggregate(list(flost=flost, fgainedalt=fgainedalt, beta_sor=beta_sor), by=list(wdpapolyID=wdpapolyID), FUN=mean, na.rm=TRUE)) # mean across climate models and RCP for each MPA
-means.net.acrossmods <- with(wdpaturnbynetbymod, aggregate(list(flost=flost, fgainedalt=fgainedalt, beta_sor=beta_sor), by=list(network=network), FUN=mean, na.rm=TRUE)) # mean across climate models and RCP for each network
+	means.net[, .(flost = mean(flost), flost.se = se(flost), fgained = mean(fgained), fgained.se = se(fgained), 
+	              beta_sor = mean(beta_sor), beta_sor.se = se(beta_sor)), 
+	           by = c('type', 'rcp')]
 	
-	# sample sizes
-	nrow(means.MPA.acrossmods)
-	nrow(means.net.acrossmods)
-	
-	#the test
-	t.test(means.MPA.acrossmods$beta_sor, means.net.acrossmods$beta_sor) # not appropriate since response variable 0-1
-	wilcox.test(means.MPA.acrossmods$beta_sor, means.net.acrossmods$beta_sor) # non-parametric
+	# test
+	t.test(means.net[type == 'ind', beta_sor], means.net[type == 'net', beta_sor]) # parametric
+	wilcox.test(means.net[type == 'ind', beta_sor], means.net[type == 'net', beta_sor]) # non-parametric
 
 
-# plot of mean MPA change and network change
+# Plot of mean MPA change and network change
+	cols <- list(c('#67a9cf','white','black','#2166ac'), c('#ef8a62', 'white','black','#b2182b')) # colors from Colorbrewer2 7-class RdBu
 	# quartz(width=8.7/2.54,height=8.7/2.54)
-	pdf(width=8.7/2.54,height=8.7/2.54, file='cmsp_figures/MPA_turnover_by_region.pdf')
+	pdf(width=8.7/2.54, height=8.7/2.54, file='figures/Fig2_MPA_turnover.pdf')
 
-	par(mfrow=c(2,2), las=2, mai=c(0.5,0.4,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.4,0), tcl=-0.2, cex.axis=0.8)
+	par(mfrow=c(2,2), las=2, mai=c(0.5,0.45,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.4,0), tcl=-0.2, cex.axis=0.8)
 
-	beanplot(flost ~ rcp+region, data=means.reg, what=c(0,1,1,0), side='both', col=cols, border=NA, wd=0.18, names=regsnice, ylim=c(0,1), cut=0.01, ylab='Fraction lost') # flost
-	mtext(side=3, text='a)', adj=0.05, line=-1, las=1, cex=0.7)
-	abline(h=mean(means$flost[means$rcp==45]), col=cols[[1]][4], lty=3)
-	abline(h=mean(means$flost[means$rcp==85]), col=cols[[2]][4], lty=3)
+	beanplot(flost ~ rcp + type, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+	         names = c('Individual', 'Network'), las = 1,
+	         at = c(1, 3), log = "", ylim = c(0, 0.5), xlim = c(0, 4), cut = 0.01, ylab = 'Fraction lost')
+	mtext(side = 3, text = 'a)', adj = 0.05, line = -1, las = 1, cex = 1)
 
-	beanplot(fgainedalt ~ rcp+region, data=means.reg, what=c(0,1,1,0), side='both', col=cols, border=NA, wd=0.18, names=regsnice, ylim=c(0,1), log='', cut=0.01, ylab='Fraction gained') # fgained
-	mtext(side=3, text='b)', adj=0.05, line=-1, las=1, cex=0.7)
-	abline(h=mean(means$fgainedalt[means$rcp==45]), col=cols[[1]][4], lty=3)
-	abline(h=mean(means$fgainedalt[means$rcp==85]), col=cols[[2]][4], lty=3)
-
-	beanplot(beta_sor ~ rcp+region, data=means.reg, what=c(0,1,1,0), side='both', col=cols, border=NA, wd=0.15, names=regsnice, ylim=c(0,1), cut=0.01, ylab='Similarity') #similarity
-	mtext(side=3, text='c)', adj=0.05, line=-1, las=1, cex=0.7)
-	abline(h=mean(means$beta_sor[means$rcp==45]), col=cols[[1]][4], lty=3)
-	abline(h=mean(means$beta_sor[means$rcp==85]), col=cols[[2]][4], lty=3)
-
-
-	beanplot(flost ~ rcp+type, data=means.net, what=c(0,1,1,0), at=c(1,2), side='both', col=cols, border=NA, wd=0.1, cut=0.01, ylab='Fraction', xlim=c(0.5,6.5), ylim=c(0,1)) #similarity
-	beanplot(fgainedalt ~ rcp+type, data=means.net, what=c(0,1,1,0), at=c(3,4), side='both', col=cols, border=NA, wd=0.08, cut=0.01, add=TRUE) #similarity
-	beanplot(beta_sor ~ rcp+type, data=means.net, what=c(0,1,1,0), at=c(5,6), side='both', col=cols, border=NA, wd=0.1, cut=0.01, add=TRUE) #similarity
-	mtext(side=3, text='d)', adj=0.05, line=-1, las=1, cex=0.7)
-
-	mtext(side=1, text='Lost', adj=0.12, line=2.1, las=1, cex=0.7)
-	mtext(side=1, text='Gained', adj=0.5, line=2.1, las=1, cex=0.7)
-	mtext(side=1, text='Sim.', adj=0.9, line=2.1, las=1, cex=0.7)
+	beanplot(fgained ~ rcp + type, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+	         names = c('Individual', 'Network'), las = 1,
+	         at = c(1, 3.2), log = "", ylim = c(0, 0.6), xlim = c(0, 4.5), cut = 0.01, ylab = 'Fraction gained')
+	mtext(side = 3, text = 'b)', adj = 0.05, line = -1, las = 1, cex = 1)
+	
+	beanplot(beta_sor ~ rcp + type, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+	         names = c('Individual', 'Network'), las = 1,
+	         at = c(1, 3), log = "", ylim = c(0, 1), xlim = c(0, 4), cut = 0.01, ylab = 'Similarity') # flost
+	mtext(side = 3, text = 'c)', adj = 0.05, line = -1, las = 1, cex = 1)
+	
+	plot(1, 1, bty = 'n', xaxt = 'n', yaxt = 'n', col = 'white', xlab = '', ylab = '')
+	legend('center', legend = c('2.6', '8.5'), title = 'RCP', col = c(cols[[1]][1], cols[[2]][1]), lty = 1, lwd = 10, bty = 'n')
 	
 	dev.off()
 	
@@ -402,6 +382,7 @@ round(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'go
 
 round(rowMeans(mathist[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')]),2)
 round(rowMeans(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')]),2)
+
 
 
 #####################
