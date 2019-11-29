@@ -53,67 +53,74 @@ se <- function(x,na.rm=FALSE){ # standard error
 	}
 }
 
+# round x to nearest value in y
+roundto <- function(x, y){
+    nearest <- sapply(x, FUN = function(a, b) return(b[which.min(abs(a-b))]), b = y)
+    return(nearest)
+}
+
 #########################
 ## Study regions maps
 #########################
-# where to get the Morley et al. 2018 SODA climatology?
-#clim <- read.csv('data/climGrid.csv')
+# climatology from Morley et al. 2018
+clim <- fread('gunzip -c output/climatology.csv.gz', drop = 1)
 
-# set regions and expansion for dots
-regs <- c('AFSC_EBS', 'AFSC_Aleutians', 'AFSC_GOA', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'NEFSC_NEUSSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'DFO_NewfoundlandFall')
-cexs <- c(0.3, 0.12, 0.15, 0.6, 0.5, 0.3, 0.35, 0.6, 0.2)
-regsnice = c('Eastern Bering Sea', 'Aleutian Islands', 'Gulf of Alaska', 'West Coast U.S.', 'Gulf of Mexico', 'Northeast U.S.', 'Scotian Shelf', 'So. Gulf of St. Lawrence', 'Newfoundland')
-regsniceabbrev = c('(EBS)', '(AI)', '(GoA)', '(WC)', '(GoM)', '(Neast)', '(SS)', '(SGoSL)', '(Newf)')
+# region definitions
+regiongrid <- fread(cmd = 'gunzip -c output/region_grid.csv.gz', drop = 1)
+
+# merge regions and climatology
+clim[, latgrid := roundto(latClimgrid, regiongrid$latgrid)]
+clim[, longrid := roundto(lonClimgrid, regiongrid$longrid)]
+clim <- merge(clim, regiongrid, by = c('latgrid', 'longrid'))
+
+# set regions and params for each
+regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
+cexs <- c(ebs = 0.3, goa = 0.3, bc = 0.5, wc = 0.35, gmex = 0.33, seus = 0.4, neus = 0.3, maritime = 0.25, newf = 0.13)
+regsnice = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
+regsniceabbrev = c('(ebs)', '(goa)', '(bc)', '(wc)', '(gmex)', '(seus)', '(neus)', '(mar)', '(newf)')
 ylabs = c('Latitude (°N)', '', '', '', 'Latitude (°N)', '', '', 'Latitude (°N)', '')
 xlabs = c('', '', '', 'Longitude (°E)', '', '', 'Longitude (°E)', 'Longitude (°E)', 'Longitude (°E)')
-ylims = list(ebs = c(54,62.5), al = c(50, 57), goa = c(50, 65), wc = c(32.2, 48.5), gom = c(25.5,30.5), ne = c(33, 45), ss = c(41, 48), sl = c(45.5, 49.5), nf = c(42, 62))
-xlims = list(ebs = c(-179.5,-154), al = c(169, 198), goa = c(-171, -132), wc = c(-126.5, -117), gom = c(-97.5,-86.5), ne = c(-77, -64.5), ss = c(-69, -56), sl = c(-66, -60), nf = c(-65, -43))
-pos <- c('right', 'right', 'right', 'left', 'right', 'right', 'right', 'left', 'right')
+ylims = list(ebs = c(51,62.5), goa = c(54, 61), bc = c(48, 54), wc = c(32.2, 48.5), gmex = c(24,30.5), seus = c(25, 35.5), neus = c(35, 45), maritime = c(41, 52), newf = c(42, 62))
+xlims = list(ebs = c(-179.5,-155), goa = c(-156, -133), bc = c(-136, -122), wc = c(-126.5, -117), gmex = c(-97.5,-81), seus = c(-82, -74), neus = c(-76.5, -66), maritime = c(-69, -53), newf = c(-68, -43))
+pos <- c(ebs = 'right', goa = 'left', bc = 'left', wc = 'left', gmex = 'left', seus = 'right', neus = 'right', maritime = 'right', newf = 'left')
 bcol <- 'dark grey' # background color
 yfrac <- c(0.1, 0.1, 0.1, 0.05, 0.1, 0.1, 0.1, 0.1, 0.1) # fraction of plot from the bottom that the temperature ranges are written
+mfgs <- list(ebs = c(1,2), goa = c(1,3), bc = c(2,1), wc = c(1,4), gmex = c(2,2), seus = c(2,3), neus = c(3,1), maritime = c(3,2), newf = c(3,3)) # plot coordinates for each region
 
-# trim to these regions
-clim <- droplevels(clim[clim$region %in% regs,])
-
-# convert a version to lon to -180 to 180
-clim2 <- clim
-clim2$lon[clim2$lon>180] <- clim2$lon[clim2$lon>180] - 360
+# convert a version of lon to -360 to 0 and another to 0 to 360
+clim[, longrid2 := longrid]
+clim[longrid > 0, longrid2 := longrid - 360]
+clim[, longrid3 := longrid]
+clim[longrid < 0, longrid3 := longrid + 360]
 
 # plot map
 	colfun <- colorRamp(colors = c('blue', 'white', 'red'))
 	
 	# quartz(width=8.7/2.54,height=6/2.54)
-	pdf(width=8.7/2.54,height=6/2.54, file=paste('cmsp_figures/study_regions_w_BT_HiRes.pdf', sep=''))
+	pdf(width=8.7/2.54,height=6/2.54, file=paste('figures/Fig1_study_regions.pdf', sep=''))
 	par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.15, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
 	layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
 
 	# Add continent-scale map
-	with(clim[!is.na(clim$bottemp.clim.int),], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=0.1, xlab='', ylab='', main='', xaxt='n', xlim=c(170,320)))
+	clim[!is.na(sbt), plot(1, 1, xlab='', ylab='', main='', xaxt='n', xlim = c(178,310), ylim = c(24, 62))]
 	axis(1, mgp=c(1.2, 0.02, 0), at=c(200,250,300), labels=c(-160, -110, -60))
-	map('world2Hires', add=TRUE, xlim=c(170,320), col=bcol, lwd=0.2, resolution=0, fill=FALSE, wrap=TRUE) # annoying that turning fill=TRUE also draw big horizontal lines across the map
-	addtemps(clim$bottemp.clim.int[!is.na(clim$bottemp.clim.int)], 'left')
+	map('world2Hires', add=TRUE, xlim=c(170,320), col=bcol, lwd=0.2, resolution=0, fill=FALSE, wrap=TRUE) # annoying that turning fill=TRUE also draws big horizontal lines across the map
+	clim[!is.na(sbt), points(longrid3, latgrid, col=convcol(sbt, colfun), pch=15, cex=0.1)]
+	addtemps(clim[!is.na(sbt), sbt], 'left')
 
 	# Add each region
 	for(i in 1:length(regs)){
-		inds <- clim2$region==regs[i] & !is.na(clim2$bottemp.clim.int)
-		if(regs[i] =='AFSC_Aleutians'){
-			with(clim[inds,], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=cexs[i], xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1))
-			axis(1, mgp=c(1.2, 0.02, 0), at=seq(170,195,by=5), labels=c('170', '', '180', '', '-170', ''))
-			map('world2Hires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0, xlim=xlims[[i]], wrap=TRUE, ylim=c(60,70)) # only plot the upper part, since strange lines draw horizontally if we draw lower down
-			mymap <- map('world2Hires', plot=FALSE, resolution=0, xlim=xlims[[i]], ylim=c(40,60)) # draw in the islands separately. Can't do this for the whole plot because it plots Alaska and Russia inside out (colors outside the polygons)
-			polygon(mymap, col=bcol, border=NA)
-			addtemps(clim$bottemp.clim.int[inds], pos[i])
-		}else{
-			with(clim2[inds,], plot(lon, lat, col=convcol(bottemp.clim.int, colfun), pch=15, cex=cexs[i], xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', asp=1))
-			axis(1, mgp=c(1.2, 0.02, 0))
-			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0)
-			addtemps(clim$bottemp.clim.int[inds], pos[i], yfrac[i])
-		}
+	    #par(mfg = mfgs[[i]])
+		inds <- clim[, region==regs[i] & !is.na(sbt)]
+		clim[inds, plot(longrid, latgrid, col = convcol(sbt, colfun), pch = 15, cex = cexs[i], xlab = '', ylab = '', xlim = xlims[[i]], ylim = ylims[[i]], 
+		                main = paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n')]
+		axis(1, mgp=c(1.2, 0.02, 0))
+		map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0)
+		addtemps(clim[inds, sbt], pos[i], yfrac[i])
 	}
 	mtext('Longitude (°E)', side=1, outer=TRUE, cex=0.5)
 	mtext('Latitude (°N)', side=2, outer=TRUE, cex=0.5, las=0, line=0.3)
 
-	
 	dev.off()
 	
 
@@ -195,53 +202,52 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
 ####################################################################
 # Compare the planning approaches against each climate projection
 ####################################################################
-goalsmetbymod1out <- read.csv('output/goalsmetbymod_fitallreg_xreg_cmsphistonly_all.csv', row.names=1)
-goalsmetbymod2out <- read.csv('output/goalsmetbymod_fitallreg_xreg_cmsp2per_all.csv', row.names=1)
+goalsmetbymod1 <- fread('output/goalsmetbymod_hist_all.csv', drop = 1)
+goalsmetbymod2 <- fread('output/goalsmetbymod_2per_all.csv', drop = 1)
+setkey(goalsmetbymod1, 'region', 'rcp', 'model', 'year_range')
+setkey(goalsmetbymod2, 'region', 'rcp', 'model', 'year_range')
+goalsmetbymod1[, type := 'hist']
+goalsmetbymod2[, type := '2per']
+goalsmetbymod <- rbind(goalsmetbymod1, goalsmetbymod2)
 
+myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
+regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
+mods <- sort(unique(goalsmetbymod1$model))
+rcps <- sort(unique(goalsmetbymod1$rcp))
 
-myregs <- c('AFSC_EBS', 'AFSC_Aleutians', 'AFSC_GOA', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'NEFSC_NEUSSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'DFO_NewfoundlandFall')
-regnames = c('Eastern Bering Sea', 'Aleutian Islands', 'Gulf of Alaska', 'West Coast U.S.', 'Gulf of Mexico', 'Northeast U.S.', 'Scotian Shelf', 'So. Gulf of St. Lawrence', 'Newfoundland')
-mods <- sort(unique(goalsmetbymod1out$model))
-rcps <- sort(unique(goalsmetbymod1out$rcp))
+# Statistics
+	# goals met, end of century
+	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), se = se(pmet), meanstrict = mean(pmetstrict), sestrict = se(pmetstrict)), by = c('rcp', 'type')] # mean and se across models and goals
+	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), meanstrict = mean(pmetstrict)), by = c('model', 'rcp', 'type')][, .(mean = mean(mean), se = se(mean), meanstrict = mean(meanstrict), sestrict = se(meanstrict)), by = c('rcp', 'type')] # meana dn se across mean within models
 
-# summaries
-		# goals met under histonly
-	with(goalsmetbymod1out, mean(pmet[period=='2081-2100'])) # mean
-	with(goalsmetbymod1out, se(aggregate(pmet[period=='2081-2100'], by=list(model=model[period=='2081-2100'], rcp=rcp[period=='2081-2100']), FUN=mean)$x)) # se
+	# goals met by region
+	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), meanstrict = mean(pmetstrict)), by= c('region', 'type')] # mean (across rcps and GCMs)
+	goalsmetbymod[year_range == '2081-2100', .(mean=mean(pmet), meanstrict = mean(pmetstrict)), 
+	              by= c('region', 'model')][, .(mean = mean(mean), se = se(mean), meanstrict = mean(meanstrict), 
+	                                                   sestrict = se(meanstrict)), by = 'region'] # mean and se across models within regions
 
-		# goals met under 2per
-	with(goalsmetbymod2out, mean(pmet[period=='2081-2100']))
-	with(goalsmetbymod2out, se(aggregate(pmet[period=='2081-2100'], by=list(model=model[period=='2081-2100'], rcp=rcp[period=='2081-2100']), FUN=mean)$x)) # se
-
-		# goals met under histonly by region
-	with(goalsmetbymod1out, aggregate(list(pmet_mean = pmet[period=='2081-2100']), by=list(region=region[period=='2081-2100']), FUN=mean)) # mean
-		temp<- with(goalsmetbymod1out, aggregate(list(pmet=pmet[period=='2081-2100']), by=list(region=region[period=='2081-2100'], model=model[period=='2081-2100'], rcp=rcp[period=='2081-2100']), FUN=mean)) 
-	aggregate(list(pmet_se=temp$pmet), by=list(region=temp$region), FUN=se) # se
-
-		# goals met under 2per
-	with(goalsmetbymod2out, aggregate(list(pmet_mean=pmet[period=='2081-2100']), by=list(region=region[period=='2081-2100']), FUN=mean)) # mean
-		temp<- with(goalsmetbymod2out, aggregate(list(pmet=pmet[period=='2081-2100']), by=list(region=region[period=='2081-2100'], model=model[period=='2081-2100'], rcp=rcp[period=='2081-2100']), FUN=mean)) 
-	aggregate(list(pmet_se=temp$pmet), by=list(region=temp$region), FUN=se) # se
-
+    # tests
+    all.equal(goalsmetbymod1[, .(region, rcp, model, year_range)], goalsmetbymod2[, .(region, rcp, model, year_range)]) # make sure ordered the same way
+	t.test(goalsmetbymod1[, pmetstrict],goalsmetbymod2[, pmetstrict], paired = TRUE)
+	wilcox.test(goalsmetbymod1[, pmetstrict],goalsmetbymod2[, pmetstrict], paired = TRUE)
 	
-# plot %goals met (solution #1 and #2)
+# Plot %goals met (hist and 2per solution)
 	colmat <- t(col2rgb(brewer.pal(6, 'PuOr'))) # dark red for histonly average, medium red for rcp85, and light red for rcp 45. dark blue for 2per average, medium blue for rcp85, and light blue for rcp45.
 	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
 	yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 	xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
-#	outfile <- paste('cmsp_figures/MarZone_allregs_goalsmetbymod_forfigure_w2006.pdf') # with 2006,1
-	outfile <- paste('cmsp_figures/MarZone_allregs_goalsmetbymod_forfigure.pdf') # without
+	outfile <- 'figures/Fig3_prioritizr_goalsmetbymod.pdf'
 		outfile
-	ylims <- c(0.3,1)
+	ylims <- c(0,1)
 
 	# quartz(width=8.7/2.54, height=8.7/2.54)
 	pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
-	par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.ax=0.6, tcl=-0.3, mgp=c(2,0.7,0))
+	par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.3, mgp=c(2,0.7,0))
 
-	for(i in 1:length(myregs)){ # for each region
-		inds <- goalsmetbymod1out$model == mods[1] & goalsmetbymod1out$rcp == rcps[1] & goalsmetbymod1out$region==myregs[i] & !(goalsmetbymod1out$period == '2006-2020')
-#		plot(c(2006, goalsmetbymod1out$mid[inds]), c(1, goalsmetbymod1out$pmet[inds]), xlab='', ylab='', ylim=ylims, xlim=c(2020,2090), type='l', pch=16, las=1, col=cols[3], main=regnames[i], yaxt='n', xaxt='n')  # with 2006,1
-		plot(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], xlab='', ylab='', ylim=ylims, xlim=c(2020,2090), type='l', pch=16, las=1, col=cols[3], main=regnames[i], yaxt='n', xaxt='n') # without
+	for (i in 1:length(myregs)) { # for each region
+		goalsmetbymod1[model == mods[1] & rcp == rcps[1] & region==myregs[i] & year_range != '2006-2020', 
+		               plot(mid, pmetstrict, xlab='', ylab='', ylim=ylims, xlim=c(2020,2090), type='l', pch=16, las=1, col=cols[3], 
+		                    main=regnames[i], yaxt='n', xaxt='n')]
 		
 		if(yaxts[i]=='s'){
 			axis(2, mgp=c(2,0.6,0))
@@ -259,9 +265,8 @@ rcps <- sort(unique(goalsmetbymod1out$rcp))
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
 				if(!(k==1 & j==1)){
-					inds <- goalsmetbymod1out$model == mods[k] & goalsmetbymod1out$rcp == rcps[j] & goalsmetbymod1out$region==myregs[i] & !(goalsmetbymod1out$period == '2006-2020')
-#					points(c(2006, goalsmetbymod1out$mid[inds]), c(1,goalsmetbymod1out$pmet[inds]), type='l', pch=16, col=cols[4-j]) # with 2006,1
-					points(goalsmetbymod1out$mid[inds], goalsmetbymod1out$pmet[inds], type='l', pch=16, col=cols[4-j])
+					goalsmetbymod1[model == mods[k] & rcp == rcps[j] & region==myregs[i] & year_range != '2006-2020', 
+					               points(mid, pmetstrict, type='l', pch=16, col=cols[4-j])]
 				}
 			}
 		}
@@ -269,22 +274,14 @@ rcps <- sort(unique(goalsmetbymod1out$rcp))
 		# plot 2per
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
-				inds <- goalsmetbymod2out$model == mods[k] & goalsmetbymod2out$rcp == rcps[j] & goalsmetbymod2out$region==myregs[i]  & !(goalsmetbymod2out$period == '2006-2020')
-	#				points(c(2006, goalsmetbymod2out$mid[inds]), c(1, goalsmetbymod2out$pmet[inds]), type='l', pch=16, col=cols[3+j]) # with 2006,1
-				points(goalsmetbymod2out$mid[inds], goalsmetbymod2out$pmet[inds], type='l', pch=16, col=cols[3+j]) # without
+				goalsmetbymod2[model == mods[k] & rcp == rcps[j] & region==myregs[i]  & year_range != '2006-2020', 
+				               points(mid, pmetstrict, type='l', pch=16, col=cols[3+j])]
 			}	
 		}
 
 		# average lines
-		inds <- goalsmetbymod1out$region==myregs[i] & !(goalsmetbymod1out$period == '2006-2020')
-		ensmean <- aggregate(list(nmet=goalsmetbymod1out$nmet[inds], pmet=goalsmetbymod1out$pmet[inds]), by=list(mid=goalsmetbymod1out$mid[inds]), FUN=mean)
-#		lines(c(2006, ensmean$mid), c(1, ensmean$pmet), col=cols[1], lwd=2) # with 2006,1
-		lines(ensmean$mid, ensmean$pmet, col=cols[1], lwd=2)
-
-		inds <- goalsmetbymod2out$region==myregs[i] & !(goalsmetbymod2out$period == '2006-2020')
-		ensmean2 <- aggregate(list(nmet=goalsmetbymod2out$nmet[inds], pmet=goalsmetbymod2out$pmet[inds]), by=list(mid=goalsmetbymod2out$mid[inds]), FUN=mean)
-#		lines(c(2006, ensmean2$mid), c(1, ensmean2$pmet), col=cols[6], lwd=2) # with 2006,1
-		lines(ensmean2$mid, ensmean2$pmet, col=cols[6], lwd=2)
+	    goalsmetbymod1[region==myregs[i] & year_range != '2006-2020', .(pmet=mean(pmetstrict)), by= 'mid'][, lines(mid, pmet, col=cols[1], lwd=2)]
+	    goalsmetbymod2[region==myregs[i] & year_range != '2006-2020', .(pmet=mean(pmetstrict)), by= 'mid'][, lines(mid, pmet, col=cols[6], lwd=2)]
 	}
 	
 	mtext(side=1,text='Year',line=1.6, outer=TRUE)
@@ -297,48 +294,47 @@ rcps <- sort(unique(goalsmetbymod1out$rcp))
 ###################################
 
 # Read in plans
-marxfolder <- '../MarZone_runs/'
-runname1s <- c('cmsphistonly_neus', 'cmsphistonly_ebs', 'cmsphistonly_newf', 'cmsphistonly_gmex', 'cmsphistonly_scot', 'cmsphistonly_sgulf', 'cmsphistonly_goa', 'cmsphistonly_ai', 'cmsphistonly_wc')
-runname2s <- c('cmsp2per_neus', 'cmsp2per_ebs', 'cmsp2per_newf', 'cmsp2per_gmex', 'cmsp2per_scot', 'cmsp2per_sgulf', 'cmsp2per_goa', 'cmsp2per_ai', 'cmsp2per_wc')
+folder <- 'output/prioritizr_runs'
+runnames <- list.files(path = folder, pattern = 'solution')
 
-outputfolder1s <- paste(marxfolder, runname1s, '_output', sep='')
-outputfolder2s <- paste(marxfolder, runname2s, '_output', sep='')
-consplan1s <- vector('list', length(runname1s))
-for(i in 1:length(consplan1s)){
-	consplan1s[[i]] <- read.csv(paste(outputfolder1s[i], '/', runname1s[i], '_best.csv', sep=''))
-	consplan1s[[i]]$region <- gsub('cmsphistonly_', '', runname1s[i])
+consplans <- vector('list', length(runnames))
+for(i in 1:length(consplans)){
+	consplans[[i]] <- fread(paste0(folder, '/', runnames[i]), drop = 1)
+	consplans[[i]]$region <- gsub('solution_|2per_|hist_|.csv', '', runnames[i])
+	consplans[[i]]$type <- gsub('solution_|_ebs|_goa|_bc|_wc|_gmex|_seus|_neus|_maritime|_newf|.csv', '', runnames[i])
 }
-consplan2s <- vector('list', length(runname2s))
-for(i in 1:length(consplan2s)){
-	consplan2s[[i]] <- read.csv(paste(outputfolder2s[i], '/', runname2s[i], '_best.csv', sep=''))
-	consplan2s[[i]]$region <- gsub('cmsp2per_', '', runname2s[i])
-}
+consplans <- rbindlist(consplans)
+regs <- consplans[, sort(unique(region))]
+
+# add a zone indicator to consplans
+consplans[ , zone := as.numeric(NA)]
+consplans[solution_1_conservation == 1 , zone := 1]
+consplans[solution_1_fishery == 1 , zone := 2]
+consplans[solution_1_energy == 1 , zone := 3]
+consplans[solution_1_conservation ==  0 & solution_1_fishery == 0 & solution_1_energy == 0 , zone := 4]
 
 # Calculate fraction grid cells that change zone
-c1 <- do.call("rbind", consplan1s)
-c2 <- do.call("rbind", consplan2s)
-consplans <- merge(c1, c2, by=c('region', 'planning_unit'), suffixes=c('.histonly', '.2per'))
-consplans$change <- consplans$zone.histonly == consplans$zone.2per
+consplansw <- dcast(consplans, latgrid + longrid + region ~ type, value.var = 'zone')
+consplansw[, change := hist != `2per`]
 
-a <- aggregate(list(nchange = consplans$change), by=list(region=consplans$region), FUN=sum)
-b <- aggregate(list(pchange = consplans$change), by=list(region=consplans$region), FUN=function(x) sum(x)/length(x)); b
-c <- aggregate(list(ntot = consplans$change), by=list(region=consplans$region), FUN=length)
-sum(a$nchange)/sum(c$ntot)
+consplansw[, .(nchange = sum(change), ntot = .N, pchange = sum(change)/.N), by = region] # average in each region
+consplansw[, .(nchange = sum(change), ntot = .N, pchange = sum(change)/.N), 
+           by = region][, .(totpchange = sum(nchange)/sum(ntot), avepchange = mean(nchange/ntot))] # total proportion change, or average proportion across regions
 
 
 # Make matrix of proportion in each zone in each region, for barplot
-mathist <- matrix(rep(NA,4*length(runname1s)), ncol=length(runname1s))
-colnames(mathist) <- sapply(strsplit(runname1s, split='_'), '[[', 2) # note: [[ is to index into the list
-rownames(mathist) <- c('free', 'conservation', 'fishery', 'energy')
+mathist <- matrix(NA, nrow = 4, ncol=length(regs))
+colnames(mathist) <- regs # note: [[ is to index into the list
+rownames(mathist) <- c('conservation', 'fishery', 'energy', 'free')
 mat2per <- mathist
 mathistraw <- mathist
 mat2perraw <- mathist
-for(i in 1:length(runname1s)){
+for(i in 1:length(regs)){
 	for(j in 1:4){
-		mathist[j,i] <- sum(consplan1s[[i]]$zone==j)/nrow(consplan1s[[i]])
-		mat2per[j,i] <- sum(consplan2s[[i]]$zone==j)/nrow(consplan2s[[i]])
-		mathistraw[j,i] <- sum(consplan1s[[i]]$zone==j)
-		mat2perraw[j,i] <- sum(consplan2s[[i]]$zone==j)
+		mathist[j,i] <- consplansw[region == regs[i], sum(hist == j)/.N]
+		mat2per[j,i] <- consplansw[region == regs[i], sum(`2per` == j)/.N]
+		mathistraw[j,i] <- consplansw[region == regs[i], sum(hist == j)]
+		mat2perraw[j,i] <- consplansw[region == regs[i], sum(`2per` == j)]
 	}
 }
 	colSums(mathist)
@@ -349,9 +345,9 @@ for(i in 1:length(runname1s)){
 l <- list(mathist=mathist, mat2per=mat2per)
 mat <- do.call(cbind, l)[,order(sequence(sapply(l, ncol)))]
 
-# change in zones
-mat2perraw - mathistraw
-round(mat2per - mathist,3)
+# change in zones: 2per - hist
+mat2perraw - mathistraw # number
+round(mat2per - mathist,3) # fraction
 
 # modify to trick barplot into letting me use 8 colors instead of 4
 # see http://r.789695.n4.nabble.com/barplot-colors-td4662538.html
@@ -361,17 +357,25 @@ for(i in seq(3,ncol(mat),by=2)){
 }
 
 # plot
-regnames = c('EBS', 'AI', 'GoA', 'WC', 'GoM', 'Neast', 'SS', 'SGoSL', 'Newf')
+regnames = c('EBS', 'GoA', 'BC', 'WC', 'GMex', 'SEUS', 'NEUS', 'Maritime', 'Newf')
 cols <- brewer.pal(8, 'RdYlBu')
 cols <- cols[c(1:4, 8:5)]
 
 # quartz(width=8.7/2.54, height=5/2.54)
-pdf(width=8.7/2.54, height=5/2.54, file='cmsp_figures/MarZone_plans.pdf')
-par(mai=c(0.6, 0.6, 0.2, 0.1), mgp=c(1.8, 0.4, 0), tcl=-0.3, las=1, cex.axis=0.8)
-barplot(height=matmod, space=rep(c(1,0), ncol(mathist)), xaxt='n', col=cols, ylab='Proportion', xlim=c(1.5,37))
-axis(1, at=seq(2,26,by=3), labels=regnames, cex.axis=0.8, las=2, mgp=c(1.8, 0.5, 0))
-legend(x=28.5, y=1, fill=cols[4:1], legend=c('Energy', 'Fishing', 'Conservation','Free'), cex=0.5, bty='n')
-legend(x=27, y=1, fill=cols[8:5], legend=rep("",4), cex=0.5, bty='n')
+pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig4_planareas.pdf')
+par(mfrow = c(2, 1), mai=c(0.2, 0.75, 0.1, 0.1), mgp=c(1.8, 0.4, 0), tcl=-0.2, las=1, cex.axis=0.8)
+barplot(height=matmod, space=rep(c(1,0), ncol(mathist)), xaxt='n', col=cols, ylab='Proportion', xlim=c(1.5,40))
+axis(1, at=seq(2,26,by=3), labels=NA, cex.axis=0.8, las=2, mgp=c(1.8, 0.5, 0))
+legend(x=28.5, y=1, fill=cols[8:5], legend=c('Free', 'Energy', 'Fishing', 'Conservation'), cex=0.5, bty='n')
+legend(x=27, y=1, fill=cols[4:1], legend=rep("",4), cex=0.5, bty='n')
+
+par(mai=c(0.8, 0.75, 0.05, 0.1), mgp = c(1.8, 0.4, 0))
+consplansw[, .(pchange = sum(change)/.N), 
+           by = region][, barplot(height = pchange, space = 2, xaxt = 'n', yaxt = 'n', col = 'black', 
+                                  ylab = 'Proportion\nchanged', xlim = c(2,40), ylim = c(0, 0.35))]
+axis(1, at = seq(2.5,26.5,by=3), labels=regnames, cex.axis=0.8, las=2, mgp=c(1.8, 0.5, 0))
+axis(2, at = seq(0, 0.3, by = 0.1))
+
 
 dev.off()
 
