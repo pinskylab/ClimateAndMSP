@@ -304,7 +304,7 @@ for(i in 1:length(consplans)){
 	consplans[[i]]$type <- gsub('solution_|_ebs|_goa|_bc|_wc|_gmex|_seus|_neus|_maritime|_newf|.csv', '', runnames[i])
 }
 consplans <- rbindlist(consplans)
-regs <- consplans[, sort(unique(region))]
+regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf') # set the order
 
 # add a zone indicator to consplans
 consplans[ , zone := as.numeric(NA)]
@@ -324,7 +324,7 @@ consplansw[, .(nchange = sum(change), ntot = .N, pchange = sum(change)/.N),
 
 # Make matrix of proportion in each zone in each region, for barplot
 mathist <- matrix(NA, nrow = 4, ncol=length(regs))
-colnames(mathist) <- regs # note: [[ is to index into the list
+colnames(mathist) <- regs
 rownames(mathist) <- c('conservation', 'fishery', 'energy', 'free')
 mat2per <- mathist
 mathistraw <- mathist
