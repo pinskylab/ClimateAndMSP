@@ -238,15 +238,15 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 	xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
 	outfile <- 'figures/Fig3_prioritizr_goalsmetbymod.pdf'
 		outfile
-	ylims <- c(0,1)
+	ylims <- c(0, 1)
 
 	# quartz(width=8.7/2.54, height=8.7/2.54)
 	pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
 	par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.3, mgp=c(2,0.7,0))
 
 	for (i in 1:length(myregs)) { # for each region
-		goalsmetbymod1[model == mods[1] & rcp == rcps[1] & region==myregs[i] & year_range != '2006-2020', 
-		               plot(mid, pmetstrict, xlab='', ylab='', ylim=ylims, xlim=c(2020,2090), type='l', pch=16, las=1, col=cols[3], 
+		goalsmetbymod1[model == mods[1] & rcp == rcps[1] & region==myregs[i] & year_range != '2007-2020', 
+		               plot(mid, pmetstrict, xlab='', ylab='', ylim=ylims, xlim=c(2030,2090), type='l', pch=16, las=1, col=cols[3], 
 		                    main=regnames[i], yaxt='n', xaxt='n')]
 		
 		if(yaxts[i]=='s'){
@@ -265,7 +265,7 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
 				if(!(k==1 & j==1)){
-					goalsmetbymod1[model == mods[k] & rcp == rcps[j] & region==myregs[i] & year_range != '2006-2020', 
+					goalsmetbymod1[model == mods[k] & rcp == rcps[j] & region==myregs[i] & year_range != '2007-2020', 
 					               points(mid, pmetstrict, type='l', pch=16, col=cols[4-j])]
 				}
 			}
@@ -274,14 +274,14 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 		# plot 2per
 		for(k in 1:length(mods)){
 			for(j in 1:length(rcps)){
-				goalsmetbymod2[model == mods[k] & rcp == rcps[j] & region==myregs[i]  & year_range != '2006-2020', 
+				goalsmetbymod2[model == mods[k] & rcp == rcps[j] & region==myregs[i]  & year_range != '2007-2020', 
 				               points(mid, pmetstrict, type='l', pch=16, col=cols[3+j])]
 			}	
 		}
 
 		# average lines
-	    goalsmetbymod1[region==myregs[i] & year_range != '2006-2020', .(pmet=mean(pmetstrict)), by= 'mid'][, lines(mid, pmet, col=cols[1], lwd=2)]
-	    goalsmetbymod2[region==myregs[i] & year_range != '2006-2020', .(pmet=mean(pmetstrict)), by= 'mid'][, lines(mid, pmet, col=cols[6], lwd=2)]
+	    goalsmetbymod1[region==myregs[i] & year_range != '2007-2020', .(pmet=mean(pmetstrict)), by= 'mid'][, lines(mid, pmet, col=cols[1], lwd=2)]
+	    goalsmetbymod2[region==myregs[i] & year_range != '2007-2020', .(pmet=mean(pmetstrict)), by= 'mid'][, lines(mid, pmet, col=cols[6], lwd=2)]
 	}
 	
 	mtext(side=1,text='Year',line=1.6, outer=TRUE)
