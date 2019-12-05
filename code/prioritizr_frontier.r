@@ -37,9 +37,6 @@ planningperiods <- c('2007-2020', '2081-2100')
 # folders
 prioritizrfolder <- 'output/prioritizr_runs/'
 
-# optimality gap for gurobi solver
-gap <- 0.03
-
 # how many budget levels to examine between 0.1 and 0.9
 nbudget <- 4
 minbudget <- 0.05
@@ -48,13 +45,15 @@ maxbudget <- 0.2
 # how many weights to examine (linear scale)
 nweight <- 11
 minweight <- 0
-maxweight <- 10
+maxweight <- 100
 
 # set output name
 outname <- paste0('temp/frontierall_', format(Sys.time(), "%Y-%m-%d_%H%M%S"), '.csv')
 
-# number of threads
+# optimality gap, number of threads, and time limit for gurobi solver
+gap <- 0.01
 nthread <- 3
+timelimit <- 600 # seconds
 
 ######################
 # Functions
@@ -439,7 +438,7 @@ for (i in 1:length(myregs)) {
 			add_relative_targets(zonetarget) %>%
 			add_feature_weights(wghts) %>%
 			add_binary_decisions() %>%
-			add_gurobi_solver(gap = gap, threads = nthread) #, time_limit = 600)   # 10 minute time limit
+			add_gurobi_solver(gap = gap, threads = nthread, time_limit = timelimit)   # 10 minute time limit
 
 	
 		if(presolve_check(p2)){
@@ -483,16 +482,15 @@ print(Sys.time())
 require(data.table)
 require(ggplot2)
 
-#frontierall <- fread('temp/frontierall_2019-12-03_0200.csv', drop = 1)
-#frontierall <- fread('temp/frontierall_2019-12-03_070705.csv', drop = 1)
-#frontierall <- fread('temp/frontierall_2019-12-03_083602.csv', drop = 1)
+frontierall <- fread(outname, drop = 1)
 setkey(frontierall, region, budget, presweight)
 frontierall[, region := factor(region, levels = c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'))] # set order
 
 # how many not optimal?
 frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N)]
+frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N), by = region]
 
-pdf('temp_figures/prioritizr_frontiers.pdf', height = 6, width = 6)
+pdf('figures/prioritizr_frontiers.pdf', height = 6, width = 6)
 ggplot(frontierall, aes(x = presgoals, y = futgoals, group = budget, color = budget)) +
     geom_path(size = 0.4) +
     geom_point(size = 0.3) +
