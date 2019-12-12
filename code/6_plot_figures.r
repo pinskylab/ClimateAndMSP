@@ -180,23 +180,23 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
 
 	par(mfrow=c(2,2), las=2, mai=c(0.5,0.45,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.4,0), tcl=-0.2, cex.axis=0.8)
 
-	beanplot(flost ~ rcp + type, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-	         names = c('Individual', 'Network'), las = 1,
+	beanplot(flost ~  type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+	         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
 	         at = c(1, 3), log = "", ylim = c(0, 0.5), xlim = c(0, 4), cut = 0.01, ylab = 'Fraction lost')
 	mtext(side = 3, text = 'a)', adj = 0.05, line = -1, las = 1, cex = 1)
 
-	beanplot(fgained ~ rcp + type, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-	         names = c('Individual', 'Network'), las = 1,
+	beanplot(fgained ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+	         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
 	         at = c(1, 3.2), log = "", ylim = c(0, 0.6), xlim = c(0, 4.5), cut = 0.01, ylab = 'Fraction gained')
 	mtext(side = 3, text = 'b)', adj = 0.05, line = -1, las = 1, cex = 1)
 	
-	beanplot(beta_sor ~ rcp + type, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-	         names = c('Individual', 'Network'), las = 1,
-	         at = c(1, 3), log = "", ylim = c(0, 1), xlim = c(0, 4), cut = 0.01, ylab = 'Similarity') # flost
+	beanplot(I(1-beta_sor) ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+	         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
+	         at = c(1, 3), log = "", ylim = c(0, 1), xlim = c(0, 4), cut = 0.01, ylab = 'Dissimilarity') # flost
 	mtext(side = 3, text = 'c)', adj = 0.05, line = -1, las = 1, cex = 1)
 	
 	plot(1, 1, bty = 'n', xaxt = 'n', yaxt = 'n', col = 'white', xlab = '', ylab = '')
-	legend('center', legend = c('2.6', '8.5'), title = 'RCP', col = c(cols[[1]][1], cols[[2]][1]), lty = 1, lwd = 10, bty = 'n')
+	legend('center', legend = c('Individual', 'Network'), title = 'Type', col = c(cols[[1]][1], cols[[2]][1]), lty = 1, lwd = 10, bty = 'n')
 	
 	dev.off()
 	
