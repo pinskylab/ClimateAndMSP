@@ -97,7 +97,8 @@ clim[longrid < 0, longrid3 := longrid + 360]
 	colfun <- colorRamp(colors = c('blue', 'white', 'red'))
 	
 	# quartz(width=8.7/2.54,height=6/2.54)
-	pdf(width=8.7/2.54,height=6/2.54, file=paste('figures/Fig1_study_regions.pdf', sep=''))
+	#pdf(width=8.7/2.54,height=6/2.54, file=paste('figures/Fig1_study_regions.pdf', sep=''))
+	png(width=8.7/2.54, height=6/2.54, units = 'in', res = 300, file='figures/Fig1_study_regions.png')
 	par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.15, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
 	layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
 
@@ -174,7 +175,8 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
 # Plot of mean MPA change and network change
 	cols <- list(c('#67a9cf','white','black','#2166ac'), c('#ef8a62', 'white','black','#b2182b')) # colors from Colorbrewer2 7-class RdBu
 	# quartz(width=8.7/2.54,height=8.7/2.54)
-	pdf(width=8.7/2.54, height=8.7/2.54, file='figures/Fig2_MPA_turnover.pdf')
+	#pdf(width=8.7/2.54, height=8.7/2.54, file='figures/Fig2_MPA_turnover.pdf')
+	png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file='figures/Fig2_MPA_turnover.png')
 
 	par(mfrow=c(2,2), las=2, mai=c(0.5,0.45,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.4,0), tcl=-0.2, cex.axis=0.8)
 
@@ -216,9 +218,12 @@ mods <- sort(unique(goalsmetbymod1$model))
 rcps <- sort(unique(goalsmetbymod1$rcp))
 
 # Statistics
-	# goals met, end of century
-	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), se = se(pmet), meanstrict = mean(pmetstrict), sestrict = se(pmetstrict)), by = c('rcp', 'type')] # mean and se across models and goals
-	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), meanstrict = mean(pmetstrict)), by = c('model', 'rcp', 'type')][, .(mean = mean(mean), se = se(mean), meanstrict = mean(meanstrict), sestrict = se(meanstrict)), by = c('rcp', 'type')] # meana dn se across mean within models
+    # goals met by time, region, and planning type, for plotting
+    summ <- goalsmetbymod[, .(mid = mean(mid), mean = mean(pmetstrict), lb = quantile(pmetstrict, 0.125), ub = quantile(pmetstrict, 0.875)), by = c('year_range', 'region', 'type')] # mean and 95%ci across models and goals
+
+    # goals met, end of century
+	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmetstrict), se = se(pmetstrict)), by = c('rcp', 'type')] # mean and se across models and goals
+	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), meanstrict = mean(pmetstrict)), by = c('model', 'rcp', 'type')][, .(mean = mean(mean), se = se(mean), meanstrict = mean(meanstrict), sestrict = se(meanstrict)), by = c('rcp', 'type')] # mean adn se across mean within models
 
 	# goals met by region
 	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), meanstrict = mean(pmetstrict)), by= c('region', 'type')] # mean (across rcps and GCMs)
@@ -229,25 +234,24 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
     # tests
     all.equal(goalsmetbymod1[, .(region, rcp, model, year_range)], goalsmetbymod2[, .(region, rcp, model, year_range)]) # make sure ordered the same way
 	t.test(goalsmetbymod1[, pmetstrict],goalsmetbymod2[, pmetstrict], paired = TRUE)
-	wilcox.test(goalsmetbymod1[, pmetstrict],goalsmetbymod2[, pmetstrict], paired = TRUE)
+	wilcox.test(goalsmetbymod1[, pmetstrict], goalsmetbymod2[, pmetstrict], paired = TRUE)
 	
 # Plot %goals met (hist and 2per solution)
-	colmat <- t(col2rgb(brewer.pal(6, 'PuOr'))) # dark red for histonly average, medium red for rcp85, and light red for rcp 45. dark blue for 2per average, medium blue for rcp85, and light blue for rcp45.
-	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
+	colmat <- t(col2rgb(brewer.pal(6, 'PuOr')))[c(1,3,5,6),] # dark red for histonly average, light red for CI. dark blue for 2per average, light blue for CI.
+	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,100,255), maxColorValue=255)
 	yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 	xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
-	outfile <- 'figures/Fig3_prioritizr_goalsmetbymod.pdf'
+	outfile <- 'figures/Fig3_prioritizr_goalsmetbymod.png'
 		outfile
 	ylims <- c(0, 1)
 
 	# quartz(width=8.7/2.54, height=8.7/2.54)
-	pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
+	#pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
+	png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file=outfile)
 	par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.3, mgp=c(2,0.7,0))
 
 	for (i in 1:length(myregs)) { # for each region
-		goalsmetbymod1[model == mods[1] & rcp == rcps[1] & region==myregs[i] & year_range != '2007-2020', 
-		               plot(mid, pmetstrict, xlab='', ylab='', ylim=ylims, xlim=c(2030,2090), type='l', pch=16, las=1, col=cols[3], 
-		                    main=regnames[i], yaxt='n', xaxt='n')]
+		plot(0, 0, xlab='', ylab='', ylim=ylims, xlim=c(2030,2090), main=regnames[i], yaxt='n', xaxt='n')
 		
 		if(yaxts[i]=='s'){
 			axis(2, mgp=c(2,0.6,0))
@@ -261,27 +265,14 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 			axis(1, labels=FALSE)
 		}
 
-		# plot histonly
-		for(k in 1:length(mods)){
-			for(j in 1:length(rcps)){
-				if(!(k==1 & j==1)){
-					goalsmetbymod1[model == mods[k] & rcp == rcps[j] & region==myregs[i] & year_range != '2007-2020', 
-					               points(mid, pmetstrict, type='l', pch=16, col=cols[4-j])]
-				}
-			}
-		}
-
-		# plot 2per
-		for(k in 1:length(mods)){
-			for(j in 1:length(rcps)){
-				goalsmetbymod2[model == mods[k] & rcp == rcps[j] & region==myregs[i]  & year_range != '2007-2020', 
-				               points(mid, pmetstrict, type='l', pch=16, col=cols[3+j])]
-			}	
-		}
-
-		# average lines
-	    goalsmetbymod1[region==myregs[i] & year_range != '2007-2020', .(pmet=mean(pmetstrict)), by= 'mid'][, lines(mid, pmet, col=cols[1], lwd=2)]
-	    goalsmetbymod2[region==myregs[i] & year_range != '2007-2020', .(pmet=mean(pmetstrict)), by= 'mid'][, lines(mid, pmet, col=cols[6], lwd=2)]
+		# plot polygons
+	    summ[region==myregs[i] & mid > 2014 & type == 'hist', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[2], border = NA)]
+	    summ[region==myregs[i] & mid > 2014 & type == '2per', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[3], border = NA)]
+	    
+		# plot means
+	    summ[region==myregs[i] & mid > 2014 & type == 'hist', lines(mid, mean, col = cols[1], lwd = 2)]
+	    summ[region==myregs[i] & mid > 2014 & type == '2per', lines(mid, mean, col = cols[4], lwd = 2)]
+	    
 	}
 	
 	mtext(side=1,text='Year',line=1.6, outer=TRUE)
@@ -289,6 +280,7 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 	
 	dev.off()
 	
+
 ###################################
 ## Compare costs for each plan
 ###################################
@@ -362,7 +354,8 @@ cols <- brewer.pal(8, 'RdYlBu')
 cols <- cols[c(1:4, 8:5)]
 
 # quartz(width=8.7/2.54, height=5/2.54)
-pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig4_planareas.pdf')
+#pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig4_planareas.pdf')
+png(width=8.7/2.54, height=10/2.54, units = 'in', res = 300, file='figures/Fig4_planareas.png')
 par(mfrow = c(2, 1), mai=c(0.2, 0.75, 0.1, 0.1), mgp=c(1.8, 0.4, 0), tcl=-0.2, las=1, cex.axis=0.8)
 barplot(height=matmod, space=rep(c(1,0), ncol(mathist)), xaxt='n', col=cols, ylab='Proportion', xlim=c(1.5,40))
 axis(1, at=seq(2,26,by=3), labels=NA, cex.axis=0.8, las=2, mgp=c(1.8, 0.5, 0))
