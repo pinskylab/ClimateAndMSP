@@ -13,7 +13,7 @@
 # will use only the second for the second planning period
 rcps <- c(26, 85)
 
-# choose the climate models to use for future planning (save others for testing)
+# choose the climate models to use for future planning
 #bcc-csm1-1-m, bcc-csm1-1, CanESM2, CCSM4, CESM1-CAM5, CNRM-CM5, GFDL-CM3, GFDL-ESM2M, GFDL-ESM2G, GISS-E2-R, GISS-E2-H, IPSL-CM5A-LR, IPSL-CM5A-MR, MIROC-ESM, MPI-ESM-LR, NorESM1-ME
 gcminds <- c(1, 2, 3, 4, 8, 9, 10, 14) # from running sample(1:16, 8)
 
@@ -28,19 +28,15 @@ oceans <- c('Atl', 'Pac')
 
 # choose region and name these runs
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
-runnames <- paste0('2per_', myregs)
 
 # which time periods to use in the multi-period planning
 # contemporary time period must be in first slot, second time period must be the future
 planningperiods <- c('2007-2020', '2081-2100')
 
-# folders
-prioritizrfolder <- 'output/prioritizr_runs/'
-
-# how many budget levels to examine between 0.1 and 0.9
-nbudget <- 4
-minbudget <- 0.05
-maxbudget <- 0.2
+# how many budget levels to examine
+nbudget <- 7
+minbudget <- 0.3
+maxbudget <- 0.9
 
 # how many weights to examine (linear scale)
 nweight <- 11
@@ -236,9 +232,7 @@ for (i in 1:length(myregs)) {
     	temp1$id = temp1$id + max(spps$id) # make sure the ids don't overlap
     	spps <- rbind(spps, temp1)
 
-    	# write out the species for this region
-#    	write.csv(spps, file = paste0(prioritizrfolder, 'spp_', myregs[i], '.csv'))
-    	
+
     # puvsp
     # which features are in each planning unit
     	# Format conservation data

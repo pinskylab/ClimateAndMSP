@@ -202,7 +202,7 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
 	
 
 ####################################################################
-# Compare the planning approaches against each climate projection
+# Fig 3 Compare the planning approaches against each climate projection
 ####################################################################
 goalsmetbymod1 <- fread('output/goalsmetbymod_hist_all.csv', drop = 1)
 goalsmetbymod2 <- fread('output/goalsmetbymod_2per_all.csv', drop = 1)
@@ -282,7 +282,7 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 	
 
 ###################################
-## Compare costs for each plan
+## Fig 4 Compare costs for each plan
 ###################################
 
 # Read in plans
@@ -379,6 +379,77 @@ round(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'go
 
 round(rowMeans(mathist[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')]),2)
 round(rowMeans(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 'ai', 'goa', 'wc', 'gmex', 'neus', 'scot', 'sgulf', 'newf')]),2)
+
+
+
+########################
+# Plot the prioritiz efficiency frontier
+########################
+
+frontier1 <- fread('temp/frontierall_2019-12-04_060342.csv', drop = 1)
+frontier2 <- fread('temp/frontierall_2019-12-13_063251.csv', drop = 1)
+frontierall <- rbind(frontier1, frontier2)
+
+setkey(frontierall, region, budget, presweight)
+frontierall[, region := factor(region, levels = c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'))] # set order
+
+# how many not optimal?
+frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N), by = region]
+
+# set up goals as a % of total
+frontierall[, ':='(maxpres = max(presgoals), maxfut = max(futgoals)), by = region]
+frontierall[, ':='(presperc = presgoals/maxpres, futperc = futgoals/maxfut)]
+
+# quick plot
+require(ggplot2)
+ggplot(frontierall, aes(x = presperc, y = futperc, group = budget, color = budget)) +
+    geom_path(size = 0.4) +
+    geom_point(size = 0.3) +
+    facet_wrap(~ region, nrow = 3, scales = 'free')
+
+
+# Plot %goals met for each weighting and region
+colmat <- t(col2rgb(brewer.pal(5, 'PuBuGn')))
+cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
+yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
+xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
+myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
+regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
+buds <- sort(unique(frontierall$budget)) # the budgets to plot
+buds <- buds[buds >= 0.5] # trim to budgets > 50% of total
+
+png('figures/prioritizr_frontiers.png', height = 6, width = 6, units = 'in', res = 300)
+par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.3, mgp=c(2,0.7,0))
+
+for (i in 1:length(myregs)) { # for each region
+    xlims <- ylims <- c(frontierall[region == myregs[i] & budget %in% buds, min(c(presperc, futperc))], 1)
+    frontierall[region == myregs[i] & budget == buds[1], plot(presperc, futperc, type = 'o', pch = 16, col = cols[1], xlab='', ylab='', ylim = ylims, xlim = xlims, main=regnames[i], yaxt='n', xaxt='n')]
+    
+    for(j in 2:length(buds)){
+        frontierall[region == myregs[i] & budget == buds[j], lines(presperc, futperc, type = 'o', pch = 16, col = cols[j])]
+    }
+    
+        if(yaxts[i]=='s'){
+        axis(2, mgp=c(2,0.6,0))
+    } else {
+        axis(2, labels=FALSE)
+    }
+    
+    if(xaxts[i]=='s'){
+        axis(1, mgp=c(2,0.5,0))
+    } else {
+        axis(1, labels=FALSE)
+    }
+    
+    
+    
+}
+
+mtext(side=1,text='Year',line=1.6, outer=TRUE)
+mtext(side=2,text='Fraction goals met',line=1.8, outer=TRUE)
+
+dev.off()
+
 
 
 
