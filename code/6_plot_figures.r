@@ -16,6 +16,7 @@ require(raster)
 require(data.table)
 require(beanplot)
 require(RColorBrewer)
+require(ggsci) # for another color palette
 
 convcol <- function(x, colfun){
 	x <- x-min(x) # set min to 0
@@ -59,8 +60,23 @@ roundto <- function(x, y){
     return(nearest)
 }
 
+##############################
+# Useful quantities
+##############################
+
+# number of species and projections 
+presmap1 <- fread(cmd = 'gunzip -c temp/presmap_Atl_rcp26_2007-2020.csv.gz', drop = 1)
+presmap2 <- fread(cmd = 'gunzip -c temp/presmap_Pac_rcp26_2007-2020.csv.gz', drop = 1)
+biomap1 <- fread(cmd = 'gunzip -c temp/biomassmap_Atl_rcp26_2007-2020.csv.gz', drop = 1)
+biomap2 <- fread(cmd = 'gunzip -c temp/biomassmap_Pac_rcp26_2007-2020.csv.gz', drop = 1)
+nspp <- presmap1[, length(unique(spp))] + presmap2[, length(unique(spp))] + biomap1[, length(unique(spp))] + biomap2[, length(unique(spp))]
+nspp # number of species
+16*2*5*nspp # number of projections (16 GCMs, 2 RCPs, 5 time periods for each species)
+
+rm(presmap1, presmap2, biomap1, biomap2)
+
 #########################
-## Study regions maps
+## Fig 1 Study regions maps
 #########################
 # climatology from Morley et al. 2018
 clim <- fread('gunzip -c output/climatology.csv.gz', drop = 1)
@@ -282,7 +298,7 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 	
 
 ###################################
-## Fig 4 Compare costs for each plan
+## Fig 4 Compare area needed for each plan
 ###################################
 
 # Read in plans
@@ -383,22 +399,35 @@ round(rowMeans(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 
 
 
 ########################
-# Plot the prioritiz efficiency frontier
+# Fig. 5 Plot the prioritiz efficiency frontier
 ########################
-
-frontier1 <- fread('temp/frontierall_2019-12-04_060342.csv', drop = 1)
-frontier2 <- fread('temp/frontierall_2019-12-13_063251.csv', drop = 1)
-frontierall <- rbind(frontier1, frontier2)
-
+# read in prioritizr solutions
+frontierall <- fread('temp/frontierall_2019-12-22_071607.csv', drop = 1)
 setkey(frontierall, region, budget, presweight)
+
+# definition of planning features by region
+sppfiles <- list.files(path = 'output/prioritizr_runs/', pattern = 'spp_*', full.names = TRUE)
+spps <- fread(sppfiles[1], drop = 1)
+spps[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[1])]
+for(i in 2:length(sppfiles)){
+    temp <- fread(sppfiles[i], drop = 1)
+    temp[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[i])]
+    spps <- rbind(spps, temp)
+}
+rm(temp)
+ngoals <- spps[name != 'energy', .(ngoals = .N), by = region]
+setkey(ngoals, region)
+
+# set up region order and add ngoals
 frontierall[, region := factor(region, levels = c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'))] # set order
+frontierall <- merge(frontierall, ngoals, by = 'region')
 
 # how many not optimal?
 frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N), by = region]
 
+
 # set up goals as a % of total
-frontierall[, ':='(maxpres = max(presgoals), maxfut = max(futgoals)), by = region]
-frontierall[, ':='(presperc = presgoals/maxpres, futperc = futgoals/maxfut)]
+frontierall[, ':='(presperc = presgoals/ngoals, futperc = futgoals/ngoals)]
 
 # quick plot
 require(ggplot2)
@@ -407,23 +436,31 @@ ggplot(frontierall, aes(x = presperc, y = futperc, group = budget, color = budge
     geom_point(size = 0.3) +
     facet_wrap(~ region, nrow = 3, scales = 'free')
 
+# Drop some non-frontier points (specific to frontierall_2019-12-22_071607.csv)
+frontierall <- frontierall[!(region == 'ebs' & abs(presperc - 0.9101124) < 0.001 & abs(futperc - 0.5730337) < 0.001),]
+frontierall <- frontierall[!(region == 'wc' & abs(presperc - 0.9111111) < 0.001 & abs(futperc == 0.8000000) < 0.001),]
+
 
 # Plot %goals met for each weighting and region
 colmat <- t(col2rgb(brewer.pal(9, 'Set1')))
 cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
+cols <- pal_lancet(alpha = 1)(9)
+
 yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
 regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
 buds <- 0.5 # the budgets to plot
 
-png('figures/prioritizr_frontiers.png', height = 4, width = 4, units = 'in', res = 300)
+png('figures/Fig5_prioritizr_frontiers.png', height = 4, width = 4, units = 'in', res = 300)
 par(mfrow=c(1,1), mai=c(0.7, 0.7, 0.2, 0.05), omi=c(0, 0, 0, 0), cex.main = 1, cex.axis = 0.8, tcl = -0.3, mgp=c(2,0.5,0))
 
-plot(0, 0, type = 'o', pch = 16, col = 'white', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.3, 1), xlim = c(0.3, 1), main='')
+plot(0, 0, type = 'o', pch = 16, col = 'white', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
 for (i in 1:length(myregs)) { # for each region
     frontierall[region == myregs[i] & budget == buds, lines(presperc, futperc, type = 'l', pch = 16, col = cols[i])]
 }
+
+legend('bottomleft', legend = regnames, col = cols, lty = 1, cex = 0.7, title = 'Regions')
 
 dev.off()
 

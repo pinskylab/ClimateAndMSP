@@ -34,12 +34,12 @@ myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'
 planningperiods <- c('2007-2020', '2081-2100')
 
 # how many budget levels to examine
-nbudget <- 7
-minbudget <- 0.3
-maxbudget <- 0.9
+nbudget <- 1
+minbudget <- 0.5
+maxbudget <- 0.5
 
 # how many weights to examine (linear scale)
-nweight <- 11
+nweight <- 91
 minweight <- 0
 maxweight <- 100
 
@@ -48,8 +48,8 @@ outname <- paste0('temp/frontierall_', format(Sys.time(), "%Y-%m-%d_%H%M%S"), '.
 
 # optimality gap, number of threads, and time limit for gurobi solver
 gap <- 0.01
-nthread <- 3
-timelimit <- 600 # seconds
+nthread <- 2
+timelimit <- 1200 # seconds
 
 ######################
 # Functions
