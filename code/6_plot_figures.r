@@ -17,6 +17,7 @@ require(data.table)
 require(beanplot)
 require(RColorBrewer)
 require(ggsci) # for another color palette
+require(lme4)
 
 convcol <- function(x, colfun){
 	x <- x-min(x) # set min to 0
@@ -141,84 +142,8 @@ clim[longrid < 0, longrid3 := longrid + 360]
 	dev.off()
 	
 
-
-###############################################
-## Fig. 2 MPA gains and losses plot and stats
-###############################################
-wdpaturnbyMPAbymod <- fread('gunzip -c temp/wdpaturnbyMPAbymod.csv.gz', drop = 1) # individual MPA results
-wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # network results
-
-# Prep
-    # reshape to long format
-    wdpaturnbyMPAbymodl <- melt(wdpaturnbyMPAbymod, id.vars = c('WDPA_PID', 'network'), 
-                                measure.vars = patterns('ninit|nfinal|nshared|nlost|ngained')) # convert to long
-    wdpaturnbyMPAbymodl[, c('var', 'rcp', 'model') := tstrsplit(variable, "\\.", fixed = FALSE)][, variable := NULL] # extract rcp and GMC number from the col name
-    wdpaturnbyMPAbymodl <- dcast(wdpaturnbyMPAbymodl, WDPA_PID + network + rcp + model ~ var) # group ninit -> nshared as separate columns
-    
-    wdpaturnbynetbymodl <- melt(wdpaturnbynetbymod, id.vars = c('lat'), # ID.VARS SHOULD BE NETWORK
-                                measure.vars = patterns('ninit|nfinal|nshared|nlost|ngained')) # convert to long
-    wdpaturnbynetbymodl[, c('var', 'rcp', 'model') := tstrsplit(variable, "\\.", fixed = FALSE)][, variable := NULL] # extract rcp and GMC number from the col name
-    wdpaturnbynetbymodl <- dcast(wdpaturnbynetbymodl, lat + rcp + model ~ var) # group ninit -> nshared as separate columns
-    
-    # calculate means within models/rcps (across regions)
-    means <- wdpaturnbyMPAbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
-                                 by=c('rcp', 'model')] 
-    
-    # calculate network means within models/rcps
-    means.net <- wdpaturnbynetbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
-                                 by=c('rcp', 'model')] 
-    
-    # calculate means within models/rcps for individual MPAs in the networks
-    means.net.indiv <- wdpaturnbyMPAbymodl[!is.na(network), .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
-                                 by=c('rcp', 'model')] 
-    
-    # combine network and individual MPA results
-    means.net$type <- 'net'
-    means.net.indiv$type <- 'ind'
-    means.net <- rbind(means.net, means.net.indiv)
-
-# Statistics
-	# means and SE
-	means.net[, .(flost = mean(flost), flost.se = se(flost), fgained = mean(fgained), fgained.se = se(fgained), 
-	              beta_sor = mean(beta_sor), beta_sor.se = se(beta_sor)), 
-	           by = c('type', 'rcp')]
-	
-	# test
-	t.test(means.net[type == 'ind', beta_sor], means.net[type == 'net', beta_sor]) # parametric
-	wilcox.test(means.net[type == 'ind', beta_sor], means.net[type == 'net', beta_sor]) # non-parametric
-
-
-# Plot of mean MPA change and network change
-	cols <- list(c('#67a9cf','white','black','#2166ac'), c('#ef8a62', 'white','black','#b2182b')) # colors from Colorbrewer2 7-class RdBu
-	# quartz(width=8.7/2.54,height=8.7/2.54)
-	#pdf(width=8.7/2.54, height=8.7/2.54, file='figures/Fig2_MPA_turnover.pdf')
-	png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file='figures/Fig2_MPA_turnover.png')
-
-	par(mfrow=c(2,2), las=2, mai=c(0.5,0.45,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.4,0), tcl=-0.2, cex.axis=0.8)
-
-	beanplot(flost ~  type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-	         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
-	         at = c(1, 3), log = "", ylim = c(0, 0.5), xlim = c(0, 4), cut = 0.01, ylab = 'Fraction lost')
-	mtext(side = 3, text = 'a)', adj = 0.05, line = -1, las = 1, cex = 1)
-
-	beanplot(fgained ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-	         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
-	         at = c(1, 3.2), log = "", ylim = c(0, 0.6), xlim = c(0, 4.5), cut = 0.01, ylab = 'Fraction gained')
-	mtext(side = 3, text = 'b)', adj = 0.05, line = -1, las = 1, cex = 1)
-	
-	beanplot(I(1-beta_sor) ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-	         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
-	         at = c(1, 3), log = "", ylim = c(0, 1), xlim = c(0, 4), cut = 0.01, ylab = 'Dissimilarity') # flost
-	mtext(side = 3, text = 'c)', adj = 0.05, line = -1, las = 1, cex = 1)
-	
-	plot(1, 1, bty = 'n', xaxt = 'n', yaxt = 'n', col = 'white', xlab = '', ylab = '')
-	legend('center', legend = c('Individual', 'Network'), title = 'Type', col = c(cols[[1]][1], cols[[2]][1]), lty = 1, lwd = 10, bty = 'n')
-	
-	dev.off()
-	
-
 ####################################################################
-# Fig 3 Compare the planning approaches against each climate projection
+# Fig 2 Compare the planning approaches against each climate projection
 ####################################################################
 goalsmetbymod1 <- fread('output/goalsmetbymod_hist_all.csv', drop = 1)
 goalsmetbymod2 <- fread('output/goalsmetbymod_2per_all.csv', drop = 1)
@@ -227,6 +152,7 @@ setkey(goalsmetbymod2, 'region', 'rcp', 'model', 'year_range')
 goalsmetbymod1[, type := 'hist']
 goalsmetbymod2[, type := '2per']
 goalsmetbymod <- rbind(goalsmetbymod1, goalsmetbymod2)
+goalsmetbymod[, type := factor(type, levels = c('hist', '2per'))] # set order
 
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
 regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
@@ -234,71 +160,78 @@ mods <- sort(unique(goalsmetbymod1$model))
 rcps <- sort(unique(goalsmetbymod1$rcp))
 
 # Statistics
-    # goals met by time, region, and planning type, for plotting
-    summ <- goalsmetbymod[, .(mid = mean(mid), mean = mean(pmetstrict), lb = quantile(pmetstrict, 0.125), ub = quantile(pmetstrict, 0.875)), by = c('year_range', 'region', 'type')] # mean and 95%ci across models and goals
+# goals met, mid-century or end-of-century (for text)
+goalsmetbymod[year_range == '2041-2060', .(mean = mean(pmetstrict), se = se(pmetstrict)), by = c('type')] # mean and se across models and goals
+goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmetstrict), se = se(pmetstrict)), by = c('type')] # mean and se across models and goals
 
-    # goals met, end of century
-	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmetstrict), se = se(pmetstrict)), by = c('rcp', 'type')] # mean and se across models and goals
-	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), meanstrict = mean(pmetstrict)), by = c('model', 'rcp', 'type')][, .(mean = mean(mean), se = se(mean), meanstrict = mean(meanstrict), sestrict = se(meanstrict)), by = c('rcp', 'type')] # mean adn se across mean within models
+# p(80% goals met), end-of-century (for text)
+goalsmetbymod[year_range == '2081-2100', .(prop = 1 - sum(pmetstrict > 0.7)/.N), by = c('type')]
 
-	# goals met by region
-	goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), meanstrict = mean(pmetstrict)), by= c('region', 'type')] # mean (across rcps and GCMs)
-	goalsmetbymod[year_range == '2081-2100', .(mean=mean(pmet), meanstrict = mean(pmetstrict)), 
-	              by= c('region', 'model')][, .(mean = mean(mean), se = se(mean), meanstrict = mean(meanstrict), 
-	                                                   sestrict = se(meanstrict)), by = 'region'] # mean and se across models within regions
+# goals met by region
+goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmet), meanstrict = mean(pmetstrict)), by= c('region', 'type')] # mean (across rcps and GCMs)
+goalsmetbymod[year_range == '2081-2100', .(mean=mean(pmet), meanstrict = mean(pmetstrict)), 
+              by= c('region', 'model')][, .(mean = mean(mean), se = se(mean), meanstrict = mean(meanstrict), 
+                                            sestrict = se(meanstrict)), by = 'region'] # mean and se across models within regions
 
-    # tests
-    all.equal(goalsmetbymod1[, .(region, rcp, model, year_range)], goalsmetbymod2[, .(region, rcp, model, year_range)]) # make sure ordered the same way
-	t.test(goalsmetbymod1[, pmetstrict],goalsmetbymod2[, pmetstrict], paired = TRUE)
-	wilcox.test(goalsmetbymod1[, pmetstrict], goalsmetbymod2[, pmetstrict], paired = TRUE)
-	
+# statistical test
+mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ type + (1|region/rcp/model/year_range), data=goalsmetbymod, family='binomial')
+summary(mod)
+nrow(goalsmetbymod)
+cc <- confint(mod, parm="beta_")  # CIs. slow (30 sec)
+ctab <- cbind(est = fixef(mod), cc) # add estimates
+rtab <- exp(ctab) # to get odds ratios
+print(rtab, digits = 3) # print the odds ratios and CIs
+
 # Plot %goals met (hist and 2per solution)
-	colmat <- t(col2rgb(brewer.pal(6, 'PuOr')))[c(1,3,5,6),] # dark red for histonly average, light red for CI. dark blue for 2per average, light blue for CI.
-	cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,100,255), maxColorValue=255)
-	yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
-	xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
-	outfile <- 'figures/Fig3_prioritizr_goalsmetbymod.png'
-		outfile
-	ylims <- c(0, 1)
+summ <- goalsmetbymod[, .(mid = mean(mid), mean = mean(pmetstrict), lb = quantile(pmetstrict, 0.125), ub = quantile(pmetstrict, 0.875)), by = c('year_range', 'region', 'type')] # mean and 95%ci across models and goals, for plotting
+colmat <- t(col2rgb(brewer.pal(6, 'PuOr')))[c(1,3,5,6),] # dark red for histonly average, light red for CI. dark blue for 2per average, light blue for CI.
+cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,100,255), maxColorValue=255)
+yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
+xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
+outfile <- 'figures/Fig2_prioritizr_goalsmetbymod.png'
+outfile
+ylims <- c(0, 1)
 
-	# quartz(width=8.7/2.54, height=8.7/2.54)
-	#pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
-	png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file=outfile)
-	par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.3, mgp=c(2,0.7,0))
+# quartz(width=8.7/2.54, height=8.7/2.54)
+#pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
+png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file=outfile)
+par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.3, mgp=c(2,0.7,0))
 
-	for (i in 1:length(myregs)) { # for each region
-		plot(0, 0, xlab='', ylab='', ylim=ylims, xlim=c(2030,2090), main=regnames[i], yaxt='n', xaxt='n')
-		
-		if(yaxts[i]=='s'){
-			axis(2, mgp=c(2,0.6,0))
-		} else {
-			axis(2, labels=FALSE)
-		}
+for (i in 1:length(myregs)) { # for each region
+    plot(0, 0, xlab='', ylab='', ylim=ylims, xlim=c(2030,2090), main=regnames[i], yaxt='n', xaxt='n')
+    
+    if(yaxts[i]=='s'){
+        axis(2, mgp=c(2,0.6,0))
+    } else {
+        axis(2, labels=FALSE)
+    }
+    
+    if(xaxts[i]=='s'){
+        axis(1, mgp=c(2,0.5,0))
+    } else {
+        axis(1, labels=FALSE)
+    }
+    
+    # plot polygons
+    summ[region==myregs[i] & mid > 2014 & type == 'hist', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[2], border = NA)]
+    summ[region==myregs[i] & mid > 2014 & type == '2per', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[3], border = NA)]
+    
+    # plot means
+    summ[region==myregs[i] & mid > 2014 & type == 'hist', lines(mid, mean, col = cols[1], lwd = 2)]
+    summ[region==myregs[i] & mid > 2014 & type == '2per', lines(mid, mean, col = cols[4], lwd = 2)]
+    
+}
 
-		if(xaxts[i]=='s'){
-			 axis(1, mgp=c(2,0.5,0))
-		} else {
-			axis(1, labels=FALSE)
-		}
+mtext(side=1,text='Year',line=1.6, outer=TRUE)
+mtext(side=2,text='Fraction goals met',line=1.8, outer=TRUE)
 
-		# plot polygons
-	    summ[region==myregs[i] & mid > 2014 & type == 'hist', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[2], border = NA)]
-	    summ[region==myregs[i] & mid > 2014 & type == '2per', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[3], border = NA)]
-	    
-		# plot means
-	    summ[region==myregs[i] & mid > 2014 & type == 'hist', lines(mid, mean, col = cols[1], lwd = 2)]
-	    summ[region==myregs[i] & mid > 2014 & type == '2per', lines(mid, mean, col = cols[4], lwd = 2)]
-	    
-	}
-	
-	mtext(side=1,text='Year',line=1.6, outer=TRUE)
-	mtext(side=2,text='Fraction goals met',line=1.8, outer=TRUE)
-	
-	dev.off()
+dev.off()
+
+
 	
 
 ###################################
-## Fig 4 Compare area needed for each plan
+## Fig 3 Compare area needed for each plan
 ###################################
 
 # Read in plans
@@ -327,7 +260,7 @@ consplansw[, change := hist != `2per`]
 
 consplansw[, .(nchange = sum(change), ntot = .N, pchange = sum(change)/.N), by = region] # average in each region
 consplansw[, .(nchange = sum(change), ntot = .N, pchange = sum(change)/.N), 
-           by = region][, .(totpchange = sum(nchange)/sum(ntot), avepchange = mean(nchange/ntot))] # total proportion change, or average proportion across regions
+           by = region][, .(avepchange = mean(nchange/ntot), se = sd(nchange/ntot)/sqrt(.N))] # average proportion across regions
 
 
 # Make matrix of proportion in each zone in each region, for barplot
@@ -356,6 +289,10 @@ mat <- do.call(cbind, l)[,order(sequence(sapply(l, ncol)))]
 # change in zones: 2per - hist
 mat2perraw - mathistraw # number
 round(mat2per - mathist,3) # fraction
+range(mat2per[4,] - mathist[4,]) # fractional decrease in free space (e.g., increase in plan area)
+mean(mat2per[4,] - mathist[4,]) # mean fractional decrease in free space (e.g., increase in plan area)
+sd(mat2per[4,] - mathist[4,])/sqrt(9) # SE fractional decrease in free space (e.g., increase in plan area)
+
 
 # modify to trick barplot into letting me use 8 colors instead of 4
 # see http://r.789695.n4.nabble.com/barplot-colors-td4662538.html
@@ -371,7 +308,7 @@ cols <- cols[c(1:4, 8:5)]
 
 # quartz(width=8.7/2.54, height=5/2.54)
 #pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig4_planareas.pdf')
-png(width=8.7/2.54, height=10/2.54, units = 'in', res = 300, file='figures/Fig4_planareas.png')
+png(width=8.7/2.54, height=10/2.54, units = 'in', res = 300, file='figures/Fig3_planareas.png')
 par(mfrow = c(2, 1), mai=c(0.2, 0.75, 0.1, 0.1), mgp=c(1.8, 0.4, 0), tcl=-0.2, las=1, cex.axis=0.8)
 barplot(height=matmod, space=rep(c(1,0), ncol(mathist)), xaxt='n', col=cols, ylab='Proportion', xlim=c(1.5,40))
 axis(1, at=seq(2,26,by=3), labels=NA, cex.axis=0.8, las=2, mgp=c(1.8, 0.5, 0))
@@ -399,7 +336,7 @@ round(rowMeans(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 
 
 
 ########################
-# Fig. 5 Plot the prioritiz efficiency frontier
+# Fig. 4 Plot the prioritiz efficiency frontier
 ########################
 # read in prioritizr solutions
 frontierall <- fread('temp/frontierall_2019-12-22_071607.csv', drop = 1)
@@ -452,7 +389,7 @@ myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'
 regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
 buds <- 0.5 # the budgets to plot
 
-png('figures/Fig5_prioritizr_frontiers.png', height = 4, width = 4, units = 'in', res = 300)
+png('figures/Fig4_prioritizr_frontiers.png', height = 4, width = 4, units = 'in', res = 300)
 par(mfrow=c(1,1), mai=c(0.7, 0.7, 0.2, 0.05), omi=c(0, 0, 0, 0), cex.main = 1, cex.axis = 0.8, tcl = -0.3, mgp=c(2,0.5,0))
 
 plot(0, 0, type = 'o', pch = 16, col = 'white', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
@@ -465,6 +402,82 @@ legend('bottomleft', legend = regnames, col = cols, lty = 1, cex = 0.7, title = 
 dev.off()
 
 
+###############################################
+## Fig. 5 Management area gains and losses plot and stats
+###############################################
+wdpaturnbyMPAbymod <- fread('gunzip -c temp/wdpaturnbyMPAbymod.csv.gz', drop = 1) # individual MPA results
+wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # network results
+
+# Prep
+    # reshape to long format
+    wdpaturnbyMPAbymodl <- melt(wdpaturnbyMPAbymod, id.vars = c('WDPA_PID', 'network'), 
+                                measure.vars = patterns('ninit|nfinal|nshared|nlost|ngained')) # convert to long
+    wdpaturnbyMPAbymodl[, c('var', 'rcp', 'model') := tstrsplit(variable, "\\.", fixed = FALSE)][, variable := NULL] # extract rcp and GMC number from the col name
+    wdpaturnbyMPAbymodl <- dcast(wdpaturnbyMPAbymodl, WDPA_PID + network + rcp + model ~ var) # group ninit -> nshared as separate columns
+    
+    wdpaturnbynetbymodl <- melt(wdpaturnbynetbymod, id.vars = c('lat'), # ID.VARS SHOULD BE NETWORK
+                                measure.vars = patterns('ninit|nfinal|nshared|nlost|ngained')) # convert to long
+    wdpaturnbynetbymodl[, c('var', 'rcp', 'model') := tstrsplit(variable, "\\.", fixed = FALSE)][, variable := NULL] # extract rcp and GMC number from the col name
+    wdpaturnbynetbymodl <- dcast(wdpaturnbynetbymodl, lat + rcp + model ~ var) # group ninit -> nshared as separate columns
+    
+    # calculate means within models/rcps (across regions)
+    means <- wdpaturnbyMPAbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
+                                 by=c('rcp', 'model')] 
+    
+    # calculate network means within models/rcps
+    means.net <- wdpaturnbynetbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
+                                     by=c('rcp', 'model')] 
+    
+    # calculate means within models/rcps for individual MPAs in the networks
+    means.net.indiv <- wdpaturnbyMPAbymodl[!is.na(network), .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
+                                           by=c('rcp', 'model')] 
+
+    # combine network and individual MPA results
+    means.net$type <- 'net'
+    means.net.indiv$type <- 'ind'
+    means.net <- rbind(means.net, means.net.indiv)
+
+# Statistics for individual and networks of management zones
+    # means and SE
+    means.net[, .(flost = mean(flost), flost.se = se(flost), fgained = mean(fgained), fgained.se = se(fgained), 
+                  beta_sor_diss = mean(1 - beta_sor), beta_sor_diss.se = se(1 - beta_sor)), 
+              by = c('type', 'rcp')]
+    
+    sort(means.net[type == 'ind', beta_sor] - means.net[type == 'net', beta_sor]) # sorted differences: all negative
+    
+    # test
+    t.test(means.net[type == 'ind', beta_sor], means.net[type == 'net', beta_sor]) # parametric
+    wilcox.test(means.net[type == 'ind', beta_sor], means.net[type == 'net', beta_sor]) # non-parametric
+    
+
+# Plot of mean MPA change and network change
+    cols <- list(c('#67a9cf','white','black','#2166ac'), c('#ef8a62', 'white','black','#b2182b')) # colors from Colorbrewer2 7-class RdBu
+    # quartz(width=8.7/2.54,height=8.7/2.54)
+    #pdf(width=8.7/2.54, height=8.7/2.54, file='figures/Fig2_MPA_turnover.pdf')
+    png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file='figures/Fig5_MPA_turnover.png')
+    
+    par(mfrow=c(2,2), las=2, mai=c(0.5,0.45,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.4,0), tcl=-0.2, cex.axis=0.8)
+    
+    beanplot(flost ~  type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+             names = c('RCP 2.6', 'RCP 8.5'), las = 1,
+             at = c(1, 3), log = "", ylim = c(0, 0.5), xlim = c(0, 4), cut = 0.01, ylab = 'Fraction lost')
+    mtext(side = 3, text = 'a)', adj = 0.05, line = -1, las = 1, cex = 1)
+    
+    beanplot(fgained ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+             names = c('RCP 2.6', 'RCP 8.5'), las = 1,
+             at = c(1, 3.2), log = "", ylim = c(0, 0.6), xlim = c(0, 4.5), cut = 0.01, ylab = 'Fraction gained')
+    mtext(side = 3, text = 'b)', adj = 0.05, line = -1, las = 1, cex = 1)
+    
+    beanplot(I(1-beta_sor) ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+             names = c('RCP 2.6', 'RCP 8.5'), las = 1,
+             at = c(1, 3), log = "", ylim = c(0, 1), xlim = c(0, 4), cut = 0.01, ylab = 'Dissimilarity') # flost
+    mtext(side = 3, text = 'c)', adj = 0.05, line = -1, las = 1, cex = 1)
+    
+    plot(1, 1, bty = 'n', xaxt = 'n', yaxt = 'n', col = 'white', xlab = '', ylab = '')
+    legend('center', legend = c('Individual', 'Network'), title = 'Type', col = c(cols[[1]][1], cols[[2]][1]), lty = 1, lwd = 10, bty = 'n')
+    
+    dev.off()
+    
 
 
 #####################
