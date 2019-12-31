@@ -335,11 +335,12 @@ round(rowMeans(mat2per[c('conservation', 'fishery', 'energy', 'free'), c('ebs', 
 
 
 
-########################
-# Fig. 4 Plot the prioritiz efficiency frontier
-########################
+################################################
+# Fig. 4 Plot the prioritizr efficiency frontier
+################################################
 # read in prioritizr solutions
-frontierall <- fread('temp/frontierall_2019-12-22_071607.csv', drop = 1)
+frontierall <- fread('temp/frontierall_2019-12-31_075440.csv', drop = 1)
+frontierall <- frontierall[budget == 0.75, ]
 setkey(frontierall, region, budget, presweight)
 
 # definition of planning features by region
@@ -366,17 +367,37 @@ frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N), by = region]
 # set up goals as a % of total
 frontierall[, ':='(presperc = presgoals/ngoals, futperc = futgoals/ngoals)]
 
-# quick plot
+# quick plot as a check
 require(ggplot2)
 ggplot(frontierall, aes(x = presperc, y = futperc, group = budget, color = budget)) +
     geom_path(size = 0.4) +
     geom_point(size = 0.3) +
     facet_wrap(~ region, nrow = 3, scales = 'free')
 
-# Drop some non-frontier points (specific to frontierall_2019-12-22_071607.csv)
-frontierall <- frontierall[!(region == 'ebs' & abs(presperc - 0.9101124) < 0.001 & abs(futperc - 0.5730337) < 0.001),]
-frontierall <- frontierall[!(region == 'wc' & abs(presperc - 0.9111111) < 0.001 & abs(futperc == 0.8000000) < 0.001),]
+# Drop non-frontier points (automated)
+# If two points share the same futperc, it chooses the one with the higher presperc (or vice versa)
+frontierall[, todrop := 0]
+for(i in 1:nrow(frontierall)){
+    thisreg <- frontierall[i, region]
+    thispresperc <- frontierall[i, presperc]
+    k1 <- frontierall[, presperc == thispresperc & region == thisreg]
+    if(length(unique(frontierall[k1, futperc])) > 1){
+        mx <- frontierall[k1, max(futperc)]
+        frontierall[presperc == thispresperc & futperc != mx & region == thisreg & presweight != 0 & presweight != 100, todrop := 1]
+    }
 
+    thisfutperc <- frontierall[i, futperc]
+    k2 <- frontierall[, futperc == thisfutperc & region == thisreg]
+    if(length(unique(frontierall[k2, presperc])) > 1){
+        mx <- frontierall[k2, max(presperc)]
+        frontierall[futperc == thisfutperc & presperc != mx & region == thisreg & presweight != 0 & presweight != 100, todrop := 1]
+    }
+}
+
+ggplot(frontierall[todrop == 0,], aes(x = presperc, y = futperc, group = budget, color = budget)) +
+    geom_path(size = 0.4) +
+    geom_point(size = 0.3) +
+    facet_wrap(~ region, nrow = 3, scales = 'free')
 
 # Plot %goals met for each weighting and region
 colmat <- t(col2rgb(brewer.pal(9, 'Set1')))
@@ -387,7 +408,7 @@ yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
 myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
 regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
-buds <- 0.5 # the budgets to plot
+buds <- 0.75 # the budgets to plot
 
 png('figures/Fig4_prioritizr_frontiers.png', height = 4, width = 6, units = 'in', res = 300)
 layout(matrix(c(1,4,4,4,2,4,4,4,3,4,4,4), byrow = TRUE, ncol = 4))
@@ -400,9 +421,9 @@ x1 <- seq(0, 1, length = 100)
 plot(x = x1, y = sqrt(1 - x1^2), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
 
 par(mai=c(0.7, 0.7, 0.2, 0.05))
-plot(0, 0, type = 'o', pch = 16, col = 'white', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
+plot(0, 0, type = 'o', bty = 'l', pch = 16, col = 'white', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
 for (i in 1:length(myregs)) { # for each region
-    frontierall[region == myregs[i] & budget == buds, lines(presperc, futperc, type = 'l', pch = 16, col = cols[i])]
+    frontierall[region == myregs[i] & budget == buds & todrop == 0, lines(presperc, futperc, type = 'l', pch = 16, col = cols[i])]
 }
 
 legend('bottomleft', legend = regnames, col = cols, lty = 1, cex = 0.7, title = 'Regions')
@@ -488,87 +509,80 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
     
 
 
-#####################
-# Plot the MPAs
-#####################
-wdpashp = readShapePoly('cmsp_data/WDPA/NA_marine_MPA/mpinsky-search-1382225374362.shp', proj4string = CRS('+proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs')) # load the MPA data
-	wdpashp = wdpashp[wdpashp$marine == 1,] # trim to only marine (remove 20 of 3023)
-	wdpashp@data$wdpapolyID <- as.numeric(sapply(wdpashp@polygons, FUN=slot, name='ID')) # extract polygon ID
+###################################################
+## Fig. SX Efficiency frontiers for other budgets
+###################################################
+    
+# read in prioritizr solutions
+frontier1 <- fread('temp/frontierall_2019-12-22_071607.csv', drop = 1) # 50% budget
+frontier2 <- fread('temp/frontierall_2019-12-31_075440.csv', drop = 1) # 75% and 90% budgets
+frontier2 <- frontier2[budget == 0.9, ]
+frontierall <- rbind(frontier1, frontier2)
+setkey(frontierall, region, budget, presweight)
 
-wdpaturnbyMPAbymod <- as.data.table(read.csv(paste('data/wdpaturnbyMPAbymod_fitallreg_xreg_rcp85&45.csv', sep=''), row.names=1)) # to get a list of MPAs to examine
+# definition of planning features by region
+sppfiles <- list.files(path = 'output/prioritizr_runs/', pattern = 'spp_*', full.names = TRUE)
+spps <- fread(sppfiles[1], drop = 1)
+spps[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[1])]
+for(i in 2:length(sppfiles)){
+    temp <- fread(sppfiles[i], drop = 1)
+    temp[, region := gsub('/|output|prioritizr_runs|spp_|\\.csv', '', sppfiles[i])]
+    spps <- rbind(spps, temp)
+}
+rm(temp)
+ngoals <- spps[name != 'energy', .(ngoals = .N), by = region]
+setkey(ngoals, region)
 
-	dim(wdpashp)
-wdpashp <- wdpashp[wdpashp$wdpapolyID %in% wdpaturnbyMPAbymod$wdpapolyID,] # trim shapefile to MPAs the we analyzed
-	dim(wdpashp) # 562
+# set up region order and add ngoals
+frontierall[, region := factor(region, levels = c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'))] # set order
+frontierall <- merge(frontierall, ngoals, by = 'region')
 
-# transform to 0-360 coordinates
-bb1 <- as(extent(c(0,360,0,90)), "SpatialPolygons") # bounding box for part 1 (Aleutians)
-bb2 <- as(extent(c(-180,0,0,90)), "SpatialPolygons") # part 2
-proj4string(bb1) = proj4string(wdpashp) # set the coordinate system
-proj4string(bb2) = proj4string(wdpashp)
-w1 <- gIntersection(wdpashp, bb1, byid = T) # split out part 1
-w2 <- gIntersection(wdpashp, bb2, byid = T) # part 2
-w3 <- elide(w1, shift=c(-360,0)) # move part 1 west by 360°
+# how many not optimal?
+frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N), by = region]
 
 
-# set regions and expansion for dots
-regs <- c('AFSC_EBS', 'AFSC_Aleutians', 'AFSC_GOA', 'NWFSC_WCAnn', 'SEFSC_GOMex', 'NEFSC_NEUSSpring', 'DFO_ScotianShelf', 'DFO_SoGulf', 'DFO_NewfoundlandFall')
-regsnice = c('Eastern Bering Sea', 'Aleutian Islands', 'Gulf of Alaska', 'West Coast U.S.', 'Gulf of Mexico', 'Northeast U.S.', 'Scotian Shelf', 'So. Gulf of St. Lawrence', 'Newfoundland')
-regsniceabbrev = c('(EBS)', '(AI)', '(GoA)', '(WC)', '(GoM)', '(Neast)', '(SS)', '(SGoSL)', '(Newf)')
-ylabs = c('Latitude (°N)', '', '', '', 'Latitude (°N)', '', '', 'Latitude (°N)', '')
-xlabs = c('', '', '', 'Longitude (°E)', '', '', 'Longitude (°E)', 'Longitude (°E)', 'Longitude (°E)')
-ylims = list(ebs = c(54,62.5), al = c(50, 57), goa = c(52, 60), wc = c(32.2, 48.5), gom = c(25.5,30.5), ne = c(33, 45), ss = c(41, 46), sl = c(46, 49), nf = c(46, 51))
-xlims = list(ebs = c(-179.5,-154), al = c(-191, -162), goa = c(-160, -133), wc = c(-126.5, -117), gom = c(-97.5,-86.5), ne = c(-77, -64.5), ss = c(-68, -59), sl = c(-66, -61), nf = c(-57, -52))
-pos <- c('right', 'right', 'right', 'left', 'right', 'right', 'right', 'left', 'right')
-bcol <- 'dark grey' # background color
-col = rgb(0.7,0,0, 1)
-bdcol = rgb(0.3,0,0, 1) # border color
+# set up goals as a % of total
+frontierall[, ':='(presperc = presgoals/ngoals, futperc = futgoals/ngoals)]
 
-# plot map
-	
-	# quartz(width=8.7/2.54,height=6/2.54)
-	pdf(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.pdf')
-	# png(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.png', res=100, units='in') # freezes
-	# jpeg(width=8.7/2.54,height=6/2.54, file='cmsp_figures/MPAs.jpg', res=100, units='in') # freezes
-	par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.25, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
-	layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
+# quick plot as a check
+require(ggplot2)
+ggplot(frontierall, aes(x = presperc, y = futperc, group = budget, color = budget)) +
+    geom_path(size = 0.4) +
+    geom_point(size = 0.3) +
+    facet_wrap(~ region, nrow = 3, scales = 'free')
 
-	# Add continent-scale map
-	plot(w2, border=bdcol, col=col, xlim=c(-190,-40), ylim=c(20,70))
-	plot(w3, add=TRUE, border=bdcol, col=col)
-	map('worldHires', add=TRUE, col=bcol, lwd=0.02, resolution=0, fill=FALSE, wrap=TRUE) # annoying that turning fill=TRUE also draw big horizontal lines across the map
-	axis(1, mgp=c(1.2, 0.02, 0), at=c(-160,-110,-60), cex.axis=0.4, lwd=0.5)
-	axis(2, mgp=c(1.2, 0.4, 0), cex.axis=0.4, lwd=0.5)
+# Drop some non-frontier points (specific to frontierall_2019-12-22_071607.csv)
+frontierall <- frontierall[!(region == 'ebs' & abs(presperc - 0.9101124) < 0.001 & abs(futperc - 0.5730337) < 0.001),]
+frontierall <- frontierall[!(region == 'wc' & abs(presperc - 0.9111111) < 0.001 & abs(futperc == 0.8000000) < 0.001),]
 
-	# Add each region
-	for(i in 1:length(regs)){
-		print(i)
-		if(regs[i] =='AFSC_Aleutians'){
-			plot(w2, border=bdcol, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', lwd=0.5)
-			plot(w3, add=TRUE, border=bdcol, col=col, lwd=0.5)
-			axis(1, mgp=c(1.2, 0.02, 0), at=seq(-190,-165,by=10), labels=c('170', '180', '-170'), cex.axis=0.4, lwd=0.5)
-			axis(2, mgp=c(1.2, 0.4, 0), cex.axis=0.4, lwd=0.5)
-			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0, xlim=xlims[[i]], wrap=TRUE, ylim=c(60,70)) # only plot the upper part, since strange lines draw horizontally if we draw lower down
-			mymap <- map('worldHires', plot=FALSE, resolution=0, xlim=xlims[[i]], ylim=c(40,60)) # draw in the islands separately. Can't do this for the whole plot because it plots Alaska and Russia inside out (colors outside the polygons)
-			polygon(mymap, col=bcol, border=NA)
-		}
-		if(regs[i] %in% c('DFO_NewfoundlandFall', 'DFO_ScotianShelf', 'DFO_SoGulf')){
-			plot(w2, border=bdcol, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', lwd=0.5)
-			map('worldHires', col=bcol, fill=TRUE, border=FALSE, resolution=0, add=TRUE)
-			plot(w2, add=TRUE, border=bdcol, col=col, lwd=0.5)
-			axis(1, mgp=c(1.2, 0.02, 0), cex.axis=0.4, lwd=0.5)
-			axis(2, mgp=c(1.2, 0.4, 0), cex.axis=0.4, lwd=0.5)
-		}
-		if(!(regs[i] %in% c('AFSC_Aleutians', 'DFO_NewfoundlandFall', 'DFO_ScotianShelf', 'DFO_SoGulf'))){
-			plot(w2, border=bdcol, col=col, xlab='', ylab='', xlim=xlims[[i]], ylim=ylims[[i]], main=paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n', lwd=0.5)
-			map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0)
-			axis(1, mgp=c(1.2, 0.02, 0), cex.axis=0.4, lwd=0.5)
-			axis(2, mgp=c(1.2, 0.4, 0), cex.axis=0.4, lwd=0.5)
-		}
-	}
-	mtext('Longitude (°E)', side=1, outer=TRUE, cex=0.5)
-	mtext('Latitude (°N)', side=2, outer=TRUE, cex=0.5, las=0, line=0.3)
 
-	
-	dev.off()
-	
+# Plot %goals met for each weighting and region
+colmat <- t(col2rgb(brewer.pal(9, 'Set1')))
+cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
+cols <- pal_lancet(alpha = 1)(9)
+
+yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
+xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
+myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
+regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
+buds <- 0.5 # the budgets to plot
+
+png('figures/FigSX_prioritizr_frontiers.png', height = 4, width = 6, units = 'in', res = 300)
+layout(matrix(c(1,4,4,4,2,4,4,4,3,4,4,4), byrow = TRUE, ncol = 4))
+
+par(mai=c(0.1, 0.1, 0.1, 0.05), cex.main = 1, cex.axis = 0.8, tcl = -0.3, mgp=c(2,0.5,0))
+plot(x = c(0, 1, 1), y = c(1, 1, 0), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
+plot(x = c(0, 1), y = c(1, 0), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
+
+x1 <- seq(0, 1, length = 100)
+plot(x = x1, y = sqrt(1 - x1^2), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
+
+par(mai=c(0.7, 0.7, 0.2, 0.05))
+plot(0, 0, type = 'o', pch = 16, col = 'white', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
+for (i in 1:length(myregs)) { # for each region
+    frontierall[region == myregs[i] & budget == buds, lines(presperc, futperc, type = 'l', pch = 16, col = cols[i])]
+}
+
+legend('bottomleft', legend = regnames, col = cols, lty = 1, cex = 0.7, title = 'Regions')
+
+dev.off()

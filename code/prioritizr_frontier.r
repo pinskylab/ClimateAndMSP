@@ -481,10 +481,10 @@ setkey(frontierall, region, budget, presweight)
 frontierall[, region := factor(region, levels = c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'))] # set order
 
 # how many not optimal?
-frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N)]
-frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N), by = region]
+print(frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N)])
+print(frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N), by = region])
 
-pdf('figures/prioritizr_frontiers.pdf', height = 6, width = 6)
+pdf('temp_figures/prioritizr_frontiers.pdf', height = 6, width = 6)
 ggplot(frontierall, aes(x = presgoals, y = futgoals, group = budget, color = budget)) +
     geom_path(size = 0.4) +
     geom_point(size = 0.3) +
