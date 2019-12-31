@@ -389,9 +389,17 @@ myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'
 regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
 buds <- 0.5 # the budgets to plot
 
-png('figures/Fig4_prioritizr_frontiers.png', height = 4, width = 4, units = 'in', res = 300)
-par(mfrow=c(1,1), mai=c(0.7, 0.7, 0.2, 0.05), omi=c(0, 0, 0, 0), cex.main = 1, cex.axis = 0.8, tcl = -0.3, mgp=c(2,0.5,0))
+png('figures/Fig4_prioritizr_frontiers.png', height = 4, width = 6, units = 'in', res = 300)
+layout(matrix(c(1,4,4,4,2,4,4,4,3,4,4,4), byrow = TRUE, ncol = 4))
 
+par(mai=c(0.1, 0.1, 0.1, 0.05), cex.main = 1, cex.axis = 0.8, tcl = -0.3, mgp=c(2,0.5,0))
+plot(x = c(0, 1, 1), y = c(1, 1, 0), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
+plot(x = c(0, 1), y = c(1, 0), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
+
+x1 <- seq(0, 1, length = 100)
+plot(x = x1, y = sqrt(1 - x1^2), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
+
+par(mai=c(0.7, 0.7, 0.2, 0.05))
 plot(0, 0, type = 'o', pch = 16, col = 'white', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
 for (i in 1:length(myregs)) { # for each region
     frontierall[region == myregs[i] & budget == buds, lines(presperc, futperc, type = 'l', pch = 16, col = cols[i])]

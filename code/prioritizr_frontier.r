@@ -34,9 +34,9 @@ myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'
 planningperiods <- c('2007-2020', '2081-2100')
 
 # how many budget levels to examine
-nbudget <- 1
-minbudget <- 0.5
-maxbudget <- 0.5
+nbudget <- 2
+minbudget <- 0.75
+maxbudget <- 0.90
 
 # how many weights to examine (linear scale)
 nweight <- 91
