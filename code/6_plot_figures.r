@@ -72,7 +72,7 @@ biomap1 <- fread(cmd = 'gunzip -c temp/biomassmap_Atl_rcp26_2007-2020.csv.gz', d
 biomap2 <- fread(cmd = 'gunzip -c temp/biomassmap_Pac_rcp26_2007-2020.csv.gz', drop = 1)
 nspp <- presmap1[, length(unique(spp))] + presmap2[, length(unique(spp))] + biomap1[, length(unique(spp))] + biomap2[, length(unique(spp))]
 nspp # number of species
-16*2*5*nspp # number of projections (16 GCMs, 2 RCPs, 5 time periods for each species)
+8*2*4*nspp # number of projections (8 GCMs, 2 RCPs, 4 time periods for each species)
 
 rm(presmap1, presmap2, biomap1, biomap2)
 
@@ -147,6 +147,8 @@ clim[longrid < 0, longrid3 := longrid + 360]
 ####################################################################
 goalsmetbymod1 <- fread('output/goalsmetbymod_hist_all.csv', drop = 1)
 goalsmetbymod2 <- fread('output/goalsmetbymod_2per_all.csv', drop = 1)
+goalsmetbymod1 <- goalsmetbymod1[modeltype == 'testing', ] # remove the planning projections
+goalsmetbymod2 <- goalsmetbymod2[modeltype == 'testing', ] # remove the planning projections
 setkey(goalsmetbymod1, 'region', 'rcp', 'model', 'year_range')
 setkey(goalsmetbymod2, 'region', 'rcp', 'model', 'year_range')
 goalsmetbymod1[, type := 'hist']
@@ -161,8 +163,8 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 
 # Statistics
 # goals met, mid-century or end-of-century (for text)
-goalsmetbymod[year_range == '2041-2060', .(mean = mean(pmetstrict), se = se(pmetstrict)), by = c('type')] # mean and se across models and goals
-goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmetstrict), se = se(pmetstrict)), by = c('type')] # mean and se across models and goals
+goalsmetbymod[year_range == '2041-2060', .(mean = mean(pmetstrict), sd = sd(pmetstrict)), by = c('type')] # mean and se across models and goals
+goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmetstrict), sd = sd(pmetstrict)), by = c('type')] # mean and se across models and goals
 
 # p(80% goals met), end-of-century (for text)
 goalsmetbymod[year_range == '2081-2100', .(prop = 1 - sum(pmetstrict > 0.7)/.N), by = c('type')]
@@ -173,7 +175,7 @@ goalsmetbymod[year_range == '2081-2100', .(mean=mean(pmet), meanstrict = mean(pm
               by= c('region', 'model')][, .(mean = mean(mean), se = se(mean), meanstrict = mean(meanstrict), 
                                             sestrict = se(meanstrict)), by = 'region'] # mean and se across models within regions
 
-# statistical test
+# statistical test (for text)
 mod <- glmer(cbind(nmet, nmet/pmet - nmet) ~ type + (1|region/rcp/model/year_range), data=goalsmetbymod, family='binomial')
 summary(mod)
 nrow(goalsmetbymod)
@@ -184,8 +186,8 @@ print(rtab, digits = 3) # print the odds ratios and CIs
 
 # Plot %goals met (hist and 2per solution)
 summ <- goalsmetbymod[, .(mid = mean(mid), mean = mean(pmetstrict), lb = quantile(pmetstrict, 0.125), ub = quantile(pmetstrict, 0.875)), by = c('year_range', 'region', 'type')] # mean and 95%ci across models and goals, for plotting
-colmat <- t(col2rgb(brewer.pal(6, 'PuOr')))[c(1,3,5,6),] # dark red for histonly average, light red for CI. dark blue for 2per average, light blue for CI.
-cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,100,255), maxColorValue=255)
+colmat <- t(col2rgb(brewer.pal(6, 'PuOr'))) # dark red for histonly average, middle for lines, light red for CI. purple for 2per
+cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255, 90, 200, 200, 90, 255), maxColorValue=255)
 yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
 outfile <- 'figures/Fig2_prioritizr_goalsmetbymod.png'
@@ -195,35 +197,51 @@ ylims <- c(0, 1)
 # quartz(width=8.7/2.54, height=8.7/2.54)
 #pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
 png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file=outfile)
-par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.3, mgp=c(2,0.7,0))
+par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.15, mgp=c(1.6,0.4,0), las = 1)
 
 for (i in 1:length(myregs)) { # for each region
     plot(0, 0, xlab='', ylab='', ylim=ylims, xlim=c(2030,2090), main=regnames[i], yaxt='n', xaxt='n')
     
     if(yaxts[i]=='s'){
-        axis(2, mgp=c(2,0.6,0))
+        axis(2, mgp=c(2,0.4,0))
     } else {
         axis(2, labels=FALSE)
     }
     
     if(xaxts[i]=='s'){
-        axis(1, mgp=c(2,0.5,0))
+        axis(1, mgp=c(2,0.1,0))
     } else {
         axis(1, labels=FALSE)
     }
     
+    
+    # plot histonly lines
+    for(k in 1:length(mods)) {
+        for(j in 1:length(rcps)) {
+            goalsmetbymod1[model == mods[k] & rcp == rcps[j] & region==myregs[i] & year_range != '2007-2020', 
+                           points(mid, pmetstrict, type='l', pch=16, lwd = 0.5, col=cols[2])]
+        }
+    }
+    # plot 2per lines
+    for(k in 1:length(mods)){
+        for(j in 1:length(rcps)){
+            goalsmetbymod2[model == mods[k] & rcp == rcps[j] & region==myregs[i]  & year_range != '2007-2020', 
+                           points(mid, pmetstrict, type='l', pch=16, lwd = 0.5, col=cols[5])]
+        }
+    }
+    
     # plot polygons
-    summ[region==myregs[i] & mid > 2014 & type == 'hist', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[2], border = NA)]
-    summ[region==myregs[i] & mid > 2014 & type == '2per', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[3], border = NA)]
+    summ[region==myregs[i] & mid > 2014 & type == 'hist', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[3], border = NA)]
+    summ[region==myregs[i] & mid > 2014 & type == '2per', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[4], border = NA)]
     
     # plot means
     summ[region==myregs[i] & mid > 2014 & type == 'hist', lines(mid, mean, col = cols[1], lwd = 2)]
-    summ[region==myregs[i] & mid > 2014 & type == '2per', lines(mid, mean, col = cols[4], lwd = 2)]
+    summ[region==myregs[i] & mid > 2014 & type == '2per', lines(mid, mean, col = cols[6], lwd = 2)]
     
 }
 
-mtext(side=1,text='Year',line=1.6, outer=TRUE)
-mtext(side=2,text='Fraction goals met',line=1.8, outer=TRUE)
+mtext(side=1, text='Year', line=1.6, outer=TRUE)
+mtext(side=2, text='Fraction goals met', line=1.8, outer=TRUE, las = 0)
 
 dev.off()
 
@@ -260,7 +278,7 @@ consplansw[, change := hist != `2per`]
 
 consplansw[, .(nchange = sum(change), ntot = .N, pchange = sum(change)/.N), by = region] # average in each region
 consplansw[, .(nchange = sum(change), ntot = .N, pchange = sum(change)/.N), 
-           by = region][, .(avepchange = mean(nchange/ntot), se = sd(nchange/ntot)/sqrt(.N))] # average proportion across regions
+           by = region][, .(avepchange = mean(nchange/ntot), sd = sd(nchange/ntot))] # average proportion across regions
 
 
 # Make matrix of proportion in each zone in each region, for barplot
@@ -468,8 +486,8 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
 
 # Statistics for individual and networks of management zones
     # means and SE
-    means.net[, .(flost = mean(flost), flost.se = se(flost), fgained = mean(fgained), fgained.se = se(fgained), 
-                  beta_sor_diss = mean(1 - beta_sor), beta_sor_diss.se = se(1 - beta_sor)), 
+    means.net[, .(flost = mean(flost), flost.sd = sd(flost), fgained = mean(fgained), fgained.sd = sd(fgained), 
+                  beta_sor_diss = mean(1 - beta_sor), beta_sor_diss.sd = sd(1 - beta_sor)), 
               by = c('type', 'rcp')]
     
     sort(means.net[type == 'ind', beta_sor] - means.net[type == 'net', beta_sor]) # sorted differences: all negative

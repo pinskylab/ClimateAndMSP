@@ -311,6 +311,17 @@ goalsmetbymod2[, .(ndiff = sum(ngoals < ngoalsstrict), n = .N), by = 'region'] #
 test <- goalsmetbymod1[, .(min = min(pmet), max = max(pmet)), by = region]
 if(test[, any(min < 0)] | test[, any(max > 1)]) stop('some regions have pmet < 0 or > 1')
 
+# label which models are for planning and which for testing
+goalsbyzonebymod1[, modeltype := 'planning']
+goalsbyzonebymod1[model %in% gcminds, modeltype := 'testing']
+goalsbyzonebymod2[, modeltype := 'planning']
+goalsbyzonebymod2[model %in% gcminds, modeltype := 'testing']
+goalsmetbymod1[, modeltype := 'planning']
+goalsmetbymod1[model %in% gcminds, modeltype := 'testing']
+goalsmetbymod2[, modeltype := 'planning']
+goalsmetbymod2[model %in% gcminds, modeltype := 'testing']
+
+
 # write out
 write.csv(goalsbyzonebymod1, file = gzfile(paste0('output/goalsbyzonebymod_', runname1out, '.csv.gz')))
 write.csv(goalsbyzonebymod2, file = gzfile(paste0('output/goalsbyzonebymod_', runname2out, '.csv.gz')))
@@ -318,5 +329,8 @@ write.csv(goalsmetbymod1, file = paste0('output/goalsmetbymod_', runname1out, '.
 write.csv(goalsmetbymod2, file = paste0('output/goalsmetbymod_', runname2out, '.csv'))
 
 
-	    
-	
+# read back in if needed
+goalsbyzonebymod1 <- fread(paste0('gunzip -c output/goalsbyzonebymod_', runname1out, '.csv.gz'), drop = 1)
+goalsbyzonebymod2 <- fread(paste0('gunzip -c output/goalsbyzonebymod_', runname2out, '.csv.gz'), drop = 1)
+goalsmetbymod1 <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
+goalsmetbymod2 <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)
