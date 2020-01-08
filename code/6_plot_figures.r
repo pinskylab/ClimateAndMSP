@@ -418,8 +418,8 @@ ggplot(frontierall[todrop == 0,], aes(x = presperc, y = futperc, group = budget,
     facet_wrap(~ region, nrow = 3, scales = 'free')
 
 # Plot %goals met for each weighting and region
-colmat <- t(col2rgb(brewer.pal(9, 'Set1')))
-cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
+#colmat <- t(col2rgb(brewer.pal(9, 'Set1')))
+#cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
 cols <- pal_lancet(alpha = 1)(9)
 
 yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
@@ -528,7 +528,7 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
 
 
 ###################################################
-## Fig. SX Efficiency frontiers for other budgets
+## Fig. S1 Efficiency frontiers for other budgets
 ###################################################
     
 # read in prioritizr solutions
@@ -564,19 +564,41 @@ frontierall[, ':='(presperc = presgoals/ngoals, futperc = futgoals/ngoals)]
 
 # quick plot as a check
 require(ggplot2)
-ggplot(frontierall, aes(x = presperc, y = futperc, group = budget, color = budget)) +
+ggplot(frontierall, aes(x = presperc, y = futperc, group = budget, color = region)) +
     geom_path(size = 0.4) +
     geom_point(size = 0.3) +
-    facet_wrap(~ region, nrow = 3, scales = 'free')
+    facet_wrap(~ budget, nrow = 3, scales = 'free')
 
-# Drop some non-frontier points (specific to frontierall_2019-12-22_071607.csv)
-frontierall <- frontierall[!(region == 'ebs' & abs(presperc - 0.9101124) < 0.001 & abs(futperc - 0.5730337) < 0.001),]
-frontierall <- frontierall[!(region == 'wc' & abs(presperc - 0.9111111) < 0.001 & abs(futperc == 0.8000000) < 0.001),]
+# Drop non-frontier points (automated)
+# If two points share the same futperc, it chooses the one with the higher presperc (or vice versa)
+frontierall[, todrop := 0]
+for(i in 1:nrow(frontierall)){
+    thisreg <- frontierall[i, region]
+    thisbud <- frontierall[i, budget]
+    thispresperc <- frontierall[i, presperc]
+    k1 <- frontierall[, presperc == thispresperc & region == thisreg & budget == thisbud]
+    if(length(unique(frontierall[k1, futperc])) > 1){
+        mx <- frontierall[k1, max(futperc)]
+        frontierall[presperc == thispresperc & futperc < mx & region == thisreg & presweight != 0 & presweight != 100, todrop := 1]
+    }
+    
+    thisfutperc <- frontierall[i, futperc]
+    k2 <- frontierall[, futperc == thisfutperc & region == thisreg & budget == thisbud]
+    if(length(unique(frontierall[k2, presperc])) > 1){
+        mx <- frontierall[k2, max(presperc)]
+        frontierall[futperc == thisfutperc & presperc < mx & region == thisreg & presweight != 0 & presweight != 100, todrop := 1]
+    }
+}
+
+ggplot(frontierall[todrop == 0, ], aes(x = presperc, y = futperc, group = budget, color = region)) +
+    geom_path(size = 0.4) +
+    geom_point(size = 0.3) +
+    facet_wrap(~ budget, nrow = 3, scales = 'free')
 
 
 # Plot %goals met for each weighting and region
-colmat <- t(col2rgb(brewer.pal(9, 'Set1')))
-cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
+#colmat <- t(col2rgb(brewer.pal(9, 'Set1')))
+#cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255,255,255,255), maxColorValue=255)
 cols <- pal_lancet(alpha = 1)(9)
 
 yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
@@ -585,22 +607,19 @@ myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'
 regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
 buds <- 0.5 # the budgets to plot
 
-png('figures/FigSX_prioritizr_frontiers.png', height = 4, width = 6, units = 'in', res = 300)
-layout(matrix(c(1,4,4,4,2,4,4,4,3,4,4,4), byrow = TRUE, ncol = 4))
+png('figures/FigS1_prioritizr_frontiers.png', height = 8, width = 6, units = 'in', res = 300)
+par(mfrow = c(2,1), mai=c(0.7, 0.7, 0.2, 0.05), cex.main = 1, cex.axis = 0.8, tcl = -0.3, mgp=c(2,0.5,0), las = 1)
 
-par(mai=c(0.1, 0.1, 0.1, 0.05), cex.main = 1, cex.axis = 0.8, tcl = -0.3, mgp=c(2,0.5,0))
-plot(x = c(0, 1, 1), y = c(1, 1, 0), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
-plot(x = c(0, 1), y = c(1, 0), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
-
-x1 <- seq(0, 1, length = 100)
-plot(x = x1, y = sqrt(1 - x1^2), type = 'l', bty = 'l', lwd = 2, xaxt = 'n', yaxt = 'n', xlab = '', ylab = '', xlim = c(-0.25, 1.25), ylim = c(-0.25, 1.25))
-
-par(mai=c(0.7, 0.7, 0.2, 0.05))
-plot(0, 0, type = 'o', pch = 16, col = 'white', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
+plot(0, 0, type = 'o', pch = 16, col = 'white', bty = 'l', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
 for (i in 1:length(myregs)) { # for each region
-    frontierall[region == myregs[i] & budget == buds, lines(presperc, futperc, type = 'l', pch = 16, col = cols[i])]
+    frontierall[region == myregs[i] & budget == 0.5 & todrop == 0, lines(presperc, futperc, type = 'l', pch = 16, col = cols[i])]
 }
 
 legend('bottomleft', legend = regnames, col = cols, lty = 1, cex = 0.7, title = 'Regions')
+
+plot(0, 0, type = 'o', pch = 16, col = 'white', bty = 'l', xlab='Present goals met (proportion)', ylab='Future goals met (proportion)', ylim = c(0.2, 1), xlim = c(0.3, 1), main='')
+for (i in 1:length(myregs)) { # for each region
+    frontierall[region == myregs[i] & budget == 0.9 & todrop == 0, lines(presperc, futperc, type = 'l', pch = 16, col = cols[i])]
+}
 
 dev.off()
