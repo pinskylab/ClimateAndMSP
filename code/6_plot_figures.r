@@ -623,3 +623,77 @@ for (i in 1:length(myregs)) { # for each region
 }
 
 dev.off()
+
+
+
+#################################################
+## Fig. S2: Simulated management area networks
+#################################################
+randMPAs1 <- read.csv('output/randMPAs_byBT_2016-07-19.csv', row.names=1) # 10x10x5
+randMPAs2 <- read.csv('output/randMPAs_byBT_2016-07-20.csv', row.names=1) # 10x10x10
+stats <- read.csv('output/MPA_network_statsGIS.csv', row.names=1)
+
+# combine the data
+randMPAs <- rbind(randMPAs1, randMPAs2)
+
+regs <- sort(unique(randMPAs$region))
+
+
+# plot netwrkturn as color dots
+colrmp <- colorRamp(brewer.pal(11, name='Spectral'))
+
+par(mfrow=c(3,3))
+for(i in 1:length(regs)){
+    inds <- randMPAs$region==regs[i]
+    plot(randMPAs$size[inds], randMPAs$temprng[inds], pch=16, col=rgb(colrmp(randMPAs$netwrkturn[inds]), maxColorValue=256), main=regs[i])
+}
+
+
+# plot netwrkturn as averages within grid squares
+colrmp <- colorRamp(brewer.pal(11, name='Spectral'))
+colpal <- colorRampPalette(brewer.pal(11, name='Spectral'))
+xlabs <- c('', '', '', '', '', '', 'Fraction of region in network', 'Fraction of region in network', 'Fraction of region in network')
+ylabs <- c('Fraction of thermal\nrange in network', '', '', 'Fraction of thermal\nrange in network', '', '', 'Fraction of thermal\nrange in network', '', '') 
+regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritimes', 'newf') # set plot order
+regsnice = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
+
+szs <- seq(min(randMPAs$size, na.rm=TRUE), max(randMPAs$size, na.rm=TRUE), length.out=10)
+rngs <- seq(min(randMPAs$temprng, na.rm=TRUE), max(randMPAs$temprng, na.rm=TRUE), length.out=10)
+szstep <- diff(szs)[1]
+tempstep <- diff(rngs)[1]
+
+gridave <- expand.grid(region=regs, size=szs, temprng=rngs, ave=NA)
+for(i in 1:nrow(gridave)){
+    inds <- randMPAs$region==gridave$region[i] & abs(randMPAs$temprng - gridave$temprng[i]) < tempstep/2 & abs(randMPAs$size - gridave$size[i]) < szstep
+    gridave$ave[i] <- mean(randMPAs$netwrkturn[inds])		
+}
+
+
+# png(units='in', res=300, width=6, height=6, file='figures/FigS2_randMPAs.png')
+par(mfrow=c(3,3), mgp=c(2,0.5,0), mai=c(0.2, 0.3, 0.3, 0.1), omi=c(0.4, 0.4, 0, 0), xpd=NA, tcl=-0.3, las=1)
+for(i in 1:length(regs)){
+    inds <- gridave$region==regs[i] & !is.na(gridave$ave)
+    thisdat <- gridave[inds,]
+    thisdat$newz <- thisdat$ave - min(thisdat$ave)
+    thisdat$newz <- thisdat$newz/max(thisdat$newz)
+    mat <- as.data.frame(dcast.data.table(as.data.table(thisdat), temprng ~ size, value.var='newz'))
+    row.names(mat) <- mat$temprng
+    mat <- t(as.matrix(mat[,2:ncol(mat)])) # transpose because of the way image handles matrices
+    image(z=mat, x=sort(unique(thisdat$size)), y=sort(unique(thisdat$temprng)), col=colpal(100), main=regsnice[i], xlab=xlabs[i], ylab=ylabs[i])
+    
+    matna <- mat
+    matna[is.na(mat)] <- 1
+    matna[!is.na(mat)] <- NA
+    image(z=matna, x=sort(unique(thisdat$size)), y=sort(unique(thisdat$temprng)), col='grey', add=TRUE)
+    
+    text(x=0.34, y=-0.01, labels=paste('Similarity:', paste(signif(range(gridave$ave[inds]),2), collapse='-')))
+    
+    # add dot for empirical network
+    inds2 <- as.character(stats$region)==regs[i]
+    if(sum(inds2)>0 & regs[i] != 'DFO_ScotianShelf'){
+        points(stats$fracsizem2[inds2], stats$fractemp[inds2], pch=10, cex=2, col='white')
+    }
+}
+
+dev.off()
+
