@@ -15,10 +15,7 @@ require(sf)
 ##############################################################
 ## Read in and process data to create Areas of Interest (AOI)
 ##############################################################
-#climgrid <- read.csv('data/climGrid.csv', row.names=1)
 climgrid <- readRDS('temp/SPsf2.rds') # the projection grid
-#land <- readOGR(dsn='cmsp_data/', layer='global_polygon') # global land layer from NatCap
-#	plot(land) # takes too long
 
 # label by area of interest regions
 climgrid$AOI <- NA
@@ -44,37 +41,12 @@ climpoly <- aggregate(climgridbuf[,c('geometry')], by = list(AOI = climgridbuf$A
 climpolyb <- st_buffer(climpoly, dist = 100000) # 100km
 #	plot(climpolyb, lwd=0.2, axes=TRUE)
 	
-
-# split Alaska along 179 and 181deg longitude (3 pieces)
-# maskPS <- as.PolySet(data.frame(PID=rep(c(1:3),rep(4,3)), POS=rep(1:4, 3), X=rep(c(150,179.99,180.01,230), c(2,4,4,2)), Y=rep(c(45,65,45,65,45,65,45), c(1,2,2,2,2,2,1))), projection='LL')
-# mask <- PolySet2SpatialPolygons(maskPS)
-# mask.t <- spTransform(mask, proj4string(gridSPD))
-# 	#plot(mask.t, col=1:length(mask.t))
-# 	plot(gridSP.b, lwd=0.2, axes=TRUE, col=1:4)
-# 	plot(mask.t, add=TRUE)
-# gridSPAK <- gIntersection(gridSPD[grep('Alaska', gridSPD$region),], mask.t, byid=TRUE)
-# 	plot(gridSPAK, col=1:length(gridSPAK))
-# 
-# 	# convert Alaska to spatialpolygonsdataframe for writing
-# 	pid <- sapply(slot(gridSPAK, "polygons"), function(x) slot(x, "ID"))
-# 	regs <- c('Alaska_west', 'Alaska_middle', 'Alaska_east')
-# 	gridSPDAK <- SpatialPolygonsDataFrame(gridSPAK, data.frame(region=regs, row.names=pid))
-
 # write out each region as a separate shapefile
 # will throw an error if file already exists
 for(i in 1:nrow(climpolyb)){
 	st_write(climpolyb[i,], paste0('temp/AOI_', climpolyb$AOI[i], '.shp')) # write the .prj file as part of the shapefile. Overwrite
 }
 
-# old writing out, usefull if need to split AK in pieces
-# notAK <- grep('Alaska', gridSPD$region, invert=TRUE)
-# for(i in notAK){ # for all except Alaska
-# 	writeOGR(gridSPD[i,], "./cmsp_data/", paste('AOI', gridSPD$region[i], sep='_'), driver="ESRI Shapefile", overwrite_layer=TRUE) # write the .prj file as part of the shapefile
-# }
-# 
-# for(i in 1:length(gridSPDAK)){ # for Alaska
-# 	writeOGR(gridSPDAK[i,], "./cmsp_data/", paste('AOI', gridSPDAK$region[i], sep='_'), driver="ESRI Shapefile", overwrite_layer=TRUE) # write the .prj file as part of the shapefile
-# }
 
 
 #######################################
