@@ -28,6 +28,7 @@ ramp2hex <- function(x){
 	return(rgb(cs[,1], cs[,2], cs[,3], maxColorValue=255))
 }
 
+# add temperatures to the map in Fig. 1
 addtemps <- function(x, pos, yfrac=0.1){
 	usr <- par('usr')
 	if(pos=='right'){
@@ -58,8 +59,22 @@ roundto <- function(x, y){
     return(nearest)
 }
 
+
+# Function to plot color bar
+# from https://stackoverflow.com/questions/9314658/colorbar-from-custom-colorramppalette
+color.bar <- function(lut, min, max=-min, nticks=11, ticks=seq(min, max, len=nticks), title='') {
+    scale = (length(lut)-1)/(max-min)
+    
+    plot(c(0,10), c(min,max), type='n', bty='n', xaxt='n', xlab='', yaxt='n', ylab='', main=title)
+    axis(4, ticks, las=1)
+    for (i in 1:(length(lut)-1)) {
+        y = (i-1)/scale + min
+        rect(0,y,10,y+1/scale, col=lut[i], border=NA)
+    }
+}
+
 ##############################
-# Useful quantities
+# Useful quantities (for paper text)
 ##############################
 
 # number of species and projections 
@@ -626,12 +641,8 @@ dev.off()
 #################################################
 ## Fig. S2: Simulated management area networks
 #################################################
-randMPAs1 <- read.csv('output/randMPAs_byBT_2016-07-19.csv', row.names=1) # 10x10x5
-randMPAs2 <- read.csv('output/randMPAs_byBT_2016-07-20.csv', row.names=1) # 10x10x10
-stats <- read.csv('output/MPA_network_statsGIS.csv', row.names=1)
-
-# combine the data
-randMPAs <- rbind(randMPAs1, randMPAs2)
+randMPAs <- fread('output/randMPAs_byBT.csv', drop = 1) # read in the simulations
+stats <- fread('output/MPA_network_stats.csv', drop = 1)
 
 regs <- sort(unique(randMPAs$region))
 
@@ -651,7 +662,7 @@ colrmp <- colorRamp(brewer.pal(11, name='Spectral'))
 colpal <- colorRampPalette(brewer.pal(11, name='Spectral'))
 xlabs <- c('', '', '', '', '', '', 'Fraction of region in network', 'Fraction of region in network', 'Fraction of region in network')
 ylabs <- c('Fraction of thermal\nrange in network', '', '', 'Fraction of thermal\nrange in network', '', '', 'Fraction of thermal\nrange in network', '', '') 
-regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritimes', 'newf') # set plot order
+regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf') # set plot order
 regsnice = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
 
 szs <- seq(min(randMPAs$size, na.rm=TRUE), max(randMPAs$size, na.rm=TRUE), length.out=10)
@@ -659,37 +670,50 @@ rngs <- seq(min(randMPAs$temprng, na.rm=TRUE), max(randMPAs$temprng, na.rm=TRUE)
 szstep <- diff(szs)[1]
 tempstep <- diff(rngs)[1]
 
-gridave <- expand.grid(region=regs, size=szs, temprng=rngs, ave=NA)
+gridave <- expand.grid(region = regs, size = szs, temprng = rngs, ave = NA)
 for(i in 1:nrow(gridave)){
-    inds <- randMPAs$region==gridave$region[i] & abs(randMPAs$temprng - gridave$temprng[i]) < tempstep/2 & abs(randMPAs$size - gridave$size[i]) < szstep
+    inds <- randMPAs[, region == gridave$region[i] & abs(temprng - gridave$temprng[i]) < tempstep/2 & abs(size - gridave$size[i]) < szstep]
     gridave$ave[i] <- mean(randMPAs$netwrkturn[inds])		
 }
 
 
 # png(units='in', res=300, width=6, height=6, file='figures/FigS2_randMPAs.png')
-par(mfrow=c(3,3), mgp=c(2,0.5,0), mai=c(0.2, 0.3, 0.3, 0.1), omi=c(0.4, 0.4, 0, 0), xpd=NA, tcl=-0.3, las=1)
+par(mgp=c(2,0.5,0), mai=c(0.2, 0.3, 0.3, 0.1), omi=c(0.25, 0.3, 0, 0), xpd=NA, tcl=-0.3, las=1)
+layout(matrix(1:18, nrow = 3, byrow = TRUE), widths = c(6, 3, 6, 3, 6, 3), heights = c(1, 1, 1))
 for(i in 1:length(regs)){
-    inds <- gridave$region==regs[i] & !is.na(gridave$ave)
+    # construct matrix for plotting dissimilarity
+    inds <- gridave$region == regs[i] & !is.na(gridave$ave)
     thisdat <- gridave[inds,]
     thisdat$newz <- thisdat$ave - min(thisdat$ave)
     thisdat$newz <- thisdat$newz/max(thisdat$newz)
-    mat <- as.data.frame(dcast.data.table(as.data.table(thisdat), temprng ~ size, value.var='newz'))
+    mat <- as.data.frame(dcast(as.data.table(thisdat), temprng ~ size, value.var='newz'))
     row.names(mat) <- mat$temprng
     mat <- t(as.matrix(mat[,2:ncol(mat)])) # transpose because of the way image handles matrices
+    
+    # plot
+    par(mgp=c(2,0.5,0), mai=c(0.2, 0.3, 0.3, 0.05), tcl=-0.3)
     image(z=mat, x=sort(unique(thisdat$size)), y=sort(unique(thisdat$temprng)), col=colpal(100), main=regsnice[i], xlab=xlabs[i], ylab=ylabs[i])
     
+    # plot NA as grey
     matna <- mat
     matna[is.na(mat)] <- 1
     matna[!is.na(mat)] <- NA
     image(z=matna, x=sort(unique(thisdat$size)), y=sort(unique(thisdat$temprng)), col='grey', add=TRUE)
     
-    text(x=0.34, y=-0.01, labels=paste('Similarity:', paste(signif(range(gridave$ave[inds]),2), collapse='-')))
+    #text(x=0.34, y=-0.01, labels=paste('Dissimilarity:', paste(signif(range(gridave$ave[inds]),2), collapse='-')))
     
     # add dot for empirical network
-    inds2 <- as.character(stats$region)==regs[i]
-    if(sum(inds2)>0 & regs[i] != 'DFO_ScotianShelf'){
-        points(stats$fracsizem2[inds2], stats$fractemp[inds2], pch=10, cex=2, col='white')
+    inds2 <- as.character(stats$region) == regs[i]
+    if(sum(inds2) > 0){
+        points(stats$fracsize[inds2], stats$fractemp[inds2], pch=10, cex=2, col='white')
     }
+    
+    # add color bar in next plot space
+    par(mgp=c(2,0.5,0), mai=c(0.1, 0.05, 0.3, 0.5), tcl=-0.1)
+    color.bar(colpal(100), min = min(round(gridave$ave[inds], 4)), 
+              max = max(round(gridave$ave[inds], 4)), nticks = 5)
+    
+    
 }
 
 dev.off()
