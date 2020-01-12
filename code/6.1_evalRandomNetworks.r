@@ -45,7 +45,9 @@ clim <- merge(clim, regions[, .(latgrid, longrid, region)], by.x = c('lat', 'lon
 regs <- as.character(regions[,sort(unique(region))])
 
 # data frame to store results
-randMPAs <- as.data.table(expand.grid(region = regs, tempstep = temps, sizestep = sizes, repnum = 1:nreps, temprng = NA_real_, size = NA_real_, meanturnIndiv = NA_real_, netwrkturn = NA_real_))
+randMPAs <- as.data.table(expand.grid(region = regs, tempstep = temps, sizestep = sizes, repnum = 1:nreps, temprng = NA_real_, 
+                                      size = NA_real_, meanturnIndiv = NA_real_, sdturnIndiv = NA_real_, netwrkturn = NA_real_, 
+                                      sdnetwrkturn = NA_real_))
 
 # a slow loop, especially on higher values of j and k
 for(i in 1:length(regs)){
@@ -56,6 +58,7 @@ for(i in 1:length(regs)){
 
 	tx <- diff(range(punits$sbt, na.rm = TRUE)) # the range of temperatures in the region
 	nu <- sum(!duplicated(punits[, .(lat, lon)])) # the number of planning units
+	if(nu != nrow(punits)) stop(paste0('i=', i, '. Duplicated entries in punits'))
 
 	# loads presence/absence data for each species/model/rcp
 	if(regs[i] %in% c('ebs', 'goa', 'bc', 'wc')) ocean <- 'Pac'
@@ -107,10 +110,10 @@ for(i in 1:length(regs)){
 					punits[, nearby := ((sbt - minsbtsel)/tx <= temps[j] & sbt >= minsbtsel) | ((maxsbtsel - sbt)/tx < temps[j] & sbt <= maxsbtsel)] # measure nearby from the min temp if new potential temps are > min, and measure from max temp if new potential temps are < max
 				}
 				
-				# merge selected MPA list with species data
-				thesesppbymod <- merge(punits[sel == TRUE, .(lat, lon, sel)], presmap, by.x = c('lat', 'lon'), by.y = c('latgrid', 'longrid'), all.x = TRUE)
-				thesesppbymod[, sel := NULL]
 				
+				# merge selected MPA list with species data
+				thesesppbymod <- merge(punits[sel == TRUE, .(lat, lon)], presmap, by.x = c('lat', 'lon'), by.y = c('latgrid', 'longrid'), all.x = TRUE)
+
 				# calculate change in poccur for each species/model/rcp/grid
 				thesesppbymod <- dcast(thesesppbymod, spp + rcp + model + lat + lon ~ year_range, value.var = 'poccur') # reshape to wide format
                 thesesppbymod[, dpoccur := get(periods[2]) - get(periods[1])] # calculate the change
@@ -127,9 +130,10 @@ for(i in 1:length(regs)){
 				mpatempstats <- merge(mpatempstats, thesesppbymod[dpoccur < 0, .(nlost = - sum(dpoccur)), by = .(lat, lon, rcp, model)])
 				mpatempstats[, beta_sor := 1 - 2*nshared / (2*nshared + nlost + ngained)] # sorenson dissimilarity
 				randMPAs$meanturnIndiv[ind] <- mpatempstats[, mean(beta_sor)]
+				randMPAs$sdturnIndiv[ind] <- mpatempstats[, .(beta_sor = mean(beta_sor)), by = .(lat, lon)][, sd(beta_sor)] # sd across models and rcps
 				
 				# ecological turnover for the entire network
-                thesesppbymodnet <- thesesppbymod[, .(pinit = 1 - sum(1 - get(periods[1])), pfinal = 1 - sum(1 - get(periods[2]))), by = .(spp, rcp, model)] # aggregate probability for each species across the full network at each time period
+                thesesppbymodnet <- thesesppbymod[, .(pinit = 1 - prod(1 - get(periods[1])), pfinal = 1 - prod(1 - get(periods[2]))), by = .(spp, rcp, model)] # aggregate probability for each species across the full network at each time period
                 thesesppbymodnet[, dpoccur := pfinal - pinit] # calculate the change
                 thesesppbymodnet[, pshared := pfinal * pinit] # calculate the probability of being shared
                 mpatempstatsnet <- thesesppbymodnet[, .(nshared = sum(pshared)), by = .(rcp, model)]
@@ -137,7 +141,8 @@ for(i in 1:length(regs)){
                 mpatempstatsnet <- merge(mpatempstatsnet, thesesppbymodnet[dpoccur < 0, .(nlost = - sum(dpoccur)), by = .(rcp, model)])
                 mpatempstatsnet[, beta_sor := 1 - 2*nshared / (2*nshared + nlost + ngained)] # sorenson dissimilarity
                 randMPAs$netwrkturn[ind] <- mpatempstatsnet[, mean(beta_sor)]
-
+                randMPAs$sdnetwrkturn[ind] <- mpatempstatsnet[, sd(beta_sor)] # sd across models and rcps
+                
 			}			
 		}
 	}
