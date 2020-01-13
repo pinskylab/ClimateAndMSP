@@ -647,7 +647,7 @@ stats <- fread('output/MPA_network_stats.csv', drop = 1)
 regs <- sort(unique(randMPAs$region))
 
 
-# plot netwrkturn as color dots
+# plot netwrkturn as color dots (initial plot)
 colrmp <- colorRamp(brewer.pal(11, name='Spectral'))
 
 par(mfrow=c(3,3))
@@ -658,10 +658,10 @@ for(i in 1:length(regs)){
 
 
 # plot netwrkturn as averages within grid squares
-colrmp <- colorRamp(brewer.pal(11, name='Spectral'))
-colpal <- colorRampPalette(brewer.pal(11, name='Spectral'))
-xlabs <- c('', '', '', '', '', '', 'Fraction of region in network', 'Fraction of region in network', 'Fraction of region in network')
-ylabs <- c('Fraction of thermal\nrange in network', '', '', 'Fraction of thermal\nrange in network', '', '', 'Fraction of thermal\nrange in network', '', '') 
+colrmp <- colorRamp(rev(brewer.pal(11, name='Spectral')))
+colpal <- colorRampPalette(rev(brewer.pal(11, name='Spectral')))
+xlabs <- c('', '', '', '', '', '', 'Proportion of area in network', 'Proportion of area in network', 'Proportion of area in network')
+ylabs <- c('Proportion of thermal\nrange in network', '', '', 'Proportion of thermal\nrange in network', '', '', 'Proportion of thermal\nrange in network', '', '') 
 regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf') # set plot order
 regsnice = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
 
@@ -677,30 +677,31 @@ for(i in 1:nrow(gridave)){
 }
 
 
-# png(units='in', res=300, width=6, height=6, file='figures/FigS2_randMPAs.png')
+# png(units='in', res=300, width=7, height=6, file='figures/FigS2_randMPAs.png')
 par(mgp=c(2,0.5,0), mai=c(0.2, 0.3, 0.3, 0.1), omi=c(0.25, 0.3, 0, 0), xpd=NA, tcl=-0.3, las=1)
 layout(matrix(1:18, nrow = 3, byrow = TRUE), widths = c(6, 3, 6, 3, 6, 3), heights = c(1, 1, 1))
 for(i in 1:length(regs)){
-    # construct matrix for plotting dissimilarity
+    # construct matrix for plotting dissimilarity and scale to 0-1
     inds <- gridave$region == regs[i] & !is.na(gridave$ave)
     thisdat <- gridave[inds,]
-    thisdat$newz <- thisdat$ave - min(thisdat$ave)
-    thisdat$newz <- thisdat$newz/max(thisdat$newz)
+    minz <- min(floor(thisdat$ave*10)/10)
+    maxz <- max(ceiling(thisdat$ave*10)/10)
+    thisdat$newz <- thisdat$ave - minz
+    thisdat$newz <- thisdat$newz/(maxz - minz)
     mat <- as.data.frame(dcast(as.data.table(thisdat), temprng ~ size, value.var='newz'))
     row.names(mat) <- mat$temprng
     mat <- t(as.matrix(mat[,2:ncol(mat)])) # transpose because of the way image handles matrices
     
     # plot
     par(mgp=c(2,0.5,0), mai=c(0.2, 0.3, 0.3, 0.05), tcl=-0.3)
-    image(z=mat, x=sort(unique(thisdat$size)), y=sort(unique(thisdat$temprng)), col=colpal(100), main=regsnice[i], xlab=xlabs[i], ylab=ylabs[i])
+    image(z=mat, x=sort(unique(thisdat$size)), y=sort(unique(thisdat$temprng)), col=colpal(100), 
+          main=regsnice[i], xlab=xlabs[i], ylab=ylabs[i])
     
     # plot NA as grey
     matna <- mat
     matna[is.na(mat)] <- 1
     matna[!is.na(mat)] <- NA
     image(z=matna, x=sort(unique(thisdat$size)), y=sort(unique(thisdat$temprng)), col='grey', add=TRUE)
-    
-    #text(x=0.34, y=-0.01, labels=paste('Dissimilarity:', paste(signif(range(gridave$ave[inds]),2), collapse='-')))
     
     # add dot for empirical network
     inds2 <- as.character(stats$region) == regs[i]
@@ -710,8 +711,8 @@ for(i in 1:length(regs)){
     
     # add color bar in next plot space
     par(mgp=c(2,0.5,0), mai=c(0.1, 0.05, 0.3, 0.5), tcl=-0.1)
-    color.bar(colpal(100), min = min(round(gridave$ave[inds], 4)), 
-              max = max(round(gridave$ave[inds], 4)), nticks = 5)
+    color.bar(colpal(100), min = minz, max = maxz, nticks = 5)
+#    color.bar(colpal(100), min = 0, max = 0.4, nticks = 5)
     
     
 }
