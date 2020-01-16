@@ -682,7 +682,7 @@ for(i in 1:nrow(gridave)){
 }
 
 
-# png(units='in', res=300, width=7, height=6, file='figures/FigS2_randMPAs.png')
+png(units='in', res=300, width=7, height=6, file='figures/FigS2_randMPAs.png')
 par(mgp=c(2,0.5,0), mai=c(0.2, 0.3, 0.3, 0.1), omi=c(0.25, 0.3, 0, 0), xpd=NA, tcl=-0.3, las=1)
 layout(matrix(1:18, nrow = 3, byrow = TRUE), widths = c(6, 3, 6, 3, 6, 3), heights = c(1, 1, 1))
 for(i in 1:length(regs)){
@@ -723,6 +723,36 @@ for(i in 1:length(regs)){
 }
 
 dev.off()
+
+
+
+#################################################################################
+## Fig. S3: Compare trawl observations vs. SDM predictions in management areas
+#################################################################################
+wdpa_by_spp_obs_reg <- fread('gunzip -c temp/wdpa_trawlsppobs_byreg.csv.gz', drop = 1) # trawl survey observations of species in MPAs
+mpatrawl <- fread('output/MPAvstrawl_NPV_PPV.csv', drop = 1) # NPV and PPV calculations
+
+cols = brewer.pal(4, 'Paired')
+
+png(units='in', res=300, width=8, height=4, file='figures/FigS3_MPA_trawl.png')
+
+par(mfrow = c(1,2), mai = c(1, 1, 0.3, 0.3))
+wdpa_by_spp_obs_reg[, hist(nhaul, breaks = seq(0, 450, by = 4), col = 'grey', xlab = 'Number of hauls per management area', main = '', ylab = '')]
+mtext(side = 2, 'Frequency', line = 2.8, las = 0)
+mtext(side = 3, 'a)', line = -0.5, at = -120, cex = 1.5)
+
+plot(1000, 1000, xlim = c(1, 100), ylim = c(0, 1), log = 'x', xlab = 'Minimum hauls per management area', ylab = 'Predictive value', las = 1, bty = 'n')
+thresh[, polygon(c(min, rev(min)), c(npv+npvse, rev(npv-npvse)), col = cols[1], border = NA)]
+thresh[, polygon(c(min, rev(min)), c(ppv+ppvse, rev(ppv-ppvse)), col = cols[3], border = NA)]
+thresh[, lines(min, npv, type = 'l', col = cols[2])]
+thresh[, lines(min, ppv, type ='l', col = cols[4])]
+mtext(side = 3, 'b)', line = -0.5, at = 0.25, cex = 1.5)
+
+dev.off()
+
+# overall values (for text)
+thresh[min == 1, ]
+
 
 
 
