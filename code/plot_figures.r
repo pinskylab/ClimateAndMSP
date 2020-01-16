@@ -88,6 +88,7 @@ nspp # number of species
 
 rm(presmap1, presmap2, biomap1, biomap2)
 
+
 #########################
 ## Fig 1 Study regions maps
 #########################
@@ -277,6 +278,10 @@ for(i in 1:length(consplans)){
 consplans <- rbindlist(consplans)
 regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf') # set the order
 
+# How many planning units?
+nrow(consplans)
+consplans[, .N, by = region] # per region
+
 # add a zone indicator to consplans
 consplans[ , zone := as.numeric(NA)]
 consplans[solution_1_conservation == 1 , zone := 1]
@@ -462,7 +467,7 @@ dev.off()
 
 
 ###############################################
-## Fig. 5 Management area gains and losses plot and stats
+## Fig. 5 Management area species gains and losses plot and stats
 ###############################################
 wdpaturnbyMPAbymod <- fread('gunzip -c temp/wdpaturnbyMPAbymod.csv.gz', drop = 1) # individual MPA results
 wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # network results
@@ -483,7 +488,7 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
     means <- wdpaturnbyMPAbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
                                  by=c('rcp', 'model')] 
     
-    # calculate network means within models/rcps
+    # calculate network means within climate models/rcps
     means.net <- wdpaturnbynetbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
                                      by=c('rcp', 'model')] 
     
@@ -719,3 +724,41 @@ for(i in 1:length(regs)){
 
 dev.off()
 
+
+
+##############################################################
+## Table S4 problem definitions for planning in each region
+## Also stats for text (# planning units total)
+##############################################################
+# Read in plans and species
+folder <- 'output/prioritizr_runs'
+
+runnames1 <- list.files(path = folder, pattern = 'solution')
+consplans <- vector('list', length(runnames1))
+for(i in 1:length(consplans)){
+    consplans[[i]] <- fread(paste0(folder, '/', runnames1[i]), drop = 1)
+    consplans[[i]]$region <- gsub('solution_|2per_|hist_|.csv', '', runnames[i])
+    consplans[[i]]$type <- gsub('solution_|_ebs|_goa|_bc|_wc|_gmex|_seus|_neus|_maritime|_newf|.csv', '', runnames[i])
+}
+consplans <- rbindlist(consplans)
+
+runnames2 <- list.files(path = folder, pattern = 'spp')
+spps <- vector('list', length(runnames2))
+for(i in 1:length(spps)){
+    spps[[i]] <- fread(paste0(folder, '/', runnames2[i]), drop = 1)
+    spps[[i]]$region <- gsub('spp_|.csv', '', runnames2[i])
+}
+spps <- rbindlist(spps)
+spps[, type := 'conservation']
+spps[grepl('fishery', name), type := 'fishery']
+spps[grepl('energy', name), type := 'energy']
+
+# How many planning units and in each region?
+nrow(consplans)
+consplans[, .N, by = region] # per region
+
+# How many goals of each type in each region?
+spps[, .N, by = .(region, type)]
+spps[type == 'conservation', .N, by = .(region, type)]
+spps[type == 'fishery', .N, by = .(region, type)]
+spps[type == 'energy', .N, by = .(region, type)]
