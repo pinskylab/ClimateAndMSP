@@ -16,34 +16,6 @@ require(RColorBrewer)
 require(ggsci) # for another color palette
 require(lme4)
 
-convcol <- function(x, colfun){
-	x <- x-min(x) # set min to 0
-	x <- x/max(x) # set max to 1
-	cs <- colfun(x)
-	return(rgb(cs[,1], cs[,2], cs[,3], maxColorValue=255))
-}
-
-ramp2hex <- function(x){
-	cs <- colfun(x)
-	return(rgb(cs[,1], cs[,2], cs[,3], maxColorValue=255))
-}
-
-# add temperatures to the map in Fig. 1
-addtemps <- function(x, pos, yfrac=0.1){
-	usr <- par('usr')
-	if(pos=='right'){
-		x1 <- usr[1] + (usr[2]-usr[1])*.7
-		x2 <- usr[1] + (usr[2]-usr[1])*.9
-	}
-	if(pos=='left'){
-		x1 <- usr[1] + (usr[2]-usr[1])*0.1
-		x2 <- usr[1] + (usr[2]-usr[1])*0.3
-	}
-	y1 <- usr[3] + (usr[4]-usr[3])*yfrac
-	text(x1,y1,round(min(x),1), col=ramp2hex(0), cex=0.5)
-	text(x2,y1,round(max(x),1), col=ramp2hex(1), cex=0.5)
-}
-
 se <- function(x,na.rm=FALSE){ # standard error
 	if(!na.rm){
 		return(sd(x, na.rm=FALSE)/sqrt(length(x)))
@@ -52,13 +24,6 @@ se <- function(x,na.rm=FALSE){ # standard error
 		return(sd(x, na.rm=TRUE)/sqrt(sum(!is.na(x))))
 	}
 }
-
-# round x to nearest value in y
-roundto <- function(x, y){
-    nearest <- sapply(x, FUN = function(a, b) return(b[which.min(abs(a-b))]), b = y)
-    return(nearest)
-}
-
 
 # Function to plot color bar
 # from https://stackoverflow.com/questions/9314658/colorbar-from-custom-colorramppalette
@@ -92,16 +57,17 @@ rm(presmap1, presmap2, biomap1, biomap2)
 #########################
 ## Fig 1 Study regions maps
 #########################
-# climatology from Morley et al. 2018
-clim <- fread('gunzip -c output/climatology.csv.gz', drop = 1)
+# turnover statistics
+turn <- fread('output/turnover_by_CMSPgrid.csv', drop = 1)
 
 # region definitions
 regiongrid <- fread(cmd = 'gunzip -c output/region_grid.csv.gz', drop = 1)
+regiongrid[longrid > 0, longrid := longrid - 360] # convert to -360 to 0 for merging with turn
+regiongrid[longrid < 0, longrid2 := longrid + 360] # convert to 0 to 360 for plotting a continent-scale map
 
-# merge regions and climatology
-clim[, latgrid := roundto(latClimgrid, regiongrid$latgrid)]
-clim[, longrid := roundto(lonClimgrid, regiongrid$longrid)]
-clim <- merge(clim, regiongrid, by = c('latgrid', 'longrid'))
+# merge regions and turnover
+turn <- merge(turn, regiongrid, by = c('latgrid', 'longrid'), all.x = TRUE)
+
 
 # set regions and params for each
 regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
@@ -116,44 +82,42 @@ pos <- c(ebs = 'right', goa = 'left', bc = 'left', wc = 'left', gmex = 'left', s
 bcol <- 'dark grey' # background color
 yfrac <- c(0.1, 0.1, 0.1, 0.05, 0.1, 0.1, 0.1, 0.1, 0.1) # fraction of plot from the bottom that the temperature ranges are written
 mfgs <- list(ebs = c(1,2), goa = c(1,3), bc = c(2,1), wc = c(1,4), gmex = c(2,2), seus = c(2,3), neus = c(3,1), maritime = c(3,2), newf = c(3,3)) # plot coordinates for each region
+colfun <- colorRamp(colors = c('white', 'blue'))
+colpal <- colorRampPalette(colors = c('white', 'blue'))
 
-# convert a version of lon to -360 to 0 and another to 0 to 360
-clim[, longrid2 := longrid]
-clim[longrid > 0, longrid2 := longrid - 360]
-clim[, longrid3 := longrid]
-clim[longrid < 0, longrid3 := longrid + 360]
+#### plot map
+# quartz(width=8.7/2.54,height=6/2.54)
+png(width=8.7/2.54, height=6/2.54, units = 'in', res = 300, file='figures/Fig1_study_regions.png')
+par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.2, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
+layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
 
-# plot map
-	colfun <- colorRamp(colors = c('blue', 'white', 'red'))
-	
-	# quartz(width=8.7/2.54,height=6/2.54)
-	#pdf(width=8.7/2.54,height=6/2.54, file=paste('figures/Fig1_study_regions.pdf', sep=''))
-	png(width=8.7/2.54, height=6/2.54, units = 'in', res = 300, file='figures/Fig1_study_regions.png')
-	par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.15, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
-	layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
+# Add continent-scale map
+turn[!is.na(beta_sor), plot(1, 1, xlab='', ylab='', main='', xaxt='n', xlim = c(178,310), ylim = c(24, 62))]
+axis(1, mgp=c(1.2, 0.02, 0), at=c(200,250,300), labels=c(-160, -110, -60))
+map('world2Hires', add=TRUE, xlim=c(170,320), col=bcol, lwd=0.2, resolution=0, fill=FALSE, wrap=TRUE) # annoying that turning fill=TRUE also draws big horizontal lines across the map
+turn[!is.na(beta_sor), points(longrid2, latgrid, col=rgb(colfun(beta_sor), maxColorValue = 255), pch=15, cex=0.1)]
 
-	# Add continent-scale map
-	clim[!is.na(sbt), plot(1, 1, xlab='', ylab='', main='', xaxt='n', xlim = c(178,310), ylim = c(24, 62))]
-	axis(1, mgp=c(1.2, 0.02, 0), at=c(200,250,300), labels=c(-160, -110, -60))
-	map('world2Hires', add=TRUE, xlim=c(170,320), col=bcol, lwd=0.2, resolution=0, fill=FALSE, wrap=TRUE) # annoying that turning fill=TRUE also draws big horizontal lines across the map
-	clim[!is.na(sbt), points(longrid3, latgrid, col=convcol(sbt, colfun), pch=15, cex=0.1)]
-	addtemps(clim[!is.na(sbt), sbt], 'left')
+# Add each region
+for(i in 1:length(regs)){
+    cat(paste0(regs[i], ' '))
+	inds <- turn[, region==regs[i] & !is.na(beta_sor)]
+	turn[inds, plot(longrid, latgrid, col = rgb(colfun(beta_sor), maxColorValue = 255), pch = 15, cex = cexs[i], xlab = '', ylab = '', xlim = xlims[[i]], ylim = ylims[[i]], 
+	                main = paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n')]
+	axis(1, mgp=c(1.2, 0.02, 0))
+	map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0)
+}
 
-	# Add each region
-	for(i in 1:length(regs)){
-	    #par(mfg = mfgs[[i]])
-		inds <- clim[, region==regs[i] & !is.na(sbt)]
-		clim[inds, plot(longrid, latgrid, col = convcol(sbt, colfun), pch = 15, cex = cexs[i], xlab = '', ylab = '', xlim = xlims[[i]], ylim = ylims[[i]], 
-		                main = paste(regsnice[i], '\n', regsniceabbrev[i], sep=''), xaxt='n')]
-		axis(1, mgp=c(1.2, 0.02, 0))
-		map('worldHires',add=TRUE, col=bcol, fill=TRUE, border=FALSE, resolution=0)
-		addtemps(clim[inds, sbt], pos[i], yfrac[i])
-	}
-	mtext('Longitude (°E)', side=1, outer=TRUE, cex=0.5)
-	mtext('Latitude (°N)', side=2, outer=TRUE, cex=0.5, las=0, line=0.3)
+mtext('Longitude (°E)', side = 1, outer = TRUE, cex = 0.5)
+mtext('Latitude (°N)', side = 2, outer = TRUE, cex = 0.5, las = 0, line = 0.7)
 
-	dev.off()
-	
+
+# Add a color bar
+par(mgp=c(2,0.5,0), mai=c(0.1, 0.3, 0.1, 0.4), tcl=-0.1)
+color.bar(colpal(100), min = 0, max = 1, nticks = 5, title = 'Turnover')
+
+
+dev.off()
+
 
 ####################################################################
 # Fig 2 Compare the planning approaches against each climate projection
