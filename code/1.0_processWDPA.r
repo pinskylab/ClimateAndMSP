@@ -41,11 +41,10 @@ nrow(wdpa)
 # some data exploration
 #table(wdpa$MARINE)
 #sort(unique(wdpa$DESIG))
-Y#sort(unique(wdpa$DESIG_ENG))
+#sort(unique(wdpa$DESIG_ENG))
 #as.matrix(table(wdpa$IUCN_CAT))
 #as.matrix(table(wdpa$NO_TAKE))
 
-# subset wdpa? e.g., to no-take areas
 
 # Make the grid based on corner points
 y = numeric(5*length(clim$lat)) # all the Y coords, in order
