@@ -53,6 +53,9 @@ nspp # number of species
 
 rm(presmap1, presmap2, biomap1, biomap2)
 
+# number of mpas in each network
+networks <- fread('gunzip -c temp/wdpaturnbyMPAbymod.csv.gz', drop = 1) # MPA network descriptions
+networks[, length(unique(WDPA_PID)), by = network]
 
 #########################
 ## Fig 1 Study regions maps
@@ -82,8 +85,9 @@ pos <- c(ebs = 'right', goa = 'left', bc = 'left', wc = 'left', gmex = 'left', s
 bcol <- 'dark grey' # background color
 yfrac <- c(0.1, 0.1, 0.1, 0.05, 0.1, 0.1, 0.1, 0.1, 0.1) # fraction of plot from the bottom that the temperature ranges are written
 mfgs <- list(ebs = c(1,2), goa = c(1,3), bc = c(2,1), wc = c(1,4), gmex = c(2,2), seus = c(2,3), neus = c(3,1), maritime = c(3,2), newf = c(3,3)) # plot coordinates for each region
-colfun <- colorRamp(colors = c('white', 'blue'))
-colpal <- colorRampPalette(colors = c('white', 'blue'))
+cols <- brewer.pal(9, 'GnBu')
+colfun <- colorRamp(colors = cols)
+colpal <- colorRampPalette(colors = cols)
 
 #### plot map
 # quartz(width=8.7/2.54,height=6/2.54)
@@ -162,7 +166,7 @@ rtab <- exp(ctab) # to get odds ratios
 print(rtab, digits = 3) # print the odds ratios and CIs
 
 # Plot %goals met (hist and 2per solution)
-summ <- goalsmetbymod[, .(mid = mean(mid), mean = mean(pmetstrict), lb = quantile(pmetstrict, 0.125), ub = quantile(pmetstrict, 0.875)), by = c('year_range', 'region', 'type')] # mean and 95%ci across models and goals, for plotting
+summ <- goalsmetbymod[, .(mid = mean(mid), mean = mean(pmetstrict), lb = mean(pmetstrict) - sd(pmetstrict), ub = mean(pmetstrict) + sd(pmetstrict)), by = c('year_range', 'region', 'type')] # mean and 95%ci across models and goals, for plotting
 colmat <- t(col2rgb(brewer.pal(6, 'PuOr'))) # dark red for histonly average, middle for lines, light red for CI. purple for 2per
 cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255, 90, 200, 200, 90, 255), maxColorValue=255)
 yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
@@ -172,7 +176,6 @@ outfile
 ylims <- c(0, 1)
 
 # quartz(width=8.7/2.54, height=8.7/2.54)
-#pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
 png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file=outfile)
 par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.15, mgp=c(1.6,0.4,0), las = 1)
 
@@ -190,8 +193,7 @@ for (i in 1:length(myregs)) { # for each region
     } else {
         axis(1, labels=FALSE)
     }
-    
-    
+
     # plot histonly lines
     for(k in 1:length(mods)) {
         for(j in 1:length(rcps)) {
@@ -206,11 +208,11 @@ for (i in 1:length(myregs)) { # for each region
                            points(mid, pmetstrict, type='l', pch=16, lwd = 0.5, col=cols[5])]
         }
     }
-    
+
     # plot polygons
     summ[region==myregs[i] & mid > 2014 & type == 'hist', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[3], border = NA)]
     summ[region==myregs[i] & mid > 2014 & type == '2per', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[4], border = NA)]
-    
+
     # plot means
     summ[region==myregs[i] & mid > 2014 & type == 'hist', lines(mid, mean, col = cols[1], lwd = 2)]
     summ[region==myregs[i] & mid > 2014 & type == '2per', lines(mid, mean, col = cols[6], lwd = 2)]
