@@ -172,6 +172,7 @@ cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255, 90, 
 yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
 outfile <- 'figures/Fig2_prioritizr_goalsmetbymod.png'
+# outfile <- 'figures/prioritizr_goalsmetbymod_presentonly.png'; presentonly <- TRUE
 outfile
 ylims <- c(0, 1)
 
@@ -202,20 +203,22 @@ for (i in 1:length(myregs)) { # for each region
         }
     }
     # plot 2per lines
-    for(k in 1:length(mods)){
-        for(j in 1:length(rcps)){
-            goalsmetbymod2[model == mods[k] & rcp == rcps[j] & region==myregs[i]  & year_range != '2007-2020', 
-                           points(mid, pmetstrict, type='l', pch=16, lwd = 0.5, col=cols[5])]
+    if(!presentonly){
+        for(k in 1:length(mods)){
+            for(j in 1:length(rcps)){
+                goalsmetbymod2[model == mods[k] & rcp == rcps[j] & region==myregs[i]  & year_range != '2007-2020', 
+                               points(mid, pmetstrict, type='l', pch=16, lwd = 0.5, col=cols[5])]
+            }
         }
     }
 
     # plot polygons
     summ[region==myregs[i] & mid > 2014 & type == 'hist', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[3], border = NA)]
-    summ[region==myregs[i] & mid > 2014 & type == '2per', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[4], border = NA)]
+    if(!presentonly) summ[region==myregs[i] & mid > 2014 & type == '2per', polygon(c(mid, rev(mid)), c(lb, rev(ub)), col = cols[4], border = NA)]
 
     # plot means
     summ[region==myregs[i] & mid > 2014 & type == 'hist', lines(mid, mean, col = cols[1], lwd = 2)]
-    summ[region==myregs[i] & mid > 2014 & type == '2per', lines(mid, mean, col = cols[6], lwd = 2)]
+    if(!presentonly) summ[region==myregs[i] & mid > 2014 & type == '2per', lines(mid, mean, col = cols[6], lwd = 2)]
     
 }
 
@@ -445,10 +448,10 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
     wdpaturnbyMPAbymodl[, c('var', 'rcp', 'model') := tstrsplit(variable, "\\.", fixed = FALSE)][, variable := NULL] # extract rcp and GMC number from the col name
     wdpaturnbyMPAbymodl <- dcast(wdpaturnbyMPAbymodl, WDPA_PID + network + rcp + model ~ var) # group ninit -> nshared as separate columns
     
-    wdpaturnbynetbymodl <- melt(wdpaturnbynetbymod, id.vars = c('lat'), # ID.VARS SHOULD BE NETWORK
+    wdpaturnbynetbymodl <- melt(wdpaturnbynetbymod, id.vars = c('network'),
                                 measure.vars = patterns('ninit|nfinal|nshared|nlost|ngained')) # convert to long
     wdpaturnbynetbymodl[, c('var', 'rcp', 'model') := tstrsplit(variable, "\\.", fixed = FALSE)][, variable := NULL] # extract rcp and GMC number from the col name
-    wdpaturnbynetbymodl <- dcast(wdpaturnbynetbymodl, lat + rcp + model ~ var) # group ninit -> nshared as separate columns
+    wdpaturnbynetbymodl <- dcast(wdpaturnbynetbymodl, network + rcp + model ~ var) # group ninit -> nshared as separate columns
     
     # calculate means within models/rcps (across regions)
     means <- wdpaturnbyMPAbymodl[, .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
@@ -461,7 +464,7 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
     # calculate means within models/rcps for individual MPAs in the networks
     means.net.indiv <- wdpaturnbyMPAbymodl[!is.na(network), .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor=mean(2*nshared/(2*nshared + ngained + nlost))), 
                                            by=c('rcp', 'model')] 
-
+    
     # combine network and individual MPA results
     means.net$type <- 'net'
     means.net.indiv$type <- 'ind'
@@ -479,7 +482,13 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
     t.test(means.net[type == 'ind', beta_sor], means.net[type == 'net', beta_sor]) # parametric
     wilcox.test(means.net[type == 'ind', beta_sor], means.net[type == 'net', beta_sor]) # non-parametric
     
-
+    # MLPA example
+    wdpaturnbyMPAbymodl[network == 'mlpa', .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor = 1 - mean(2*nshared/(2*nshared + ngained + nlost))), 
+                        by = .(rcp, model)][, .(flost = mean(flost), fgained = mean(fgained), beta_sor = mean(beta_sor))] # individual MPAs
+    wdpaturnbynetbymodl[network == 'mlpa', .(flost = mean(nlost/ninit), fgained = mean(ngained/nfinal), beta_sor = 1 - mean(2*nshared/(2*nshared + ngained + nlost)))] # individual MPAs
+    
+    
+    
 # Plot of mean MPA change and network change
     cols <- list(c('#67a9cf','white','black','#2166ac'), c('#ef8a62', 'white','black','#b2182b')) # colors from Colorbrewer2 7-class RdBu
     # quartz(width=8.7/2.54,height=8.7/2.54)
