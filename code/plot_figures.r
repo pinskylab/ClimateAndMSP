@@ -311,7 +311,7 @@ cols <- brewer.pal(8, 'RdYlBu')
 cols <- cols[c(1:4, 8:5)]
 
 # quartz(width=8.7/2.54, height=5/2.54)
-#pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig4_planareas.pdf')
+#pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig3_planareas.pdf')
 png(width=8.7/2.54, height=10/2.54, units = 'in', res = 300, file='figures/Fig3_planareas.png')
 par(mfrow = c(2, 1), mai=c(0.2, 0.75, 0.1, 0.1), mgp=c(1.8, 0.4, 0), tcl=-0.2, las=1, cex.axis=0.8)
 barplot(height=matmod, space=rep(c(1,0), ncol(mathist)), xaxt='n', col=cols, ylab='Proportion', xlim=c(1.5,40))
@@ -731,8 +731,10 @@ thresh[min == 1, ]
 
 
 
+
+
 ##############################################################
-## Table S4 problem definitions for planning in each region
+## Table S1 problem definitions for planning in each region
 ## Also stats for text (# planning units total)
 ##############################################################
 # Read in plans and species
@@ -760,10 +762,23 @@ spps[grepl('energy', name), type := 'energy']
 
 # How many planning units and in each region?
 nrow(consplans)
-consplans[, .N, by = region] # per region
+area <- consplans[type == 'hist', .(area = .N), by = .(region)] # per region
+area
 
 # How many goals of each type in each region?
 spps[, .N, by = .(region, type)]
-spps[type == 'conservation', .N, by = .(region, type)]
-spps[type == 'fishery', .N, by = .(region, type)]
-spps[type == 'energy', .N, by = .(region, type)]
+cons <- spps[type == 'conservation', .(conservation = .N), by = .(region)]
+fish <- spps[type == 'fishery', .(fishery = .N), by = .(region)]
+spps[type == 'energy', .N, by = .(region)]
+
+# combine into table
+tables1 <- merge(area, cons, by = 'region')
+tables1 <- merge(tables1, fish, by = 'region')
+
+# order W to E
+ord <- data.table(region = c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'), order = 1:9)
+tables1 <- merge(tables1, ord)
+setorder(tables1, order)
+
+# write out
+write.csv(tables1[, .(region, area, conservation, fishery)], 'tables/tableS1.csv', row.names = FALSE)

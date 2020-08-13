@@ -2,6 +2,7 @@
 .Rapp.history
 .Rhistory
 # Odd Mac files
+.DS_Store
 # Downloaded data files and temporary files
 dataDL/
 temp/
