@@ -13,7 +13,6 @@ require(raster)
 require(data.table)
 require(beanplot)
 require(RColorBrewer)
-require(ggsci) # for another color palette
 require(lme4)
 
 se <- function(x,na.rm=FALSE){ # standard error

@@ -1,4 +1,4 @@
-# evaluate protected areas against shifts in species distribution
+# evaluate randomly selected protected areas against shifts in species distribution
 # calculate species gains, losses, turnover, etc.
 
 

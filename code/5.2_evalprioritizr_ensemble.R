@@ -343,7 +343,3 @@ write.csv(goalsbyzonebymod1out, file = gzfile(paste0('output/goalsbyzonebyensemb
 write.csv(goalsbyzonebymod2out, file = gzfile(paste0('output/goalsbyzonebyensemble_', runname2out, '.csv.gz')))
 write.csv(goalsmetbymod1out, file = paste0('output/goalsmetbyensemble_', runname1out, '.csv'))
 write.csv(goalsmetbymod2out, file = paste0('output/goalsmetbyensemble_', runname2out, '.csv'))
-
-
-	    
-	

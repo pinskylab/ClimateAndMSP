@@ -32,7 +32,7 @@ gridsz <- gridsz[gridsz>0]
 
 
 # read in the MPAs
-wdpa = readOGR(dsn='dataDL/WDPA/WDPA_Aug2019_marine-shapefile', layer='WDPA_Aug2019_marine-shapefile-polygons')
+wdpa = readOGR(dsn='dataDL/WDPA/WDPA_Aug2019_marine-shapefile/WDPA_Aug2019_marine-shapefile', layer='WDPA_Aug2019_marine-shapefile-polygons')
 # plot(wdpa) # very slow
 nrow(wdpa)
 wdpa = wdpa[wdpa$MARINE != 0,] # trim out 100% terrestrial (remove 185)
