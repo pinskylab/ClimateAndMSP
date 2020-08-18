@@ -144,7 +144,10 @@ rcps <- sort(unique(goalsmetbymod1$rcp))
 # Statistics
 # goals met, mid-century or end-of-century (for text)
 goalsmetbymod[year_range == '2041-2060', .(mean = mean(pmetstrict), sd = sd(pmetstrict)), by = c('type')] # mean and se across models and goals
-goalsmetbymod[year_range == '2081-2100', .(mean = mean(pmetstrict), sd = sd(pmetstrict)), by = c('type')] # mean and se across models and goals
+
+goalsmetbymod[year_range == '2081-2100' & rcp == '26', .(mean = mean(pmetstrict), sd = sd(pmetstrict)), by = c('type')] # mean and se across models and goals
+goalsmetbymod[year_range == '2081-2100' & rcp == '85', .(mean = mean(pmetstrict), sd = sd(pmetstrict)), by = c('type')] # mean and se across models and goals
+
 
 # p(80% goals met), end-of-century (for text)
 goalsmetbymod[year_range == '2081-2100', .(prop = 1 - sum(pmetstrict > 0.7)/.N), by = c('type')]

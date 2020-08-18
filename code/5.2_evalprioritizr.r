@@ -330,7 +330,7 @@ write.csv(goalsmetbymod2, file = paste0('output/goalsmetbymod_', runname2out, '.
 
 
 # read back in if needed
-goalsbyzonebymod1 <- fread(paste0('gunzip -c output/goalsbyzonebymod_', runname1out, '.csv.gz'), drop = 1)
-goalsbyzonebymod2 <- fread(paste0('gunzip -c output/goalsbyzonebymod_', runname2out, '.csv.gz'), drop = 1)
+goalsbyzonebymod1 <- fread(paste0('output/goalsbyzonebymod_', runname1out, '.csv.gz'), drop = 1)
+goalsbyzonebymod2 <- fread(paste0('output/goalsbyzonebymod_', runname2out, '.csv.gz'), drop = 1)
 goalsmetbymod1 <- fread(paste0('output/goalsmetbymod_', runname1out, '.csv'), drop = 1)
 goalsmetbymod2 <- fread(paste0('output/goalsmetbymod_', runname2out, '.csv'), drop = 1)

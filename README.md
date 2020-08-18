@@ -172,7 +172,8 @@ All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<
 			1. Kappa thresholds from Morley et al. 2018 PLOS ONE: see above
 1. [Table S1](tables/tableS1.csv)
 	1. output/prioritizr_runs/solution\_\*.csv and output/prioritizr_runs/spp\_\*.csv: see above
-
+1. Table S4
+	1. [output/fishery_spps.csv](output/fishery_spps.csv): see above
 
 ## InVEST runs
 These are the detailed program settings used when InVEST was run.
