@@ -36,12 +36,11 @@ Rutgers University<br/>
 	- natcap/WaveEnergy/: Natural Capital project InVEST wave energy data 3.6.0 from [here](http://data.naturalcapitalproject.org/invest-data/3.6.0/WaveEnergy.zip)
 	- natcap/WindEnergy/: Nature Capital project InVEST wind energy data 3.6.0 from [here](http://data.naturalcapitalproject.org/invest-data/3.6.0/WindEnergy.zip)
 	- natcap/Marine/: Natural Capital project InVEST marine base data 3.6.0 from [here](http://data.naturalcapitalproject.org/invest-data/3.6.0/Marine.zip)
-	- naturalearth/
 	- oceanadapt/: all-regions-full.rds from [OceanAdapt](https://github.com/pinskylab/OceanAdapt) version [update2019](https://zenodo.org/record/3890214)
 	- sau/: Catch data v47-1 from [Sea Around Us](http://www.seaaroundus.org) for Large Marine Ecosystems 1-3, 5-9, 65
 	- statcan/: [Canadian census population centres](https://www12.statcan.gc.ca/census-recensement/2011/geo/bound-limit/bound-limit-2016-eng.cfm), specifically ldpl000b16a_e
 	- usgs/: [US National Map Cities and Towns](https://nationalmap.gov/small_scale/atlasftp.html#citiesx), specifically citiesx020_nt00007
-	- WDPA/: World Database on Protected Areas, Aug 2019, from [https://www.protectedplanet.net/marine](https://www.protectedplanet.net/marine)
+	- WDPA/: World Database on Protected Areas, Aug 2019, from [Protected Planet](https://www.protectedplanet.net/marine)
 - [figures](figures/): plotted figures
 - [output](output/): files output by scripts and also used as input for some scripts (tracked by git)
 	- [prioritizr_runs](output/prioritizr_runs/): the conservation plans produced by prioritizr
@@ -51,8 +50,8 @@ Rutgers University<br/>
 
 ## Analysis workflow (roughly... see below for more details)
 - 0.2_averageSBT.r: to set up a climatology
-- 1.0_processWDPA.r: grid the WDPA
-- 1.1_summarizeWDPAbygrid.r: calculate the fraction in each grid cell
+- 1.0_processWDPA.r: grid the World Database on Protected Areas (WDPA)
+- 1.1_summarizeWDPAbygrid.r: calculate the fraction of protected area in each grid cell
 - 1.2_evalWDPA.r: compare protected areas to projected shifts in species habitats
 - 1.3_WDPAstats.r: summarize the shifts
 - 1.4_compare_WDPA_projections_data.r: Compare the projections to ecological survey observations
@@ -75,7 +74,7 @@ Rutgers University<br/>
 All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<br/>
 
 1. General statistics
-	1. temp/presmap_*_rcp*_*.csv.gz and temp/biomassmap_*_rcp*_*.csv.gz
+	1. temp/presmap\_\*\_rcp\*\_\*.csv.gz and temp/biomassmap\_\*\_rcp\*\_\*.csv.gz
 		1. [5.0.1_process_species_proj.r](code/5.0.1_process_species_proj.r)
 			1. Species distribution projections from [Morley et al. 2018 PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0196127), available from [BCO DMO](https://www.bco-dmo.org/dataset/753124)
 	1. temp/wdpaturnbyMPAbymod.csv.gz
@@ -90,7 +89,7 @@ All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<
 1. [Figure 1](figures/Fig1_study_regions.png)
 	1. [output/turnover_by_CMSPgrid.csv](output/turnover_by_CMSPgrid.csv)
 		1. [6.2_turnover_by_CMSPgrid.R](code/6.2_turnover_by_CMSPgrid.R)
-			1. temp/presmap_*_rcp*_*.csv.gz: see above
+			1. temp/presmap\_\*\_rcp\*\_\*.csv.gz: see above
 	1. [output/region_grid.csv.gz](output/region_grid.csv.gz)
 		1. [5.0_define_CMSP.r](code/5.0_define_CMSP.r)
 			1. temp/SPsf2.rds: see above
@@ -101,7 +100,7 @@ All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<
 		1. [5.2_evalprioritizr.r](code/5.2_evalprioritizr.r)
 			1. output/prioritizr_runs/solution_*.csv and output/prioritizr_runs/spp_*.csv
 				1. [5.1_prioritizr.r](code/5.1_prioritizr.r)
-					1. temp/presmap_*_rcp*_*.csv.gz and temp/biomassmap_*_rcp*_*.csv.gz: see above
+					1. temp/presmap\_\*\_rcp\*\_\*.csv.gz and temp/biomassmap\_\*\_rcp\*\_\*.csv.gz: see above
 					1. Kappa thresholds from Morley et al. 2018 PLOS ONE available [here](https://raw.githubusercontent.com/pinskylab/project_velocity/master/output/modeldiag_Nov2017_fitallreg_2017.csv)
 					1. [output/wind_npv.csv.gz](output/wind_npv.csv.gz) and [output/wave_npv.csv.gz](output/wave_npv.csv.gz)
 						1. [3.1_processNatCap.r](code/3.1_processNatCap.r)
@@ -109,20 +108,14 @@ All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<
 								1. Produced with InVEST 3.7.0 (see below)
 									1. dataDL/natcap/WindEnergy/*.*
 									1. dataDL/natcap/Marine/*.*
-									1. temp/AOI_east.shp and temp/AOI_west.shp
-										1. [3.0_make_NatCap_files.r](code/3.0_make_NatCap_files.r)
-											1. temp/SPsf2.rds: see above
+									1. temp/AOI_east.shp and temp/AOI_west.shp, made by [3.0_make_NatCap_files.r](code/3.0_make_NatCap_files.r), which needs temp/SPsf2.rds (see above)
 							1. temp/SPsf2.rds: see above
 							1. ../NatCap_temp/westcoastwave/output/npv_usd.tif and ../NatCap_temp/eastcoastwave/output/npv_usd.tif
 								1. Produced with InVEST 3.7.0 (see below)
 									1. temp/AOI_east.shp and temp/AOI_west.shp: see above
 									1. dataDL/natcap/WaveEnergy/*.*
 									1. dataDL/natcap/Marine/*.*
-									1. [output/landgridpts_northamerica.csv](output/landgridpts_northamerica.csv)
-										1. [3.0_make_NatCap_files.r](code/3.0_make_NatCap_files.r)
-											1. [data/natcap/NAmainland_lines.shp](data/natcap/NAmainland_lines.shp)
-											1. dataDL/usgs/citiesx020_nt00007/citiesx020.shp
-											1. dataDL/statcan/lpc_000b16a_e/lpc_000b16a_e.shp
+									1. [output/landgridpts_northamerica.csv](output/landgridpts_northamerica.csv), made by [3.0_make_NatCap_files.r](code/3.0_make_NatCap_files.r), which uses [data/natcap/NAmainland_lines.shp](data/natcap/NAmainland_lines.shp), dataDL/usgs/citiesx020_nt00007/citiesx020.shp, and dataDL/statcan/lpc_000b16a_e/lpc_000b16a_e.shp
 									1. [data/natcap/Machine_Pelamis_Economic_Kimetal2012r0.05.csv](data/natcap/Machine_Pelamis_Economic_Kimetal2012r0.05.csv)
 					1. [output/fishery_spps.csv](output/fishery_spps.csv)
 						1. [5.0_define_CMSP.r](code/5.0_define_CMSP.r)
@@ -131,13 +124,13 @@ All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<
 					1. [output/region_grid.csv.gz](output/region_grid.csv.gz): see above
 			1. Kappa thresholds from Morley et al. 2018 PLOS ONE: see above
 			1. [output/region_grid.csv.gz](output/region_grid.csv.gz): see above
-			1. temp/presmap_*_rcp*_*.csv.gz and temp/biomassmap_*_rcp*_*.csv.gz: see above
+			1. temp/presmap\_\*\_rcp\*\_\*.csv.gz and temp/biomassmap\_\*\_rcp\*\_\*.csv.gz: see above
 1. [Figure 3](figures/Fig3_planareas.png)
 	1. output/prioritizr_runs/solution_*.csv: see above
 1. [Figure 4](figures/Fig4_prioritizr_frontiers.png)
 	1. temp/frontierall_2019-12-31_075440.csv
 		1. [prioritizr_frontier.r](code/prioritizr_frontier.r)
-			1. temp/presmap_*_rcp*_*.csv.gz and temp/biomassmap_*_rcp*_*.csv.gz: see above
+			1. temp/presmap\_\*\_rcp\*\_\*.csv.gz and temp/biomassmap\_\*\_rcp\*\_\*.csv.gz: see above
 			1. Kappa thresholds from Morley et al. 2018 PLOS ONE: see above
 			1. [output/wind_npv.csv.gz](output/wind_npv.csv.gz) and [output/wave_npv.csv.gz](output/wave_npv.csv.gz): see above
 			1. [output/fishery_spps.csv](output/fishery_spps.csv): see above
@@ -178,13 +171,13 @@ All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<
 			1. dataDL/WDPA/WDPA_Aug2019_marine-shapefile/WDPA_Aug2019_marine-shapefile-polygons.shp: see above
 			1. Kappa thresholds from Morley et al. 2018 PLOS ONE: see above
 1. [Table S1](tables/tableS1.csv)
-	1. output/prioritizr_runs/solution_*.csv and output/prioritizr_runs/spp_*.csv: see above
+	1. output/prioritizr_runs/solution\_\*.csv and output/prioritizr_runs/spp\_\*.csv: see above
 
 
 ## InVEST runs
 These are the detailed program settings used when InVEST was run.
 - East coast wind
-	- InVEST-3.7.0.post212+hd9612c04a8dc version
+	- run with InVEST-3.7.0.post212+hd9612c04a8dc version
 	- wind data points: dataDL/natcap/WindEnergy/input/Global_EEZ_WEBPAR_90pct_100ms.csv
 	- area of interest: temp/AOI_east.shp: see above
 	- Bathymetric DEM: dataDL/natcap/Marine/DEMs/global_dem/w001001.adf
@@ -205,7 +198,7 @@ These are the detailed program settings used when InVEST was run.
 		- price of energy: $0.161/kWhr
 		- rate of price change: 0.025
 - West coast wind
-	- InVEST-3.7.0.post212+hd9612c04a8dc version
+	- run with InVEST-3.7.0.post212+hd9612c04a8dc version
 	- wind data points: dataDL/natcap/WindEnergy/input/Global_EEZ_WEBPAR_90pct_100ms.csv
 	- area of interest: temp/AOI_west.shp: see above
 	- Bathymetric DEM: dataDL/natcap/Marine/DEMs/global_dem/w001001.adf
@@ -226,6 +219,7 @@ These are the detailed program settings used when InVEST was run.
 		- price of energy: $0.161/kWhr
 		- rate of price change: 0.025
 - East coast wave
+	- run with InVEST-3.7.0.post212+hd9612c04a8dc version
 	- wave data: dataDL/natcap/WaveEnergy/input/WaveData
 	- analysis area: Global
 	- AOI: temp/AOI_east.shp: see above
@@ -235,15 +229,16 @@ These are the detailed program settings used when InVEST was run.
 	- Valuation: yes
 		- Grid connections: output/landgridpts_northamerica.csv (see above)
 		- Economic table: [data/natcap/Machine_Pelamis_Economic_Kimetal2012r0.05.csv](data/natcap/Machine_Pelamis_Economic_Kimetal2012r0.05.csv)
-		- # machines: 100
+		- \# machines: 100
 - West coast wave
+	- run with InVEST-3.7.0.post212+hd9612c04a8dc version
 	- wave data: dataDL/natcap/WaveEnergy/input/WaveData
 	- analysis area: Global
-	- AOI: temp/AOI_wast.shp: see above
+	- AOI: temp/AOI_west.shp: see above
 	- Machine performance table: dataDL/natcap/WaveEnergy/input/Machine_Pelamis_Performance.csv
 	- Machine parameter table: dataDL/natcap/WaveEnergy/input/Machine_Pelamis_Parameter.csv
 	- Global DEM: dataDL/natcap/Marine/DEMs/global_dem/w001001.adf
 	- Valuation: yes
 		- Grid connections: output/landgridpts_northamerica.csv (see above)
 		- Economic table: [data/natcap/Machine_Pelamis_Economic_Kimetal2012r0.05.csv](data/natcap/Machine_Pelamis_Economic_Kimetal2012r0.05.csv)
-		- # machines: 100
+		- \# machines: 100
