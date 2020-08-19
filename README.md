@@ -8,6 +8,9 @@ Malin Pinsky<br/>
 Rutgers University<br/>
 [malin.pinsky@rutgers.edu](malin.pinsky@rutgers.edu)
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3991884.svg)](https://doi.org/10.5281/zenodo.3991884)
+
+
 ## Software versions
 - Software was executed on a laptop running Mac OS and on a Linux workstation running CentOS.
 - [R version 3.6.1](https://www.r-project.org/). Main scripting language, with the following packages:
