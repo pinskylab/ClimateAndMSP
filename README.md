@@ -9,8 +9,8 @@ Rutgers University<br/>
 [malin.pinsky@rutgers.edu](malin.pinsky@rutgers.edu)
 
 ## Software versions
-- Software was run on a laptop running Mac OS and on a Linux workstation running CentOS.
-- [R version 3.6.1 (2019-07-05)](https://www.r-project.org/). Main scripting language, with the following packages:
+- Software was executed on a laptop running Mac OS and on a Linux workstation running CentOS.
+- [R version 3.6.1](https://www.r-project.org/). Main scripting language, with the following packages:
 	- maps 3.3.0
 	- mapdata 2.3.0
 	- maptools 0.9-5
@@ -22,10 +22,10 @@ Rutgers University<br/>
 	- beanplot 1.2
 	- RColorBrewer 1.1-2
 	- lme4 1.1-21
-- [R version 3.5.3 (2019-07-05)](https://www.r-project.org/). This version needed to run this version of gurobi, part of the conservation planning algorithm.
+- [R version 3.5.3](https://www.r-project.org/). This version of R was needed to run gurobi, part of the conservation planning algorithm. We used these packages:
 	- prioritizr 4.1.4
 	- gurobi 8.1-1
-- [InVEST-3.7.0](http://releases.naturalcapitalproject.org/?prefix=invest/3.7.0/) and [InVEST-3.7.0.post212+hd9612c04a8dc](https://storage.googleapis.com/natcap-dev-build-artifacts/invest/jdouglass/3.7.0.post212%2Bhd9612c04a8dc/InVEST-3.7.0.post212%2Bhd9612c04a8dc-mac.zip). Used for generating wind and wave energy estimates.
+- [InVEST-3.7.0](http://releases.naturalcapitalproject.org/?prefix=invest/3.7.0/) and [InVEST-3.7.0.post212+hd9612c04a8dc](https://storage.googleapis.com/natcap-dev-build-artifacts/invest/jdouglass/3.7.0.post212%2Bhd9612c04a8dc/InVEST-3.7.0.post212%2Bhd9612c04a8dc-mac.zip). Used for generating wind and wave energy estimates. The latter development version does not appear to be available anymore, but presumably, the bugs have been fixed in the newer releases.
 - [Gurobi 8.1.1](http://gurobi.com/) with an academic license. Used for solving conservation planning problems.
 
 ## Directory structure
@@ -71,9 +71,10 @@ Rutgers University<br/>
 - [plot_figures.r](scripts/plot_figures.r) to make figures and some tables
 
 ## Scripts and files behind figures, tables, and other calculations
-All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<br/>
+All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r). The nested lists below indicate which files are needed for each figure or table, as well as which scripts produce those files.
+<br/>
 
-1. General statistics
+1. General statistics from [plot_figures.r](code/plot_figures.r).
 	1. temp/presmap\_\*\_rcp\*\_\*.csv.gz and temp/biomassmap\_\*\_rcp\*\_\*.csv.gz
 		1. [5.0.1_process_species_proj.r](code/5.0.1_process_species_proj.r)
 			1. Species distribution projections from [Morley et al. 2018 PLOS ONE](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0196127), available from [BCO DMO](https://www.bco-dmo.org/dataset/753124)
@@ -98,7 +99,7 @@ All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<
 1. [Figure 2](figures/Fig2_prioritizr_goalsmetbymod.png)
 	1. [output/goalsmetbymod_hist_all.csv](output/goalsmetbymod_hist_all.csv) and [output/goalsmetbymod_2per_all.csv](output/goalsmetbymod_2per_all.csv)
 		1. [5.2_evalprioritizr.r](code/5.2_evalprioritizr.r)
-			1. output/prioritizr_runs/solution_*.csv and output/prioritizr_runs/spp_*.csv
+			1. output/prioritizr_runs/solution\_\*.csv and output/prioritizr\_runs/spp\_\*.csv
 				1. [5.1_prioritizr.r](code/5.1_prioritizr.r)
 					1. temp/presmap\_\*\_rcp\*\_\*.csv.gz and temp/biomassmap\_\*\_rcp\*\_\*.csv.gz: see above
 					1. Kappa thresholds from Morley et al. 2018 PLOS ONE available [here](https://raw.githubusercontent.com/pinskylab/project_velocity/master/output/modeldiag_Nov2017_fitallreg_2017.csv)
@@ -106,21 +107,21 @@ All figures and Table S1 are produced by [plot_figures.r](code/plot_figures.r).<
 						1. [3.1_processNatCap.r](code/3.1_processNatCap.r)
 							1. ../NatCap_temp/westcoastwind/output/npv_US_millions.tif and ../NatCap_temp/eastcoastwind/output/npv_US_millions.tif
 								1. Produced with InVEST 3.7.0 (see below)
-									1. dataDL/natcap/WindEnergy/*.*
-									1. dataDL/natcap/Marine/*.*
+									1. dataDL/natcap/WindEnergy/\*.\*
+									1. dataDL/natcap/Marine/\*.\*
 									1. temp/AOI_east.shp and temp/AOI_west.shp, made by [3.0_make_NatCap_files.r](code/3.0_make_NatCap_files.r), which needs temp/SPsf2.rds (see above)
 							1. temp/SPsf2.rds: see above
 							1. ../NatCap_temp/westcoastwave/output/npv_usd.tif and ../NatCap_temp/eastcoastwave/output/npv_usd.tif
 								1. Produced with InVEST 3.7.0 (see below)
 									1. temp/AOI_east.shp and temp/AOI_west.shp: see above
-									1. dataDL/natcap/WaveEnergy/*.*
-									1. dataDL/natcap/Marine/*.*
+									1. dataDL/natcap/WaveEnergy/\*.\*
+									1. dataDL/natcap/Marine/\*.\*
 									1. [output/landgridpts_northamerica.csv](output/landgridpts_northamerica.csv), made by [3.0_make_NatCap_files.r](code/3.0_make_NatCap_files.r), which uses [data/natcap/NAmainland_lines.shp](data/natcap/NAmainland_lines.shp), dataDL/usgs/citiesx020_nt00007/citiesx020.shp, and dataDL/statcan/lpc_000b16a_e/lpc_000b16a_e.shp
 									1. [data/natcap/Machine_Pelamis_Economic_Kimetal2012r0.05.csv](data/natcap/Machine_Pelamis_Economic_Kimetal2012r0.05.csv)
 					1. [output/fishery_spps.csv](output/fishery_spps.csv)
 						1. [5.0_define_CMSP.r](code/5.0_define_CMSP.r)
 							1. Species distribution projections from Morley et al. 2018 PLOS ONE: see above
-							1. dataDL/sau/*.*
+							1. dataDL/sau/\*.\*
 					1. [output/region_grid.csv.gz](output/region_grid.csv.gz): see above
 			1. Kappa thresholds from Morley et al. 2018 PLOS ONE: see above
 			1. [output/region_grid.csv.gz](output/region_grid.csv.gz): see above
