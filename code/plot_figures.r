@@ -14,6 +14,7 @@ require(data.table)
 require(beanplot)
 require(RColorBrewer)
 require(lme4)
+require(ggsci) # colors for Fig. 4
 
 se <- function(x,na.rm=FALSE){ # standard error
 	if(!na.rm){
@@ -90,7 +91,8 @@ colpal <- colorRampPalette(colors = cols)
 
 #### plot map
 # quartz(width=8.7/2.54,height=6/2.54)
-png(width=8.7/2.54, height=6/2.54, units = 'in', res = 300, file='figures/Fig1_study_regions.png')
+#png(width=8.7/2.54, height=6/2.54, units = 'in', res = 300, file='figures/Fig1_study_regions.png')
+jpeg(width = 8.7/2.54, height = 6/2.54, file = 'figures/Fig1_study_regions.jpg', units = 'in', res = 1200, quality = 100)
 par(mai=c(0.15, 0.08, 0.15, 0.1), omi=c(0.15, 0.2, 0, 0), tck=-0.06, mgp=c(1.2,0.4,0), las=1, cex.main=0.5, cex.axis=0.5)
 layout(mat=matrix(c(1,2,3,5,4,6,7,5,8,9,10,11), byrow=TRUE, nrow=3))
 
@@ -173,13 +175,14 @@ colmat <- t(col2rgb(brewer.pal(6, 'PuOr'))) # dark red for histonly average, mid
 cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255, 90, 200, 200, 90, 255), maxColorValue=255)
 yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
-outfile <- 'figures/Fig2_prioritizr_goalsmetbymod.png'
+outfile <- 'figures/Fig2_prioritizr_goalsmetbymod.pdf'; presentonly <- FALSE
 # outfile <- 'figures/prioritizr_goalsmetbymod_presentonly.png'; presentonly <- TRUE
 outfile
 ylims <- c(0, 1)
 
 # quartz(width=8.7/2.54, height=8.7/2.54)
-png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file=outfile)
+#png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file=outfile)
+pdf(width=8.7/2.54, height=8.7/2.54, file=outfile)
 par(mfrow=c(3,3), mai=c(0.05, 0.05, 0.2, 0.05), omi=c(0.4,0.4,0,0), cex.main=0.8, cex.axis=0.6, tcl=-0.15, mgp=c(1.6,0.4,0), las = 1)
 
 for (i in 1:length(myregs)) { # for each region
@@ -313,8 +316,8 @@ cols <- brewer.pal(8, 'RdYlBu')
 cols <- cols[c(1:4, 8:5)]
 
 # quartz(width=8.7/2.54, height=5/2.54)
-#pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig3_planareas.pdf')
-png(width=8.7/2.54, height=10/2.54, units = 'in', res = 300, file='figures/Fig3_planareas.png')
+pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig3_planareas.pdf')
+#png(width=8.7/2.54, height=10/2.54, units = 'in', res = 300, file='figures/Fig3_planareas.png')
 par(mfrow = c(2, 1), mai=c(0.2, 0.75, 0.1, 0.1), mgp=c(1.8, 0.4, 0), tcl=-0.2, las=1, cex.axis=0.8)
 barplot(height=matmod, space=rep(c(1,0), ncol(mathist)), xaxt='n', col=cols, ylab='Proportion', xlim=c(1.5,40))
 axis(1, at=seq(2,26,by=3), labels=NA, cex.axis=0.8, las=2, mgp=c(1.8, 0.5, 0))
@@ -374,11 +377,11 @@ frontierall[, .(notopt = sum(status != 'OPTIMAL'), total = .N), by = region]
 frontierall[, ':='(presperc = presgoals/ngoals, futperc = futgoals/ngoals)]
 
 # quick plot as a check
-require(ggplot2)
-ggplot(frontierall, aes(x = presperc, y = futperc, group = budget, color = budget)) +
-    geom_path(size = 0.4) +
-    geom_point(size = 0.3) +
-    facet_wrap(~ region, nrow = 3, scales = 'free')
+#require(ggplot2)
+#ggplot(frontierall, aes(x = presperc, y = futperc, group = budget, color = budget)) +
+#    geom_path(size = 0.4) +
+#    geom_point(size = 0.3) +
+#    facet_wrap(~ region, nrow = 3, scales = 'free')
 
 # Drop non-frontier points (automated)
 # If two points share the same futperc, it chooses the one with the higher presperc (or vice versa)
@@ -416,7 +419,8 @@ myregs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf'
 regnames = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
 buds <- 0.75 # the budgets to plot
 
-png('figures/Fig4_prioritizr_frontiers.png', height = 4, width = 6, units = 'in', res = 300)
+#png('figures/Fig4_prioritizr_frontiers.png', height = 4, width = 6, units = 'in', res = 300)
+pdf('figures/Fig4_prioritizr_frontiers.pdf', height = 4, width = 6)
 layout(matrix(c(1,4,4,4,2,4,4,4,3,4,4,4), byrow = TRUE, ncol = 4))
 
 par(mai=c(0.1, 0.1, 0.1, 0.05), cex.main = 1, cex.axis = 0.8, tcl = -0.3, mgp=c(2,0.5,0))
@@ -492,33 +496,33 @@ wdpaturnbynetbymod <- fread('gunzip -c temp/wdpaturnbynetbymod.csv.gz') # networ
     
     
 # Plot of mean MPA change and network change
-    cols <- list(c('#67a9cf','white','black','#2166ac'), c('#ef8a62', 'white','black','#b2182b')) # colors from Colorbrewer2 7-class RdBu
-    # quartz(width=8.7/2.54,height=8.7/2.54)
-    #pdf(width=8.7/2.54, height=8.7/2.54, file='figures/Fig2_MPA_turnover.pdf')
-    png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file='figures/Fig5_MPA_turnover.png')
-    
-    par(mfrow=c(2,2), las=2, mai=c(0.5,0.45,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.4,0), tcl=-0.2, cex.axis=0.8)
-    
-    beanplot(flost ~  type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-             names = c('RCP 2.6', 'RCP 8.5'), las = 1,
-             at = c(1, 3), log = "", ylim = c(0, 0.5), xlim = c(0, 4), cut = 0.01, ylab = 'Fraction lost')
-    mtext(side = 3, text = 'a)', adj = 0.05, line = -1, las = 1, cex = 1)
-    
-    beanplot(fgained ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-             names = c('RCP 2.6', 'RCP 8.5'), las = 1,
-             at = c(1, 3.2), log = "", ylim = c(0, 0.6), xlim = c(0, 4.5), cut = 0.01, ylab = 'Fraction gained')
-    mtext(side = 3, text = 'b)', adj = 0.05, line = -1, las = 1, cex = 1)
-    
-    beanplot(I(1-beta_sor) ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
-             names = c('RCP 2.6', 'RCP 8.5'), las = 1,
-             at = c(1, 3), log = "", ylim = c(0, 1), xlim = c(0, 4), cut = 0.01, ylab = 'Dissimilarity') # flost
-    mtext(side = 3, text = 'c)', adj = 0.05, line = -1, las = 1, cex = 1)
-    
-    plot(1, 1, bty = 'n', xaxt = 'n', yaxt = 'n', col = 'white', xlab = '', ylab = '')
-    legend('center', legend = c('Individual', 'Network'), title = 'Type', col = c(cols[[1]][1], cols[[2]][1]), lty = 1, lwd = 10, bty = 'n')
-    
-    dev.off()
-    
+cols <- list(c('#67a9cf','white','black','#2166ac'), c('#ef8a62', 'white','black','#b2182b')) # colors from Colorbrewer2 7-class RdBu
+# quartz(width=8.7/2.54,height=8.7/2.54)
+pdf(width=8.7/2.54, height=8.7/2.54, file='figures/Fig5_MPA_turnover.pdf')
+#png(width=8.7/2.54, height=8.7/2.54, units = 'in', res = 300, file='figures/Fig5_MPA_turnover.png')
+
+par(mfrow=c(2,2), las=2, mai=c(0.5,0.45,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.4,0), tcl=-0.2, cex.axis=0.8)
+
+beanplot(flost ~  type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
+         at = c(1, 3), log = "", ylim = c(0, 0.5), xlim = c(0, 4), cut = 0.01, ylab = 'Fraction lost')
+mtext(side = 3, text = 'a)', adj = 0.05, line = -1, las = 1, cex = 1)
+
+beanplot(fgained ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
+         at = c(1, 3.2), log = "", ylim = c(0, 0.6), xlim = c(0, 4.5), cut = 0.01, ylab = 'Fraction gained')
+mtext(side = 3, text = 'b)', adj = 0.05, line = -1, las = 1, cex = 1)
+
+beanplot(I(1-beta_sor) ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
+         names = c('RCP 2.6', 'RCP 8.5'), las = 1,
+         at = c(1, 3), log = "", ylim = c(0, 1), xlim = c(0, 4), cut = 0.01, ylab = 'Dissimilarity') # flost
+mtext(side = 3, text = 'c)', adj = 0.05, line = -1, las = 1, cex = 1)
+
+plot(1, 1, bty = 'n', xaxt = 'n', yaxt = 'n', col = 'white', xlab = '', ylab = '')
+legend('center', legend = c('Individual', 'Network'), title = 'Type', col = c(cols[[1]][1], cols[[2]][1]), lty = 1, lwd = 10, bty = 'n')
+
+dev.off()
+
 
 
 ###################################################
