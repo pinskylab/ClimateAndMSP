@@ -76,7 +76,7 @@ turn <- merge(turn, regiongrid, by = c('latgrid', 'longrid'), all.x = TRUE)
 regs <- c('ebs', 'goa', 'bc', 'wc', 'gmex', 'seus', 'neus', 'maritime', 'newf')
 cexs <- c(ebs = 0.3, goa = 0.3, bc = 0.5, wc = 0.35, gmex = 0.33, seus = 0.4, neus = 0.3, maritime = 0.25, newf = 0.13)
 regsnice = c('Eastern Bering Sea', 'Gulf of Alaska', 'British Columbia', 'West Coast U.S.', 'Gulf of Mexico', 'Southeast U.S.', 'Northeast U.S.', 'Maritimes', 'Newfoundland')
-regsniceabbrev = c('(ebs)', '(goa)', '(bc)', '(wc)', '(gmex)', '(seus)', '(neus)', '(mar)', '(newf)')
+regsniceabbrev = c('(EBS)', '(GoA)', '(BC)', '(WC)', '(GMex)', '(SEUS)', '(NEUS)', '(Mar)', '(Newf)')
 ylabs = c('Latitude (°N)', '', '', '', 'Latitude (°N)', '', '', 'Latitude (°N)', '')
 xlabs = c('', '', '', 'Longitude (°E)', '', '', 'Longitude (°E)', 'Longitude (°E)', 'Longitude (°E)')
 ylims = list(ebs = c(51,62.5), goa = c(54, 61), bc = c(48, 54), wc = c(32.2, 48.5), gmex = c(24,30.5), seus = c(25, 35.5), neus = c(35, 45), maritime = c(41, 52), newf = c(42, 62))
@@ -311,7 +311,7 @@ for(i in seq(3,ncol(mat),by=2)){
 }
 
 # plot
-regnames = c('EBS', 'GoA', 'BC', 'WC', 'GMex', 'SEUS', 'NEUS', 'Maritime', 'Newf')
+regnames = c('EBS', 'GoA', 'BC', 'WC', 'GMex', 'SEUS', 'NEUS', 'Mar', 'Newf')
 cols <- brewer.pal(8, 'RdYlBu')
 cols <- cols[c(1:4, 8:5)]
 
@@ -321,6 +321,7 @@ pdf(width=8.7/2.54, height=10/2.54, file='figures/Fig3_planareas.pdf')
 par(mfrow = c(2, 1), mai=c(0.2, 0.75, 0.1, 0.1), mgp=c(1.8, 0.4, 0), tcl=-0.2, las=1, cex.axis=0.8)
 barplot(height=matmod, space=rep(c(1,0), ncol(mathist)), xaxt='n', col=cols, ylab='Proportion', xlim=c(1.5,40))
 axis(1, at=seq(2,26,by=3), labels=NA, cex.axis=0.8, las=2, mgp=c(1.8, 0.5, 0))
+mtext(side = 3, text = 'a)', adj = -0.3, line = -0.5, las = 1, cex = 1)
 legend(x=28.5, y=1, fill=cols[8:5], legend=c('Free', 'Energy', 'Fishing', 'Conservation'), cex=0.5, bty='n')
 legend(x=27, y=1, fill=cols[4:1], legend=rep("",4), cex=0.5, bty='n')
 
@@ -330,7 +331,7 @@ consplansw[, .(pchange = sum(change)/.N),
                                   ylab = 'Proportion\nchanged', xlim = c(2,40), ylim = c(0, 0.35))]
 axis(1, at = seq(2.5,26.5,by=3), labels=regnames, cex.axis=0.8, las=2, mgp=c(1.8, 0.5, 0))
 axis(2, at = seq(0, 0.3, by = 0.1))
-
+mtext(side = 3, text = 'b)', adj = -0.3, line = -0.5, las = 1, cex = 1)
 
 dev.off()
 
@@ -506,17 +507,17 @@ par(mfrow=c(2,2), las=2, mai=c(0.5,0.45,0.1, 0.05), omi=c(0,0,0,0), mgp=c(1.6,0.
 beanplot(flost ~  type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
          names = c('RCP 2.6', 'RCP 8.5'), las = 1,
          at = c(1, 3), log = "", ylim = c(0, 0.5), xlim = c(0, 4), cut = 0.01, ylab = 'Fraction lost')
-mtext(side = 3, text = 'a)', adj = 0.05, line = -1, las = 1, cex = 1)
+mtext(side = 3, text = 'a)', adj = -0.4, line = -0.4, las = 1, cex = 0.9)
 
 beanplot(fgained ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
          names = c('RCP 2.6', 'RCP 8.5'), las = 1,
          at = c(1, 3.2), log = "", ylim = c(0, 0.6), xlim = c(0, 4.5), cut = 0.01, ylab = 'Fraction gained')
-mtext(side = 3, text = 'b)', adj = 0.05, line = -1, las = 1, cex = 1)
+mtext(side = 3, text = 'b)', adj = -0.4, line = -0.4, las = 1, cex = 0.9)
 
 beanplot(I(1-beta_sor) ~ type + rcp, data = means.net, what = c(0,1,1,0), side = 'both', col = cols, border = NA, wd = 0.18, handlelog = FALSE, 
          names = c('RCP 2.6', 'RCP 8.5'), las = 1,
          at = c(1, 3), log = "", ylim = c(0, 1), xlim = c(0, 4), cut = 0.01, ylab = 'Dissimilarity') # flost
-mtext(side = 3, text = 'c)', adj = 0.05, line = -1, las = 1, cex = 1)
+mtext(side = 3, text = 'c)', adj = -0.4, line = -0.4, las = 1, cex = 0.9)
 
 plot(1, 1, bty = 'n', xaxt = 'n', yaxt = 'n', col = 'white', xlab = '', ylab = '')
 legend('center', legend = c('Individual', 'Network'), title = 'Type', col = c(cols[[1]][1], cols[[2]][1]), lty = 1, lwd = 10, bty = 'n')
