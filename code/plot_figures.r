@@ -176,7 +176,7 @@ cols <- rgb(red=colmat[,1], green=colmat[,2], blue=colmat[,3], alpha=c(255, 90, 
 yaxts <- c('s', 'n', 'n', 's', 'n', 'n', 's', 'n', 'n')
 xaxts <- c('n', 'n', 'n', 'n', 'n', 'n', 's', 's', 's')
 outfile <- 'figures/Fig2_prioritizr_goalsmetbymod.pdf'; presentonly <- FALSE
-# outfile <- 'figures/prioritizr_goalsmetbymod_presentonly.png'; presentonly <- TRUE
+# outfile <- 'figures/prioritizr_goalsmetbymod_presentonly.pdf'; presentonly <- TRUE
 outfile
 ylims <- c(0, 1)
 
