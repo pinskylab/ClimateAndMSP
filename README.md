@@ -34,6 +34,7 @@ Rutgers University<br/>
 ## Directory structure
 - [code](code/): scripts that are run using data, data_dl, and output, produce temp, output, figures, and tables
 - [data/natcapt](data/natcap/): has data and parameter files generated for this project. Only used for InVEST runs.
+	- Note that the [species range projections](https://www.bco-dmo.org/dataset/753124)) from [Morley et al. 2018 PLOS ONE](https://doi.org/10.1371/journal.pone.0196127) are also needed. See below for how they are integrated.
 - data_dl: has data that is easily downloaded (not tracked by git)
 	- marineregions/World_EEZ_v10_20180221/: Flanders Marine Institute (2018). Maritime Boundaries Geodatabase: Maritime Boundaries and Exclusive Economic Zones (200NM), version 10. Available online at http://www.marineregions.org/ https://doi.org/10.14284/312
 	- natcap/WaveEnergy/: Natural Capital project InVEST wave energy data 3.6.0 from [here](http://data.naturalcapitalproject.org/invest-data/3.6.0/WaveEnergy.zip)
